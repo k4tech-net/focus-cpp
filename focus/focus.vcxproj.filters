@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <ClCompile Include="main.cpp" />
+    <ClCompile Include="mouse_driver\mouse.cpp">
+      <Filter>mouse_driver</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="mouse_driver">
+      <UniqueIdentifier>{ac4e747f-e5ff-4d53-8323-027ae64f57e5}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="mouse_driver\mouse.hpp">
+      <Filter>mouse_driver</Filter>
+    </ClInclude>
+  </ItemGroup>
+</Project>
