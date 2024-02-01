@@ -1,7 +1,8 @@
 #include "mouse.hpp"
-#include <windows.h>
+#include <math.h>
+#include <Windows.h>
+#include <iostream>
 #include <winternl.h>
-
 #pragma comment(lib, "ntdll.lib")
 
 typedef struct {
@@ -39,13 +40,17 @@ static NTSTATUS device_initialize(PCWSTR device_name)
 	NTSTATUS status = NtCreateFile(&g_input, GENERIC_WRITE | SYNCHRONIZE, &attr, &g_io, 0,
 		FILE_ATTRIBUTE_NORMAL, 0, 3, FILE_NON_DIRECTORY_FILE | FILE_SYNCHRONOUS_IO_NONALERT, 0, 0);
 
+	if (!NT_SUCCESS(status)) {
+		// Print error information
+		printf("[-] Failed to create file. Error code: 0x%X\n", status);
+	}
+
 	return status;
 }
 
-BOOL mouse::mouse_open(void)
+BOOL mouse_open()
 {
 	NTSTATUS status = 0;
-
 
 	if (g_input == 0) {
 
@@ -64,17 +69,15 @@ BOOL mouse::mouse_open(void)
 	return status == 0;
 }
 
-
-void mouse::mouse_close(void)
+void mouse_close()
 {
 	if (g_input != 0) {
-		ZwClose(g_input);
+		NtClose(g_input);  //ZwClose
 		g_input = 0;
 	}
 }
 
-
-void mouse::mouse_move(char button, char x, char y, char wheel)
+void mouse_move(char button, char x, char y, char wheel)
 {
 	MOUSE_IO io;
 	io.unk1 = 0;
@@ -87,4 +90,40 @@ void mouse::mouse_move(char button, char x, char y, char wheel)
 		mouse_close();
 		mouse_open();
 	}
+}
+
+void moveR(int x, int y)
+{
+	if (abs(x) > 127 || abs(y) > 127) {
+		int x_left = x; int y_left = y;
+		if (abs(x) > 127) {
+			mouse_move(0, int(x / abs(x)) * 127, 0, 0);
+			x_left = x - int(x / abs(x)) * 127;
+		}
+		else { mouse_move(0, int(x), 0, 0); x_left = 0; }
+
+		if (abs(y) > 127) {
+			mouse_move(0, 0, int(y / abs(y)) * 127, 0);
+			y_left = y - int(y / abs(y)) * 127;
+		}
+		else { mouse_move(0, 0, int(y), 0); y_left = 0; }
+
+		return moveR(x_left, y_left);
+	}
+	else { mouse_move(0, x, y, 0); }
+}
+
+void press(char button)
+{
+	mouse_move(button, 0, 0, 0);
+}
+
+void release()
+{
+	mouse_move(0, 0, 0, 0);
+}
+
+void scroll(char wheel)
+{
+	mouse_move(0, 0, 0, -wheel);
 }

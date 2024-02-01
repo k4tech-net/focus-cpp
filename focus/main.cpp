@@ -1,7 +1,7 @@
 #include <iostream>
 #include <Windows.h>
 
-#include "mouse_driver/mouse.h"
+#include "mouse_driver/mouse.hpp"
 
 int main()
 {
