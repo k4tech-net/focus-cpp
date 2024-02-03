@@ -1,0 +1,31 @@
+name: Ubuntu
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    - name: Checkout submodules
+      run: git submodule update --init --recursive
+
+    - name: Install needed libraries
+      run: sudo apt-get update && sudo DEBIAN_FRONTEND=noninteractive apt-get install -y libxrandr-dev xorg-dev libxinerama-dev curl zip unzip tar
+
+    - name: Install OpenCV and SDL via apt
+      run: sudo apt-get install -y libopencv-dev libsdl2-dev
+
+    - name: run_build_all
+      run:  |
+        mkdir build
+        cd build
+        ../scripts/build_utilities.py run -run_build_all
+
+    - uses: actions/upload-artifact@v3
+      with:
+        name: ubuntu_bin_artifacts
+        path: build/bin/
+        retention-days: 90

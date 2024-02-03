@@ -1,0 +1,20 @@
+# CMake generation dependency list for this directory.
+D:/Coding/Game Hacking/pthom/imguibundle/imgui_bundle/build/_deps/freetype-src/CMakeLists.txt
+D:/Coding/Game Hacking/pthom/imguibundle/imgui_bundle/build/_deps/freetype-src/builds/cmake/FindBrotliDec.cmake
+D:/Coding/Game Hacking/pthom/imguibundle/imgui_bundle/build/_deps/freetype-src/builds/cmake/FindHarfBuzz.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/BasicConfigVersion-SameMajorVersion.cmake.in
+D:/Programs/cmake/share/cmake-3.28/Modules/CMakeDependentOption.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/CMakePackageConfigHelpers.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/CPack.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/CPackComponent.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/CheckIncludeFile.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindBZip2.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindPNG.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindPackageHandleStandardArgs.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindPackageMessage.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindPkgConfig.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/FindZLIB.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/GNUInstallDirs.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/SelectLibraryConfigurations.cmake
+D:/Programs/cmake/share/cmake-3.28/Modules/WriteBasicConfigVersionFile.cmake
+D:/Programs/cmake/share/cmake-3.28/Templates/CPackConfig.cmake.in

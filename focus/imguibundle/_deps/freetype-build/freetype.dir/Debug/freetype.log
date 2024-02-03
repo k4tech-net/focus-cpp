@@ -1,0 +1,49 @@
+﻿  Building Custom Rule D:/Coding/Game Hacking/pthom/imguibundle/imgui_bundle/build/_deps/freetype-src/CMakeLists.txt
+  autofit.c
+  ftbase.c
+  ftbbox.c
+  ftbdf.c
+  ftbitmap.c
+  ftcid.c
+  ftfstype.c
+  ftgasp.c
+  ftglyph.c
+  ftgxval.c
+  ftinit.c
+  ftmm.c
+  ftotval.c
+  ftpatent.c
+  ftpfr.c
+  ftstroke.c
+  ftsynth.c
+  fttype1.c
+  ftwinfnt.c
+  bdf.c
+  Generating Code...
+  Compiling...
+  ftbzip2.c
+  ftcache.c
+  cff.c
+  type1cid.c
+  ftgzip.c
+  ftlzw.c
+  pcf.c
+  pfr.c
+  psaux.c
+  pshinter.c
+  psnames.c
+  raster.c
+  sdf.c
+  sfnt.c
+  smooth.c
+  svg.c
+  truetype.c
+  type1.c
+  type42.c
+  winfnt.c
+  Generating Code...
+  Compiling...
+  ftsystem.c
+  ftdebug.c
+  Generating Code...
+  freetype.vcxproj -> D:\Coding\Game Hacking\pthom\imguibundle\imgui_bundle\build\_deps\freetype-build\Debug\freetyped.lib

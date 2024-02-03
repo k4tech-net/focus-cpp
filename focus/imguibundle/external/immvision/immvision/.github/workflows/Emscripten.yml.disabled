@@ -1,0 +1,35 @@
+name: Emscripten
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@master
+
+      - name: Checkout submodules
+        run: git submodule update --init --recursive
+
+      - name: Install emscripten
+        run: ./scripts/build_utilities.py run -install_emscripten
+
+      - name: Download precompiled OpenCV for emscripten
+        run: |
+          cd external
+          wget https://traineq.org/ImmvisionGithubFiles/opencv_install_emscripten.tgz
+          tar xfz opencv_install_emscripten.tgz
+
+      - name: run_build_all
+        run: |
+            mkdir build_emscripten
+            cd build_emscripten
+            source ~/emsdk/emsdk_env.sh && ../scripts/build_utilities.py run --build_emscripten=True --emscripten_bypass_opencv_compil=True -run_build_all
+
+      - uses: actions/upload-artifact@v3
+        with:
+          name: emscripten_bin_artifacts
+          path: build_emscripten/bin/
+          retention-days: 90
