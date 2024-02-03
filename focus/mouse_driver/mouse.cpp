@@ -43,6 +43,11 @@ static NTSTATUS device_initialize(PCWSTR device_name)
 	if (!NT_SUCCESS(status)) {
 		// Print error information
 		printf("[-] Failed to create file. Error code: 0x%X\n", status);
+		printf("[-] Device Name: %wZ\n", &name);
+	}
+	else {
+		printf("[+] Sucessfully created file. Code: 0x%X\n", status);
+		printf("[+] Device Name: %wZ\n", &name);
 	}
 
 	return status;
