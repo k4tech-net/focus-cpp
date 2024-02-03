@@ -3,10 +3,6 @@
 
 #include "mouse_driver/mouse.hpp"
 
-#include "imgui.h"
-#include "imgui_impl_win32.h"
-#include "imgui_impl_dx11.h"
-
 int main()
 {	
 
