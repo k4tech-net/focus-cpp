@@ -8,6 +8,16 @@
     <ClCompile Include="features\menu\menu.cpp">
       <Filter>features\menu</Filter>
     </ClCompile>
+    <ClCompile Include="WinMain.cpp" />
+    <ClCompile Include="features\settings\settings.cpp">
+      <Filter>features\settings</Filter>
+    </ClCompile>
+    <ClCompile Include="features\utils\utils.cpp">
+      <Filter>features\utils</Filter>
+    </ClCompile>
+    <ClCompile Include="features\control\control.cpp">
+      <Filter>features\control</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -19,6 +29,15 @@
     <Filter Include="features\menu">
       <UniqueIdentifier>{35b9bcfb-66f4-4a31-afca-62b24ec69552}</UniqueIdentifier>
     </Filter>
+    <Filter Include="features\settings">
+      <UniqueIdentifier>{977d35e1-e6a7-43d8-9478-d35fa5330b8c}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\utils">
+      <UniqueIdentifier>{c2ea8243-21f7-49e1-b20c-8bff5a50fdb7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\control">
+      <UniqueIdentifier>{75612caf-1544-4c9a-9502-ed372376ea48}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="mouse_driver\mouse.hpp">
@@ -26,6 +45,19 @@
     </ClInclude>
     <ClInclude Include="features\menu\menu.hpp">
       <Filter>features\menu</Filter>
+    </ClInclude>
+    <ClInclude Include="features\settings\settings.hpp">
+      <Filter>features\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="includes.hpp" />
+    <ClInclude Include="features\utils\utils.hpp">
+      <Filter>features\utils</Filter>
+    </ClInclude>
+    <ClInclude Include="features\control\control.hpp">
+      <Filter>features\control</Filter>
+    </ClInclude>
+    <ClInclude Include="features\settings\globals.hpp">
+      <Filter>features\settings</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
