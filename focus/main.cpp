@@ -1,27 +1,47 @@
-#include <iostream>
-#include <Windows.h>
+#pragma once
 
-#include "mouse_driver/mouse.hpp"
+#include "includes.hpp"
 
-#include "hello_imgui/hello_imgui.h"
-#include "imgui.h"
-#include "imgui_internal.h"
+#include "features/menu/menu.hpp"
+#include "features/control/control.hpp"
+
+Control ctr;
+Menu mn;
+Settings cfg;	
 
 void Gui()
 {
-	ImGui::Text("Hello");
-	ImGui::ShowIDStackToolWindow();
+	ImGuiTheme::ApplyTheme(ImGuiTheme::ImGuiTheme_ImGuiColorsClassic);
+	ImGui::Text("Focus-cpp");
+
+	g.selectedWeapon = g.weapons[g.selectedItem];
+	
+	mn.ComboBox("Weapon", g.selectedItem, g.weapons);
+
+	ImGui::Text(g.selectedWeapon.name.c_str());
+
+	if (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) {
+		ImGui::Text("buttons");
+	}
 }
 
-
-int main()
+int main(int, char**)
 {	
-	HelloImGui::RunnerParams runnerParams;
-	runnerParams.callbacks.ShowGui = Gui;
+    cfg.readSettings("weapons.json", g.weapons);
 
-	//runnerParams.useImGuiTestEngine = true;
+	cfg.printSettings(g.weapons);
+
+	HelloImGui::RunnerParams runnerParams;
+	runnerParams.callbacks.ShowGui = Gui; 
+
+	runnerParams.appWindowParams.windowGeometry = { 600, 800 };
+
+	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
 	HelloImGui::Run(runnerParams);
+
+	driveMouseThread.join();
+
 	return 0;
 
 	//if (!mouse_open()) {

@@ -133,12 +133,21 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="features\control\control.cpp" />
     <ClCompile Include="features\menu\menu.cpp" />
+    <ClCompile Include="features\settings\settings.cpp" />
+    <ClCompile Include="features\utils\utils.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouse_driver\mouse.cpp" />
+    <ClCompile Include="WinMain.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="features\control\control.hpp" />
     <ClInclude Include="features\menu\menu.hpp" />
+    <ClInclude Include="features\settings\globals.hpp" />
+    <ClInclude Include="features\settings\settings.hpp" />
+    <ClInclude Include="features\utils\utils.hpp" />
+    <ClInclude Include="includes.hpp" />
     <ClInclude Include="mouse_driver\mouse.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
