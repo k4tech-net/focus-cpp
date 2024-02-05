@@ -1,6 +1,10 @@
 #include "settings.hpp"
 
-void Settings::readSettings(const std::string& filename, std::vector<Settings>& settings) {
+void Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
+    if (clearExisting) {
+        settings.clear();
+    }
+
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;

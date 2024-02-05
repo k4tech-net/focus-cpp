@@ -10,7 +10,7 @@ void Control::driveMouse() {
 	static int maxInstructions = 0;
 	std::vector<std::vector<int>> weaponData = currwpn.values;
 
-	while (true) {
+	while (!g.shutdown) {
 		// Check if the selected weapon has changed
 		if (currwpn.values != g.selectedWeapon.values) {
 			currwpn = g.selectedWeapon;
@@ -40,7 +40,7 @@ void Control::driveMouse() {
 					//do autofire here
 
 					for (auto const& data : weaponData) {
-						std::cout << "{" << data[0] << ", " << data[1] << ", " << data[2] << "}," << std::endl;
+						std::cout << "{" << x << ", " << y << ", " << duration << "}," << std::endl;
 					}
 
 					ut.preciseSleep(0.01);
