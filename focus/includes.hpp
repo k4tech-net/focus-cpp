@@ -5,12 +5,14 @@
 #include <chrono>
 #include <thread>
 #include <math.h>
+#include <stdio.h>
 
 #include "mouse_driver/mouse.hpp"
 
-#include "hello_imgui/hello_imgui.h"
 #include "imgui.h"
-#include "imgui_internal.h"
+#include "imgui_impl_glfw.h"
+#include "imgui_impl_opengl3.h"
+#include <GLFW/glfw3.h>
 
 #include "features/settings/globals.hpp"
 

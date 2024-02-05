@@ -1,4 +1,0 @@
-opencv-python
-pytest
-numpy
-conan<2
