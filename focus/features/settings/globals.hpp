@@ -6,6 +6,7 @@ struct Globals
 {
     int selectedItem;
     Settings selectedWeapon;
+    bool shutdown;
 
     std::vector<Settings> weapons;
 };

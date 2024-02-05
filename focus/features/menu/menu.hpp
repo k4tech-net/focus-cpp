@@ -5,5 +5,5 @@
 class Menu
 {
 public:
-	bool ComboBox(const char* label, int& currentIndex, const std::vector<Settings>& items);
+	bool comboBox(const char* label, int& currentIndex, const std::vector<Settings>& items);
 };
