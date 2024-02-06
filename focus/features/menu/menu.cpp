@@ -16,3 +16,22 @@ bool Menu::comboBox(const char* label, int& currentIndex, const std::vector<Sett
     }
     return false; // Return false if no item is selected
 }
+
+std::string Menu::readTextFromFile(const char* filePath) {
+	std::ifstream file(filePath);
+	std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
+
+	return content;
+}
+
+bool Menu::saveTextToFile(const char* filePath, const std::string& content) {
+	std::ofstream file(filePath);
+    if (!file.is_open()) {
+        return false;
+    }
+
+	file << content;
+	file.close();
+
+	return true;
+}

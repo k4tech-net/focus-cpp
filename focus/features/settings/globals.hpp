@@ -9,4 +9,6 @@ struct Globals
     bool shutdown;
 
     std::vector<Settings> weapons;
+
+    std::string weaponsText;
 };
