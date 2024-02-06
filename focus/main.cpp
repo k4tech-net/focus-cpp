@@ -9,12 +9,23 @@ Control ctr;
 Menu mn;
 Settings cfg;
 
+TextEditor editor;
+
+#define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar)
+
 static void glfw_error_callback(int error, const char* description)
 {
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-#define WINDOW_FLAGS (ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoCollapse)
+bool isedited(const std::string& original, const std::string& changed) {
+	if (original == changed) {
+		return false;
+	}
+	else {
+		return true;
+	}
+}
 
 void Gui()
 {	
@@ -22,7 +33,7 @@ void Gui()
 
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Focus", &inverseShutdown, ImGuiWindowFlags_NoCollapse);
+	ImGui::Begin("Focus", &inverseShutdown, WINDOWFLAGS);
 
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
@@ -39,8 +50,95 @@ void Gui()
 		}
 
 		if (ImGui::BeginTabItem("Edit")) {
-			if (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) {
-				ImGui::Text("buttons");
+
+			auto cpos = editor.GetCursorPosition();
+			bool ro = editor.IsReadOnly();
+
+			if (ImGui::BeginMenuBar())
+			{
+				if (ImGui::BeginMenu("File"))
+				{
+					if (ImGui::MenuItem("Save", "Ctrl-S", nullptr, !ro))
+					{
+						auto textToSave = editor.GetText();
+						if (mn.saveTextToFile("weapons.json", textToSave)) {
+							std::cout << "Saved File" << std::endl;
+							g.weaponsText = mn.readTextFromFile("weapons.json");
+						}
+						else {
+							std::cout << "Failed to Save File" << std::endl;
+						}
+					}
+
+					ImGui::EndMenu();
+				}
+				if (ImGui::BeginMenu("Edit"))
+				{
+					if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+						editor.SetReadOnly(ro);
+					ImGui::Separator();
+
+					if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
+						editor.Undo();
+					if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+						editor.Redo();
+
+					ImGui::Separator();
+
+					if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+						editor.Copy();
+					if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+						editor.Cut();
+					if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
+						editor.Delete();
+					if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+						editor.Paste();
+
+					ImGui::Separator();
+
+					if (ImGui::MenuItem("Select all", nullptr, nullptr))
+						editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+					ImGui::EndMenu();
+				}
+
+				if (ImGui::BeginMenu("View"))
+				{
+					if (ImGui::MenuItem("Dark palette"))
+						editor.SetPalette(TextEditor::GetDarkPalette());
+					if (ImGui::MenuItem("Light palette"))
+						editor.SetPalette(TextEditor::GetLightPalette());
+					if (ImGui::MenuItem("Retro blue palette"))
+						editor.SetPalette(TextEditor::GetRetroBluePalette());
+					ImGui::EndMenu();
+				}
+				ImGui::EndMenuBar();
+			}
+
+			ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+				editor.IsOverwrite() ? "Ovr" : "Ins",
+				editor.CanUndo() ? "*" : " ",
+				isedited(g.weaponsText, editor.GetText()) ? "*" : " ",
+				editor.GetLanguageDefinition().mName.c_str(), "weapons.json");
+
+			ImGui::Spacing();
+			ImGui::Spacing();
+
+			editor.Render("TextEditor");
+
+			ImGuiIO& io = ImGui::GetIO();
+
+			// Check if Ctrl key is pressed and 'S' key is pressed
+			if (io.KeyCtrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_S)))
+			{
+				auto textToSave = editor.GetText();
+				if (mn.saveTextToFile("weapons.json", textToSave)) {
+					std::cout << "Saved File" << std::endl;
+					g.weaponsText = mn.readTextFromFile("weapons.json");
+				}
+				else {
+					std::cout << "Failed to Save File" << std::endl;
+				}
 			}
 
 			ImGui::EndTabItem(); 
@@ -96,6 +194,11 @@ int main(int, char**)
 		style.WindowRounding = 0.0f;
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
+
+	//
+	static const char* fileToEdit = "weapons.json";
+	g.weaponsText = mn.readTextFromFile(fileToEdit);
+	editor.SetText(g.weaponsText);
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);

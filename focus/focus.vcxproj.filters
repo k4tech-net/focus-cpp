@@ -45,6 +45,9 @@
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="imgui\plugins\TextEditor.cpp">
+      <Filter>imgui\plugins</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -79,6 +82,9 @@
     </Filter>
     <Filter Include="imgui\libs\glfw\include\GLFW">
       <UniqueIdentifier>{3657d958-8095-4f31-b4b3-3849144cb601}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="imgui\plugins">
+      <UniqueIdentifier>{c0c8f340-1727-427b-a389-ff1648e29615}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -139,6 +145,9 @@
     </ClInclude>
     <ClInclude Include="imgui\libs\glfw\include\GLFW\glfw3native.h">
       <Filter>imgui\libs\glfw\include\GLFW</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\plugins\TextEditor.h">
+      <Filter>imgui\plugins</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
