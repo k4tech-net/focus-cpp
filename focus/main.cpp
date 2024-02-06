@@ -18,22 +18,118 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-bool isedited(const std::string& original, const std::string& changed) {
-	if (original == changed) {
-		return false;
-	}
-	else {
-		return true;
-	}
-}
-
 void Gui()
-{	
+{
 	bool inverseShutdown = !g.shutdown;
 
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Focus", &inverseShutdown, WINDOWFLAGS);
+
+	auto cpos = editor.GetCursorPosition();
+	bool ro = editor.IsReadOnly();
+
+	bool opensavemodal = false;
+
+	g.editor.unsavedChanges = mn.isEdited(g.weaponsText, editor.GetText());
+
+	if (ImGui::BeginMenuBar())
+	{
+		if (ImGui::BeginMenu("File"))
+		{
+			if (ImGui::MenuItem("Save", "Ctrl-S", nullptr, !ro))
+			{
+				auto textToSave = editor.GetText();
+				if (mn.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
+					g.weaponsText = mn.readTextFromFile(g.editor.activeFile.c_str());
+				}
+			}
+			if (ImGui::BeginMenu("Open")) {
+				for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
+					if (ImGui::MenuItem(g.editor.jsonFiles[i].c_str())) {
+						g.editor.activeFileIndex = i;
+						if (!g.editor.unsavedChanges) {
+							editor.SetText(mn.readTextFromFile(g.editor.jsonFiles[i].c_str()));
+							g.editor.activeFile = g.editor.jsonFiles[i];
+							g.weaponsText = mn.readTextFromFile(g.editor.jsonFiles[i].c_str());
+						}
+						else {
+							opensavemodal = true;
+						}
+					}
+				}
+				ImGui::EndMenu();
+			}
+
+			ImGui::EndMenu();
+		}
+		if (ImGui::BeginMenu("Edit"))
+		{
+			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+				editor.SetReadOnly(ro);
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
+				editor.Undo();
+			if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+				editor.Redo();
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+				editor.Copy();
+			if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+				editor.Cut();
+			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
+				editor.Delete();
+			if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+				editor.Paste();
+
+			ImGui::Separator();
+
+			if (ImGui::MenuItem("Select all", nullptr, nullptr))
+				editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
+
+			ImGui::EndMenu();
+		}
+
+		if (ImGui::BeginMenu("View"))
+		{
+			if (ImGui::MenuItem("Dark palette"))
+				editor.SetPalette(TextEditor::GetDarkPalette());
+			if (ImGui::MenuItem("Light palette"))
+				editor.SetPalette(TextEditor::GetLightPalette());
+			if (ImGui::MenuItem("Retro blue palette"))
+				editor.SetPalette(TextEditor::GetRetroBluePalette());
+			ImGui::EndMenu();
+		}
+		ImGui::EndMenuBar();
+	}
+
+	if (opensavemodal) {
+		ImGui::OpenPopup("Save?");
+	}
+
+	if (ImGui::BeginPopupModal("Save?"))
+	{
+		ImGui::Text("You have unsaved changes. Are you sure you want to open this file?");
+		ImGui::Separator();
+
+		if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+			ImGui::CloseCurrentPopup();
+			opensavemodal = false;
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Open Anyway", ImVec2(120, 0))) {
+			// Proceed with opening the file even with unsaved changes
+			ImGui::CloseCurrentPopup();
+			editor.SetText(mn.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
+			g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
+			g.weaponsText = mn.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
+			opensavemodal = false;
+		}
+		ImGui::EndPopup();
+	}
 
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
@@ -51,75 +147,11 @@ void Gui()
 
 		if (ImGui::BeginTabItem("Edit")) {
 
-			auto cpos = editor.GetCursorPosition();
-			bool ro = editor.IsReadOnly();
-
-			if (ImGui::BeginMenuBar())
-			{
-				if (ImGui::BeginMenu("File"))
-				{
-					if (ImGui::MenuItem("Save", "Ctrl-S", nullptr, !ro))
-					{
-						auto textToSave = editor.GetText();
-						if (mn.saveTextToFile("weapons.json", textToSave)) {
-							std::cout << "Saved File" << std::endl;
-							g.weaponsText = mn.readTextFromFile("weapons.json");
-						}
-						else {
-							std::cout << "Failed to Save File" << std::endl;
-						}
-					}
-
-					ImGui::EndMenu();
-				}
-				if (ImGui::BeginMenu("Edit"))
-				{
-					if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
-						editor.SetReadOnly(ro);
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
-						editor.Undo();
-					if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
-						editor.Redo();
-
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
-						editor.Copy();
-					if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
-						editor.Cut();
-					if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
-						editor.Delete();
-					if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-						editor.Paste();
-
-					ImGui::Separator();
-
-					if (ImGui::MenuItem("Select all", nullptr, nullptr))
-						editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-					ImGui::EndMenu();
-				}
-
-				if (ImGui::BeginMenu("View"))
-				{
-					if (ImGui::MenuItem("Dark palette"))
-						editor.SetPalette(TextEditor::GetDarkPalette());
-					if (ImGui::MenuItem("Light palette"))
-						editor.SetPalette(TextEditor::GetLightPalette());
-					if (ImGui::MenuItem("Retro blue palette"))
-						editor.SetPalette(TextEditor::GetRetroBluePalette());
-					ImGui::EndMenu();
-				}
-				ImGui::EndMenuBar();
-			}
-
 			ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
 				editor.IsOverwrite() ? "Ovr" : "Ins",
 				editor.CanUndo() ? "*" : " ",
-				isedited(g.weaponsText, editor.GetText()) ? "*" : " ",
-				editor.GetLanguageDefinition().mName.c_str(), "weapons.json");
+				g.editor.unsavedChanges ? "*" : " ",
+				editor.GetLanguageDefinition().mName.c_str(), g.editor.activeFile.c_str());
 
 			ImGui::Spacing();
 			ImGui::Spacing();
@@ -127,21 +159,15 @@ void Gui()
 			editor.Render("TextEditor");
 
 			ImGuiIO& io = ImGui::GetIO();
-
-			// Check if Ctrl key is pressed and 'S' key is pressed
 			if (io.KeyCtrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_S)))
 			{
 				auto textToSave = editor.GetText();
-				if (mn.saveTextToFile("weapons.json", textToSave)) {
-					std::cout << "Saved File" << std::endl;
-					g.weaponsText = mn.readTextFromFile("weapons.json");
-				}
-				else {
-					std::cout << "Failed to Save File" << std::endl;
+				if (mn.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
+					g.weaponsText = mn.readTextFromFile(g.editor.activeFile.c_str());
 				}
 			}
 
-			ImGui::EndTabItem(); 
+			ImGui::EndTabItem();
 		}
 
 		ImGui::EndTabBar();
@@ -195,10 +221,7 @@ int main(int, char**)
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
-	//
-	static const char* fileToEdit = "weapons.json";
-	g.weaponsText = mn.readTextFromFile(fileToEdit);
-	editor.SetText(g.weaponsText);
+	g.editor.jsonFiles = mn.scanCurrentDirectoryForJsonFiles();
 
 	ImGui_ImplGlfw_InitForOpenGL(window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
@@ -209,7 +232,7 @@ int main(int, char**)
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
-	while (!glfwWindowShouldClose(window)) {
+	while (true) {
 		glfwPollEvents();
 
 		// Start the Dear ImGui frame
@@ -218,6 +241,12 @@ int main(int, char**)
 		ImGui::NewFrame();
 
 		Gui();
+
+		if (glfwWindowShouldClose(window)) {
+			std::cout << "here";
+			glfwSetWindowShouldClose(window, false);
+			g.shutdown = false;
+		}
 
 		if (g.shutdown) {
 			glfwSetWindowShouldClose(window, true);

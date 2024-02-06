@@ -6,6 +6,7 @@
 #include <thread>
 #include <math.h>
 #include <stdio.h>
+#include <filesystem>
 
 #include "mouse_driver/mouse.hpp"
 
