@@ -11,4 +11,11 @@ struct Globals
     std::vector<Settings> weapons;
 
     std::string weaponsText;
+
+    struct Editor {
+        std::vector<std::string> jsonFiles;
+		std::string activeFile;
+		bool unsavedChanges;
+		int activeFileIndex;
+    } editor;
 };

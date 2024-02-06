@@ -35,3 +35,23 @@ bool Menu::saveTextToFile(const char* filePath, const std::string& content) {
 
 	return true;
 }
+
+std::vector<std::string> Menu::scanCurrentDirectoryForJsonFiles() {
+    std::vector<std::string> jsonFiles;
+    std::filesystem::path currentPath = std::filesystem::current_path();
+    for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
+        if (entry.is_regular_file() && entry.path().extension() == ".json") {
+            jsonFiles.push_back(entry.path().filename().string());
+        }
+    }
+    return jsonFiles;
+}
+
+bool Menu::isEdited(const std::string& original, const std::string& changed) {
+    if (original == changed) {
+        return false;
+    }
+    else {
+        return true;
+    }
+}

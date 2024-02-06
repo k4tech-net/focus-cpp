@@ -9,4 +9,6 @@ public:
 
 	std::string readTextFromFile(const char* filePath);
 	bool saveTextToFile(const char* filePath, const std::string& content);
+	bool isEdited(const std::string& original, const std::string& changed);
+	std::vector<std::string> scanCurrentDirectoryForJsonFiles();
 };
