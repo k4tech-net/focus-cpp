@@ -17,41 +17,39 @@ bool Menu::comboBox(const char* label, int& currentIndex, const std::vector<Sett
     return false; // Return false if no item is selected
 }
 
-std::string Menu::readTextFromFile(const char* filePath) {
-	std::ifstream file(filePath);
-	std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-	return content;
-}
-
-bool Menu::saveTextToFile(const char* filePath, const std::string& content) {
-	std::ofstream file(filePath);
-    if (!file.is_open()) {
-        return false;
+void Menu::popup(bool trigger, const char* type) {
+    if (trigger) {
+		ImGui::OpenPopup(type);
     }
 
-	file << content;
-	file.close();
+    if (ImGui::BeginPopupModal(type)) {
+        ImGui::Text("You have unsaved changes. Are you sure you want to complete this action?");
+        ImGui::Separator();
 
-	return true;
-}
-
-std::vector<std::string> Menu::scanCurrentDirectoryForJsonFiles() {
-    std::vector<std::string> jsonFiles;
-    std::filesystem::path currentPath = std::filesystem::current_path();
-    for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
-        if (entry.is_regular_file() && entry.path().extension() == ".json") {
-            jsonFiles.push_back(entry.path().filename().string());
+        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+            ImGui::CloseCurrentPopup();
+            g.initshutdown = false;
+            trigger = false;
         }
-    }
-    return jsonFiles;
-}
+        ImGui::SameLine();
 
-bool Menu::isEdited(const std::string& original, const std::string& changed) {
-    if (original == changed) {
-        return false;
-    }
-    else {
-        return true;
+        if (type == "Open") {
+            if (ImGui::Button("Open Anyway", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+                editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
+                g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
+                g.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
+                trigger = false;
+            }
+        }
+        else if (type == "InitShutdown") {
+            if (ImGui::Button("Close Anyway", ImVec2(120, 0))) {
+                ImGui::CloseCurrentPopup();
+                glfwSetWindowShouldClose(g.window, true);
+                trigger = false;
+            }
+        }
+
+        ImGui::EndPopup();
     }
 }

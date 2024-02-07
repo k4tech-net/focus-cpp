@@ -6,9 +6,5 @@ class Menu
 {
 public:
 	bool comboBox(const char* label, int& currentIndex, const std::vector<Settings>& items);
-
-	std::string readTextFromFile(const char* filePath);
-	bool saveTextToFile(const char* filePath, const std::string& content);
-	bool isEdited(const std::string& original, const std::string& changed);
-	std::vector<std::string> scanCurrentDirectoryForJsonFiles();
+	void popup(bool trigger, const char* type);
 };

@@ -2,8 +2,8 @@
 
 #include "includes.hpp"
 
-#include "features/menu/menu.hpp"
 #include "features/control/control.hpp"
+#include "features/menu/menu.hpp"
 
 Control ctr;
 Menu mn;
@@ -20,7 +20,7 @@ static void glfw_error_callback(int error, const char* description)
 
 void Gui()
 {
-	bool inverseShutdown = !g.shutdown;
+	bool inverseShutdown = !g.initshutdown;
 
 	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
@@ -29,9 +29,10 @@ void Gui()
 	auto cpos = editor.GetCursorPosition();
 	bool ro = editor.IsReadOnly();
 
-	bool opensavemodal = false;
+	bool openmodal = false;
+	bool initshutdownpopup = false;
 
-	g.editor.unsavedChanges = mn.isEdited(g.weaponsText, editor.GetText());
+	g.editor.unsavedChanges = ut.isEdited(g.weaponsText, editor.GetText());
 
 	if (ImGui::BeginMenuBar())
 	{
@@ -40,8 +41,8 @@ void Gui()
 			if (ImGui::MenuItem("Save", "Ctrl-S", nullptr, !ro))
 			{
 				auto textToSave = editor.GetText();
-				if (mn.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponsText = mn.readTextFromFile(g.editor.activeFile.c_str());
+				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
+					g.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 			}
 			if (ImGui::BeginMenu("Open")) {
@@ -49,12 +50,12 @@ void Gui()
 					if (ImGui::MenuItem(g.editor.jsonFiles[i].c_str())) {
 						g.editor.activeFileIndex = i;
 						if (!g.editor.unsavedChanges) {
-							editor.SetText(mn.readTextFromFile(g.editor.jsonFiles[i].c_str()));
+							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
 							g.editor.activeFile = g.editor.jsonFiles[i];
-							g.weaponsText = mn.readTextFromFile(g.editor.jsonFiles[i].c_str());
+							g.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
 						}
 						else {
-							opensavemodal = true;
+							openmodal = true;
 						}
 					}
 				}
@@ -106,31 +107,6 @@ void Gui()
 		ImGui::EndMenuBar();
 	}
 
-	if (opensavemodal) {
-		ImGui::OpenPopup("Save?");
-	}
-
-	if (ImGui::BeginPopupModal("Save?"))
-	{
-		ImGui::Text("You have unsaved changes. Are you sure you want to open this file?");
-		ImGui::Separator();
-
-		if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-			ImGui::CloseCurrentPopup();
-			opensavemodal = false;
-		}
-		ImGui::SameLine();
-		if (ImGui::Button("Open Anyway", ImVec2(120, 0))) {
-			// Proceed with opening the file even with unsaved changes
-			ImGui::CloseCurrentPopup();
-			editor.SetText(mn.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
-			g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
-			g.weaponsText = mn.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
-			opensavemodal = false;
-		}
-		ImGui::EndPopup();
-	}
-
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
 		if (ImGui::BeginTabItem("Weapon")) {
@@ -162,8 +138,8 @@ void Gui()
 			if (io.KeyCtrl && ImGui::IsKeyPressed(ImGui::GetKeyIndex(ImGuiKey_S)))
 			{
 				auto textToSave = editor.GetText();
-				if (mn.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponsText = mn.readTextFromFile(g.editor.activeFile.c_str());
+				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
+					g.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 			}
 
@@ -173,9 +149,21 @@ void Gui()
 		ImGui::EndTabBar();
 	}
 
-	ImGui::End();
+	g.initshutdown = !inverseShutdown;
 
-	g.shutdown = !inverseShutdown;
+	if (g.initshutdown) {
+		if (!g.editor.unsavedChanges) {
+			glfwSetWindowShouldClose(g.window, true);
+		}
+		else {
+			initshutdownpopup = true;
+		}
+	}
+
+	mn.popup(openmodal, "Open");
+	mn.popup(initshutdownpopup, "InitShutdown");
+
+	ImGui::End();
 }
 
 int main(int, char**)
@@ -191,13 +179,13 @@ int main(int, char**)
 	glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
 
 	// Create window with graphics context
-	GLFWwindow* window = glfwCreateWindow(1, 1, "Focus", nullptr, nullptr);
-	if (window == nullptr)
+	g.window = glfwCreateWindow(1, 1, "Focus", nullptr, nullptr);
+	if (g.window == nullptr)
 		return 1;
-	glfwMakeContextCurrent(window);
+	glfwMakeContextCurrent(g.window);
 	glfwSwapInterval(1); // Enable vsync
 
-	auto hwnd = glfwGetWin32Window(window);
+	auto hwnd = glfwGetWin32Window(g.window);
 	SetWindowLong(hwnd, GWL_EXSTYLE, WS_EX_TOOLWINDOW);
 
 	ImVec4 clear_color = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
@@ -221,9 +209,9 @@ int main(int, char**)
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
-	g.editor.jsonFiles = mn.scanCurrentDirectoryForJsonFiles();
+	g.editor.jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
 
-	ImGui_ImplGlfw_InitForOpenGL(window, true);
+	ImGui_ImplGlfw_InitForOpenGL(g.window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
     cfg.readSettings("weapons.json", g.weapons, false);
@@ -232,7 +220,7 @@ int main(int, char**)
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
-	while (true) {
+	while (!glfwWindowShouldClose(g.window)) {
 		glfwPollEvents();
 
 		// Start the Dear ImGui frame
@@ -242,20 +230,10 @@ int main(int, char**)
 
 		Gui();
 
-		if (glfwWindowShouldClose(window)) {
-			std::cout << "here";
-			glfwSetWindowShouldClose(window, false);
-			g.shutdown = false;
-		}
-
-		if (g.shutdown) {
-			glfwSetWindowShouldClose(window, true);
-		}
-
 		// Rendering
 		ImGui::Render();
 		int display_w, display_h;
-		glfwGetFramebufferSize(window, &display_w, &display_h);
+		glfwGetFramebufferSize(g.window, &display_w, &display_h);
 		glViewport(0, 0, display_w, display_h);
 		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
 		glClear(GL_COLOR_BUFFER_BIT);
@@ -269,7 +247,7 @@ int main(int, char**)
 			glfwMakeContextCurrent(backup_current_context);
 		}
 
-		glfwSwapBuffers(window);
+		glfwSwapBuffers(g.window);
 	}
 
 	// Cleanup
@@ -281,7 +259,7 @@ int main(int, char**)
 
 	driveMouseThread.join();
 
-	glfwDestroyWindow(window);
+	glfwDestroyWindow(g.window);
 	glfwTerminate();
 
 	return 0;
