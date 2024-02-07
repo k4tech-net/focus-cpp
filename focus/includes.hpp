@@ -1,12 +1,8 @@
 #pragma once
 
 #include <Windows.h>
-#include <sstream>
-#include <chrono>
-#include <thread>
 #include <math.h>
 #include <stdio.h>
-#include <filesystem>
 
 #include "mouse_driver/mouse.hpp"
 
@@ -22,5 +18,8 @@
 #include <GLFW/glfw3native.h>
 
 #include "features/settings/globals.hpp"
+#include "features/utils/utils.hpp"
 
 extern Globals g;
+extern TextEditor editor;
+extern Utils ut;
