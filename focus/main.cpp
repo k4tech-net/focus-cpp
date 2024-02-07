@@ -53,6 +53,7 @@ void Gui()
 							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
 							g.editor.activeFile = g.editor.jsonFiles[i];
 							g.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
+							cfg.readSettings(g.editor.jsonFiles[i].c_str(), g.weapons, true);
 						}
 						else {
 							openmodal = true;
@@ -110,13 +111,16 @@ void Gui()
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
 		if (ImGui::BeginTabItem("Weapon")) {
-			g.selectedWeapon = g.weapons[g.selectedItem];
+			if (g.weapons.size() > 0) {
+				g.selectedWeapon = g.weapons[g.selectedItem];
 
-			if (mn.comboBox("Weapon", g.selectedItem, g.weapons)) {
-				cfg.readSettings("weapons.json", g.weapons, true);
+				if (mn.comboBox("Weapon", g.selectedItem, g.weapons)) {
+					cfg.readSettings(g.editor.activeFile.c_str(), g.weapons, true);
+				}
 			}
-
-			ImGui::Text(g.selectedWeapon.name.c_str());
+			else {
+				ImGui::Text("Please load a weapons file");
+			}
 
 			ImGui::EndTabItem();
 		}
@@ -213,10 +217,6 @@ int main(int, char**)
 
 	ImGui_ImplGlfw_InitForOpenGL(g.window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
-
-    cfg.readSettings("weapons.json", g.weapons, false);
-
-	cfg.printSettings(g.weapons);
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
