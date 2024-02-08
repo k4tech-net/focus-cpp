@@ -1,5 +1,8 @@
 #include "utils.hpp"
 
+Mouse ms;
+Globals g;
+
 void Utils::preciseSleep(double seconds) {
 	using namespace std;
 	using namespace std::chrono;
@@ -69,50 +72,20 @@ bool Utils::isEdited(const std::string& original, const std::string& changed) {
 	}
 }
 
-bool Utils::startUpChecksRunner() {
+std::string Utils::wstring_to_string(const std::wstring& wstr) {
+	int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), nullptr, 0, nullptr, nullptr);
+	std::string str(size_needed, 0);
+	WideCharToMultiByte(CP_UTF8, 0, &wstr[0], static_cast<int>(wstr.size()), &str[0], size_needed, nullptr, nullptr);
+	return str;
+}
 
-	//TODO: Move THIS
-	HKEY hKey;
-	std::wstring deviceKeyName = L"SYSTEM\\ControlSet001\\Control\\DeviceClasses\\{1abc05c0-c378-41b9-9cef-df1aba82b015}";
-	std::wstring subkeyName = L"";
-	std::wstring deviceLocation;
-
-	// Open the registry key for the device classes
-	LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, deviceKeyName.c_str(), 0, KEY_READ, &hKey);
-	if (result == ERROR_SUCCESS) {
-		// Enumerate subkeys to find the one containing DeviceInstance
-		DWORD index = 0;
-		WCHAR subkeyNameBuffer[MAX_PATH];
-		DWORD subkeyNameSize = MAX_PATH;
-		while (RegEnumKeyEx(hKey, index, subkeyNameBuffer, &subkeyNameSize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
-			subkeyName = subkeyNameBuffer;
-			HKEY hSubKey;
-			// Open the subkey
-			result = RegOpenKeyEx(hKey, subkeyName.c_str(), 0, KEY_READ, &hSubKey);
-			if (result == ERROR_SUCCESS) {
-				// Check if DeviceInstance entry exists
-				DWORD valueType;
-				WCHAR deviceInstanceBuffer[MAX_PATH];
-				DWORD deviceInstanceSize = MAX_PATH;
-				result = RegQueryValueEx(hSubKey, L"DeviceInstance", NULL, &valueType, reinterpret_cast<LPBYTE>(deviceInstanceBuffer), &deviceInstanceSize);
-				if (result == ERROR_SUCCESS && valueType == REG_SZ) {
-					deviceLocation = deviceInstanceBuffer;
-					std::wcout << "Location: " << deviceLocation << std::endl;
-					RegCloseKey(hSubKey);  // Close the subkey
-					break;  // Exit loop since DeviceInstance entry is found
-				}
-				RegCloseKey(hSubKey);  // Close the subkey
-			}
-			++index;
-			subkeyNameSize = MAX_PATH;
-		}
-
-		// Close the registry key
-		RegCloseKey(hKey);
+void Utils::startUpChecksRunner() {
+	if (ms.mouse_open()) {
+		g.startup.driver = true;
 	}
 	else {
-		std::cerr << "Failed to open registry key for the device classes. Error code: " << result << std::endl;
+		g.startup.passedstartup = false;
 	}
-
-	return 0;
+	
+	g.startup.passedstartup = true;
 }

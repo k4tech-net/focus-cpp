@@ -1,7 +1,6 @@
 #include "control.hpp"
 
 Utils ut;
-Globals g;
 
 void Control::driveMouse() {
 
@@ -36,7 +35,7 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					mouse_move(0, x, y, 0);
+					ms.mouse_move(0, x, y, 0);
 					//do autofire here
 
 					for (auto const& data : weaponData) {
