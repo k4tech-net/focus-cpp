@@ -22,4 +22,9 @@ struct Globals
 		bool unsavedChanges;
 		int activeFileIndex;
     } editor;
+
+    struct Startup {
+        bool passedstartup;
+        bool driver;
+    } startup;
 };

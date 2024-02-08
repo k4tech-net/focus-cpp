@@ -4,22 +4,15 @@
 #include <math.h>
 #include <stdio.h>
 
-#include "mouse_driver/mouse.hpp"
-
 #include "imgui.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
 #include "plugins/TextEditor.h"
 
-#include <GLFW/glfw3.h>
-
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
-#include "features/settings/globals.hpp"
 #include "features/utils/utils.hpp"
 
 extern Globals g;
 extern TextEditor editor;
 extern Utils ut;
+extern Mouse ms;

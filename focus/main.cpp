@@ -18,20 +18,20 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-bool startupchecks_gui() {
-	if (mouse_open()) {
+void startupchecks_gui() {
+	ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
+	ImGui::Begin("Startup Checks");
 
-		ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
-		ImGui::Begin("Startup Checks");
-
-		ImGui::Text("Driver Found");
-
-		ImGui::End();
-		return true;
+	if (g.startup.driver) {
+		ImGui::Text("Driver is running");
+		std::string str = ut.wstring_to_string(ms.findDriver());
+		ImGui::Text(str.c_str());
 	}
 	else {
-		return false;
+		ImGui::Text("Driver is not running");
 	}
+
+	ImGui::End();
 }
 
 void Gui()
@@ -234,10 +234,9 @@ int main(int, char**)
 	ImGui_ImplGlfw_InitForOpenGL(g.window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
-	//std::thread startUpCheckThread(&Utils::);
+	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
 
 	bool startupchecks = true;
-	bool passedstartup = false;
 	auto startuptimer = std::chrono::high_resolution_clock::now();
 
 	while (startupchecks) {
@@ -248,18 +247,13 @@ int main(int, char**)
 		ImGui_ImplGlfw_NewFrame();
 		ImGui::NewFrame();
 
-		if (startupchecks_gui()) {
-			passedstartup = true;
-		}
-		else {
-			passedstartup = false;
-		}
+		startupchecks_gui();
 
 		auto current_time = std::chrono::high_resolution_clock::now();
 		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
 
 		if (elapsed_time >= 5) {
-			if (passedstartup) {
+			if (g.startup.passedstartup) {
 				startupchecks = false;
 			}
 			else {
@@ -286,6 +280,8 @@ int main(int, char**)
 
 		glfwSwapBuffers(g.window);
 	}
+
+	startUpCheckThread.join();
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
