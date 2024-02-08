@@ -18,6 +18,22 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+bool startupchecks_gui() {
+	if (mouse_open()) {
+
+		ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
+		ImGui::Begin("Startup Checks");
+
+		ImGui::Text("Driver Found");
+
+		ImGui::End();
+		return true;
+	}
+	else {
+		return false;
+	}
+}
+
 void Gui()
 {
 	bool inverseShutdown = !g.initshutdown;
@@ -217,6 +233,59 @@ int main(int, char**)
 
 	ImGui_ImplGlfw_InitForOpenGL(g.window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
+
+	//std::thread startUpCheckThread(&Utils::);
+
+	bool startupchecks = true;
+	bool passedstartup = false;
+	auto startuptimer = std::chrono::high_resolution_clock::now();
+
+	while (startupchecks) {
+		glfwPollEvents();
+
+		// Start the Dear ImGui frame
+		ImGui_ImplOpenGL3_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		if (startupchecks_gui()) {
+			passedstartup = true;
+		}
+		else {
+			passedstartup = false;
+		}
+
+		auto current_time = std::chrono::high_resolution_clock::now();
+		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
+
+		if (elapsed_time >= 5) {
+			if (passedstartup) {
+				startupchecks = false;
+			}
+			else {
+				g.shutdown = true;
+			}
+		}
+
+		// Rendering
+		ImGui::Render();
+		int display_w, display_h;
+		glfwGetFramebufferSize(g.window, &display_w, &display_h);
+		glViewport(0, 0, display_w, display_h);
+		glClearColor(clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w);
+		glClear(GL_COLOR_BUFFER_BIT);
+		ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			GLFWwindow* backup_current_context = glfwGetCurrentContext();
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+			glfwMakeContextCurrent(backup_current_context);
+		}
+
+		glfwSwapBuffers(g.window);
+	}
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 

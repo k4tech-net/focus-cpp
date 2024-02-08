@@ -68,3 +68,51 @@ bool Utils::isEdited(const std::string& original, const std::string& changed) {
 		return true;
 	}
 }
+
+bool Utils::startUpChecksRunner() {
+
+	//TODO: Move THIS
+	HKEY hKey;
+	std::wstring deviceKeyName = L"SYSTEM\\ControlSet001\\Control\\DeviceClasses\\{1abc05c0-c378-41b9-9cef-df1aba82b015}";
+	std::wstring subkeyName = L"";
+	std::wstring deviceLocation;
+
+	// Open the registry key for the device classes
+	LONG result = RegOpenKeyEx(HKEY_LOCAL_MACHINE, deviceKeyName.c_str(), 0, KEY_READ, &hKey);
+	if (result == ERROR_SUCCESS) {
+		// Enumerate subkeys to find the one containing DeviceInstance
+		DWORD index = 0;
+		WCHAR subkeyNameBuffer[MAX_PATH];
+		DWORD subkeyNameSize = MAX_PATH;
+		while (RegEnumKeyEx(hKey, index, subkeyNameBuffer, &subkeyNameSize, NULL, NULL, NULL, NULL) == ERROR_SUCCESS) {
+			subkeyName = subkeyNameBuffer;
+			HKEY hSubKey;
+			// Open the subkey
+			result = RegOpenKeyEx(hKey, subkeyName.c_str(), 0, KEY_READ, &hSubKey);
+			if (result == ERROR_SUCCESS) {
+				// Check if DeviceInstance entry exists
+				DWORD valueType;
+				WCHAR deviceInstanceBuffer[MAX_PATH];
+				DWORD deviceInstanceSize = MAX_PATH;
+				result = RegQueryValueEx(hSubKey, L"DeviceInstance", NULL, &valueType, reinterpret_cast<LPBYTE>(deviceInstanceBuffer), &deviceInstanceSize);
+				if (result == ERROR_SUCCESS && valueType == REG_SZ) {
+					deviceLocation = deviceInstanceBuffer;
+					std::wcout << "Location: " << deviceLocation << std::endl;
+					RegCloseKey(hSubKey);  // Close the subkey
+					break;  // Exit loop since DeviceInstance entry is found
+				}
+				RegCloseKey(hSubKey);  // Close the subkey
+			}
+			++index;
+			subkeyNameSize = MAX_PATH;
+		}
+
+		// Close the registry key
+		RegCloseKey(hKey);
+	}
+	else {
+		std::cerr << "Failed to open registry key for the device classes. Error code: " << result << std::endl;
+	}
+
+	return 0;
+}
