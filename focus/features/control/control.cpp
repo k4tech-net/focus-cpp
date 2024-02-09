@@ -53,5 +53,7 @@ void Control::driveMouse() {
 		else if (!GetAsyncKeyState(VK_LBUTTON) || !GetAsyncKeyState(VK_RBUTTON)) {
 			complete = false;
 		}
+
+		ut.preciseSleep(0.0005);
 	}
 }
