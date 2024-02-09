@@ -26,5 +26,7 @@ struct Globals
     struct Startup {
         bool passedstartup;
         bool driver;
+        bool files;
+        bool hasFinished;
     } startup;
 };

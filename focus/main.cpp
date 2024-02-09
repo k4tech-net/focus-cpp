@@ -19,16 +19,37 @@ static void glfw_error_callback(int error, const char* description)
 }
 
 void startupchecks_gui() {
-	ImGui::SetNextWindowSize(ImVec2(200, 100), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Startup Checks");
 
 	if (g.startup.driver) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 		ImGui::Text("Driver is running");
 		std::string str = ut.wstring_to_string(ms.findDriver());
 		ImGui::Text(str.c_str());
+		ImGui::PopStyleColor();
 	}
 	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
 		ImGui::Text("Driver is not running");
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::Separator();
+
+	if (g.startup.files) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+		ImGui::Text("Settings files found");
+		for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
+			ImGui::Text(g.editor.jsonFiles[i].c_str());
+		}
+		ImGui::PopStyleColor();
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.6f, 0.2f, 1.0f));
+		ImGui::Text("No settings files found");
+		ImGui::Text("Please create one and refresh from the file tab");
+		ImGui::PopStyleColor();
 	}
 
 	ImGui::End();
@@ -60,6 +81,10 @@ void Gui()
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
 					g.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
+			}
+			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
+			{
+				g.editor.jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
 			}
 			if (ImGui::BeginMenu("Open")) {
 				for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
@@ -252,7 +277,7 @@ int main(int, char**)
 		auto current_time = std::chrono::high_resolution_clock::now();
 		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
 
-		if (elapsed_time >= 5) {
+		if (elapsed_time >= 5 && g.startup.hasFinished) {
 			if (g.startup.passedstartup) {
 				startupchecks = false;
 			}
@@ -327,19 +352,7 @@ int main(int, char**)
 	glfwDestroyWindow(g.window);
 	glfwTerminate();
 
+	ms.mouse_close();
+
 	return 0;
-
-	//if (!mouse_open()) {
-	//	printf("[-] failed to open ghub macro driver\n");
-	//	return 0;
-	//}
-
-	//for (int i = 0; i < 32; i++) {
-	//	Sleep(100);
-	//	printf("[+] moving mouse\n");
-
-	//	mouse_move(0, -10, 0, 0);
-	//}
-
-	//mouse_close();
 }

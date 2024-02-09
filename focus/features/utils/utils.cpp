@@ -85,7 +85,15 @@ void Utils::startUpChecksRunner() {
 	}
 	else {
 		g.startup.passedstartup = false;
+		g.startup.hasFinished = true;
+		return;
+	}
+
+	if (g.editor.jsonFiles.size() > 0) {
+		g.startup.files = true;
 	}
 	
+	g.startup.hasFinished = true;
 	g.startup.passedstartup = true;
+	return;
 }
