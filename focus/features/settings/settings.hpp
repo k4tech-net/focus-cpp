@@ -24,9 +24,10 @@ class Settings
 {
 public:
     std::string name;
+    bool autofire;
+    int xdeadtime;
     std::vector<std::vector<int>> values;
 
     void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
     void printSettings(const std::vector<Settings>& settings);
-    std::optional<Settings> findSettingsByName(const std::vector<Settings>& settings, const std::string& name);
 };

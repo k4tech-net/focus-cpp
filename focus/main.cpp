@@ -163,6 +163,10 @@ void Gui()
 				ImGui::Text("Please load a weapons file");
 			}
 
+			if (g.selectedWeapon.autofire) {
+				ImGui::Text("Autofire");
+			}
+
 			ImGui::EndTabItem();
 		}
 

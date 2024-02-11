@@ -17,8 +17,27 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
     for (auto& item : jsonData.items()) {
         Settings setting;
         setting.name = item.key();
-        setting.values = item.value().get<std::vector<std::vector<int>>>();
-        settings.push_back(setting);
+
+        auto& valueArray = item.value();
+        if (valueArray.is_array() && valueArray.size() >= 3) {
+            setting.autofire = valueArray[0].get<bool>();
+            setting.xdeadtime = valueArray[1].get<int>();
+
+            // Extract nested arrays of integers from index 2 onwards
+            for (size_t i = 2; i < valueArray.size(); ++i) {
+                if (valueArray[i].is_array()) {
+                    setting.values.push_back(valueArray[i].get<std::vector<int>>());
+                }
+                else {
+                    std::cerr << "Invalid nested array for setting: " << setting.name << std::endl;
+                }
+            }
+
+            settings.push_back(setting);
+        }
+        else {
+            std::cerr << "Invalid format for setting: " << setting.name << std::endl;
+        }
     }
 }
 
@@ -34,18 +53,5 @@ void Settings::printSettings(const std::vector<Settings>& settings) {
             std::cout << "]" << std::endl;
         }
         std::cout << std::endl;
-    }
-}
-
-std::optional<Settings> Settings::findSettingsByName(const std::vector<Settings>& settings, const std::string& name) {
-    auto it = std::find_if(settings.begin(), settings.end(), [name](const Settings& setting) {
-        return setting.name == name;
-        });
-
-    if (it != settings.end()) {
-        return *it; // Return the found setting
-    }
-    else {
-        return std::nullopt; // Return std::nullopt if not found
     }
 }
