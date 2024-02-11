@@ -21,6 +21,7 @@ void Control::driveMouse() {
 	Settings currwpn;
 	static int maxInstructions = 0;
 	static int cycles = 0;
+	static bool sendXMovement = false;
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
@@ -47,7 +48,14 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					ms.mouse_move(0, x, y, 0);
+					sendXMovement = (currwpn.xdeadtime > 0) && (cycles % currwpn.xdeadtime) == 0;
+					
+					if (sendXMovement) {
+						ms.mouse_move(0, x, y, 0);
+					}
+					else {
+						ms.mouse_move(0, 0, y, 0);
+					}
 					
 					if (currwpn.autofire && cycles >= 10) {
 						// Toggle pressing and releasing of L key
