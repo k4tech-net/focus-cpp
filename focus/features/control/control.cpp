@@ -25,13 +25,13 @@ void Control::driveMouse() {
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
-		if (currwpn.values != g.selectedWeapon.values) {
-			currwpn = g.selectedWeapon;
+		if (!(currwpn == g.weaponinfo.selectedWeapon)) {
+			currwpn = g.weaponinfo.selectedWeapon;
 
 			// Print the new weapon data
-			for (auto const& data : currwpn.values) {
+			/*for (auto const& data : currwpn.values) {
 				std::cout << "{" << data[0] << ", " << data[1] << ", " << data[2] << "}," << std::endl;
-			}
+			}*/
 
 			// Update maxInstructions
 			maxInstructions = currwpn.values.size();
@@ -48,7 +48,7 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					sendXMovement = (currwpn.xdeadtime > 0) && (cycles % currwpn.xdeadtime) == 0;
+					sendXMovement = (g.weaponinfo.currxdeadtime > 0) && (cycles % g.weaponinfo.currxdeadtime) == 0;
 					
 					if (sendXMovement) {
 						ms.mouse_move(0, x, y, 0);
@@ -57,16 +57,16 @@ void Control::driveMouse() {
 						ms.mouse_move(0, 0, y, 0);
 					}
 					
-					if (currwpn.autofire && cycles >= 10) {
+					if (g.weaponinfo.currautofire && cycles >= 10) {
 						// Toggle pressing and releasing of L key
 						static bool flipFlop = false;
 						pressLKey(flipFlop);
 						flipFlop = !flipFlop;
 					}
 
-					for (auto const& data : currwpn.values) {
+					/*for (auto const& data : currwpn.values) {
 						std::cout << "{" << x << ", " << y << ", " << duration << "}," << std::endl;
-					}
+					}*/
 
 					ut.preciseSleep(0.01);
 
