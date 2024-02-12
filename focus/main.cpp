@@ -69,7 +69,7 @@ void Gui()
 	bool openmodal = false;
 	bool initshutdownpopup = false;
 
-	g.editor.unsavedChanges = ut.isEdited(g.weaponsText, editor.GetText());
+	g.editor.unsavedChanges = ut.isEdited(g.weaponinfo.weaponsText, editor.GetText());
 
 	if (ImGui::BeginMenuBar())
 	{
@@ -79,8 +79,11 @@ void Gui()
 			{
 				auto textToSave = editor.GetText();
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
+					g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
+
+				cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
+				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
 			}
 			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
 			{
@@ -93,8 +96,8 @@ void Gui()
 						if (!g.editor.unsavedChanges) {
 							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
 							g.editor.activeFile = g.editor.jsonFiles[i];
-							g.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
-							cfg.readSettings(g.editor.jsonFiles[i].c_str(), g.weapons, true);
+							g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
+							cfg.readSettings(g.editor.jsonFiles[i].c_str(), g.weaponinfo.weapons, true);
 						}
 						else {
 							openmodal = true;
@@ -152,19 +155,18 @@ void Gui()
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
 		if (ImGui::BeginTabItem("Weapon")) {
-			if (g.weapons.size() > 0) {
-				g.selectedWeapon = g.weapons[g.selectedItem];
+			if (g.weaponinfo.weapons.size() > 0) {
+				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
 
-				if (mn.comboBox("Weapon", g.selectedItem, g.weapons)) {
-					cfg.readSettings(g.editor.activeFile.c_str(), g.weapons, true);
+				if (mn.comboBox("Weapon", g.weaponinfo.selectedItem, g.weaponinfo.weapons, g.weaponinfo.currautofire, g.weaponinfo.currxdeadtime)) {
+					cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
 				}
+
+				ImGui::Checkbox("AutoFire", &g.weaponinfo.currautofire);
+				ImGui::SliderInt("X-Deadtime", &g.weaponinfo.currxdeadtime, 1, 10, (g.weaponinfo.currxdeadtime == 1) ? "Every cycle" : "Every %d cycles");
 			}
 			else {
 				ImGui::Text("Please load a weapons file");
-			}
-
-			if (g.selectedWeapon.autofire) {
-				ImGui::Text("Autofire");
 			}
 
 			ImGui::EndTabItem();
@@ -188,8 +190,11 @@ void Gui()
 			{
 				auto textToSave = editor.GetText();
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
+					g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
+
+				cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
+				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
 			}
 
 			ImGui::EndTabItem();

@@ -4,15 +4,8 @@
 
 struct Globals
 {
-    int selectedItem;
-    Settings selectedWeapon;
-
     bool shutdown;
     bool initshutdown;
-
-    std::vector<Settings> weapons;
-
-    std::string weaponsText;
 
     GLFWwindow* window;
 
@@ -29,4 +22,15 @@ struct Globals
         bool files;
         bool hasFinished;
     } startup;
+
+    struct weaponInfo {
+        std::vector<Settings> weapons;
+        Settings selectedWeapon;
+
+        bool currautofire;
+        int currxdeadtime = 1;
+
+        std::string weaponsText;
+        int selectedItem;
+    } weaponinfo;
 };

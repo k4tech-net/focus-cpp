@@ -1,12 +1,15 @@
 #include "menu.hpp"
 
 // In your Menu class implementation (menu.cpp)
-bool Menu::comboBox(const char* label, int& currentIndex, const std::vector<Settings>& items) {
+bool Menu::comboBox(const char* label, int& currentIndex, const std::vector<Settings>& items, bool& currautofire, int& currxdeadtime) {
     if (ImGui::BeginCombo(label, items[currentIndex].name.c_str())) {
         for (int i = 0; i < items.size(); i++) {
             const bool isSelected = (currentIndex == i);
             if (ImGui::Selectable(items[i].name.c_str(), isSelected)) {
                 currentIndex = i; // Update the current index if an item is selected
+                currautofire = items[i].autofire;
+				currxdeadtime = items[i].xdeadtime;
+
                 ImGui::SetItemDefaultFocus();
                 ImGui::EndCombo();
                 return true; // Return true if an item is selected
@@ -38,7 +41,7 @@ void Menu::popup(bool trigger, const char* type) {
                 ImGui::CloseCurrentPopup();
                 editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
                 g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
-                g.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
+                g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
                 trigger = false;
             }
         }

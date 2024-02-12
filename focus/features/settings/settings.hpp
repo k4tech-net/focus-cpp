@@ -28,6 +28,14 @@ public:
     int xdeadtime;
     std::vector<std::vector<int>> values;
 
+    // Method to check if two Settings objects are equal
+    bool operator==(const Settings& other) const {
+        return name == other.name &&
+            autofire == other.autofire &&
+            xdeadtime == other.xdeadtime &&
+            values == other.values;
+    }
+
     void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
     void printSettings(const std::vector<Settings>& settings);
 };
