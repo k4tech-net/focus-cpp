@@ -11,6 +11,7 @@ Settings cfg;
 
 TextEditor editor;
 
+#define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)
 #define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar)
 
 static void glfw_error_callback(int error, const char* description)
@@ -20,7 +21,7 @@ static void glfw_error_callback(int error, const char* description)
 
 void startupchecks_gui() {
 	ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Startup Checks");
+	ImGui::Begin("Startup Checks", NULL, STARTUPFLAGS);
 
 	if (g.startup.driver) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
@@ -59,7 +60,6 @@ void Gui()
 {
 	bool inverseShutdown = !g.initshutdown;
 
-	ImGui::SetNextWindowPos(ImVec2(0, 0), ImGuiCond_FirstUseEver);
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Focus", &inverseShutdown, WINDOWFLAGS);
 
@@ -247,12 +247,14 @@ int main(int, char**)
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
-	ImGui::GetIO().IniFilename = NULL;
+
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;      // Enable Gamepad Controls
 	io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 	io.ConfigFlags |= ImGuiConfigFlags_ViewportsEnable;
+
+	//io.IniFilename = NULL;
 
 	ImGui::StyleColorsDark();
 

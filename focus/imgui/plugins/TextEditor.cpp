@@ -2447,8 +2447,8 @@ void TextEditor::EnsureCursorVisible()
 		ImGui::SetScrollY(std::max(0.0f, (pos.mLine + 4) * mCharAdvance.y - height));
 	if (len + mTextStart < left + 4)
 		ImGui::SetScrollX(std::max(0.0f, len + mTextStart - 4));
-	if (len + mTextStart > right - 100)
-		ImGui::SetScrollX(std::max(0.0f, len + mTextStart + 100 - width));
+	if (len + mTextStart > right - 150)
+		ImGui::SetScrollX(std::max(0.0f, len + mTextStart + 150 - width));
 }
 
 int TextEditor::GetPageSize() const
