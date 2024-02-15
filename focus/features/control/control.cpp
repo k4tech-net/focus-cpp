@@ -43,8 +43,10 @@ void Control::driveMouse() {
 				int x = instruction[0], y = instruction[1], duration = instruction[2];
 				auto currtime = std::chrono::high_resolution_clock::now();
 				float int_timer = 0;
+				auto nextExecution = currtime;
 
 				while (int_timer < duration / 1000.f && GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) {
+					nextExecution += std::chrono::microseconds(static_cast<long long>(10000)); // 10 milliseconds in microseconds
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
@@ -57,7 +59,7 @@ void Control::driveMouse() {
 						ms.mouse_move(0, 0, y, 0);
 					}
 					
-					if (g.weaponinfo.currautofire && cycles >= 10) {
+					if (g.weaponinfo.currautofire && cycles >= 8) {
 						// Toggle pressing and releasing of L key
 						static bool flipFlop = false;
 						pressLKey(flipFlop);
@@ -68,9 +70,11 @@ void Control::driveMouse() {
 						std::cout << "{" << x << ", " << y << ", " << duration << "}," << std::endl;
 					}*/
 
-					ut.preciseSleep(0.01);
-
 					cycles++;
+
+					std::cout << "Execution: " << nextExecution.time_since_epoch() << std::endl;
+					std::cout << "Current: " << std::chrono::high_resolution_clock::now().time_since_epoch() << std::endl;
+					std::this_thread::sleep_until(nextExecution);
 				}
 
 				if (index == maxInstructions - 1) {
