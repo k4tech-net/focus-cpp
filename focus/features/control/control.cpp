@@ -72,8 +72,6 @@ void Control::driveMouse() {
 
 					cycles++;
 
-					std::cout << "Execution: " << nextExecution.time_since_epoch() << std::endl;
-					std::cout << "Current: " << std::chrono::high_resolution_clock::now().time_since_epoch() << std::endl;
 					std::this_thread::sleep_until(nextExecution);
 				}
 

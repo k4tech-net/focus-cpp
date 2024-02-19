@@ -14,30 +14,44 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
     json jsonData;
     file >> jsonData;
 
-    for (auto& item : jsonData.items()) {
-        Settings setting;
-        setting.name = item.key();
+    Settings setting;
 
-        auto& valueArray = item.value();
-        if (valueArray.is_array() && valueArray.size() >= 3) {
-            setting.autofire = valueArray[0].get<bool>();
-            setting.xdeadtime = valueArray[1].get<int>();
+	setting.mode = jsonData["mode"];
 
-            // Extract nested arrays of integers from index 2 onwards
-            for (size_t i = 2; i < valueArray.size(); ++i) {
-                if (valueArray[i].is_array()) {
-                    setting.values.push_back(valueArray[i].get<std::vector<int>>());
+    if (setting.mode == "Generic" || setting.mode == "generic") {
+
+        for (auto& item : jsonData.items()) {
+            if (item.key() != "mode") {  // Skip mode setting itself
+                setting.name = item.key();
+
+                auto& valueArray = item.value();
+                if (valueArray.is_array() && valueArray.size() >= 3) {
+                    setting.autofire = valueArray[0].get<bool>();
+                    setting.xdeadtime = valueArray[1].get<int>();
+
+                    // Extract nested arrays of integers from index 2 onwards
+                    for (size_t i = 2; i < valueArray.size(); ++i) {
+                        if (valueArray[i].is_array()) {
+                            setting.values.push_back(valueArray[i].get<std::vector<int>>());
+                        }
+                        else {
+                            std::cerr << "Invalid nested array for setting: " << setting.name << std::endl;
+                        }
+                    }
+
+                    settings.push_back(setting);
                 }
                 else {
-                    std::cerr << "Invalid nested array for setting: " << setting.name << std::endl;
+                    std::cerr << "Invalid format for setting: " << setting.name << std::endl;
                 }
             }
-
-            settings.push_back(setting);
         }
-        else {
-            std::cerr << "Invalid format for setting: " << setting.name << std::endl;
-        }
+	}
+	else if (setting.mode == "Character" || setting.mode == "character") {
+        // This is the big one
+    }
+    else {
+		std::cerr << "Invalid mode: " << setting.mode << std::endl;
     }
 }
 

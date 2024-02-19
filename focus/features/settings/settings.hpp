@@ -23,6 +23,7 @@ struct Globals;
 class Settings 
 {
 public:
+    std::string mode;
     std::string name;
     bool autofire;
     int xdeadtime;
@@ -30,7 +31,8 @@ public:
 
     // Method to check if two Settings objects are equal
     bool operator==(const Settings& other) const {
-        return name == other.name &&
+        return mode == other.mode &&
+            name == other.name &&
             autofire == other.autofire &&
             xdeadtime == other.xdeadtime &&
             values == other.values;
