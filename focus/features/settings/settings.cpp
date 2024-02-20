@@ -1,6 +1,6 @@
 #include "settings.hpp"
 
-void Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
+std::string Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
     if (clearExisting) {
         settings.clear();
     }
@@ -14,58 +14,102 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
     json jsonData;
     file >> jsonData;
 
+    if (!jsonData.is_object()) {
+        std::cerr << "Invalid JSON format." << std::endl;
+        return;
+    }
+
     Settings setting;
 
-	setting.mode = jsonData["mode"];
+	std::string mode = jsonData["mode"];
 
-    if (setting.mode == "Generic" || setting.mode == "generic") {
+    if (mode == "Generic" || mode == "generic") {
+       setting.charactername = "Generic";
 
         for (auto& item : jsonData.items()) {
-            if (item.key() != "mode") {  // Skip mode setting itself
-                setting.name = item.key();
+            if (item.key() != "mode") {
+                weaponData weapon;
 
+                weapon.weaponname = item.key();
                 auto& valueArray = item.value();
+
                 if (valueArray.is_array() && valueArray.size() >= 3) {
-                    setting.autofire = valueArray[0].get<bool>();
-                    setting.xdeadtime = valueArray[1].get<int>();
+                    weapon.autofire = valueArray[0].get<bool>();
+                    weapon.xdeadtime = valueArray[1].get<int>();
 
                     // Extract nested arrays of integers from index 2 onwards
                     for (size_t i = 2; i < valueArray.size(); ++i) {
                         if (valueArray[i].is_array()) {
-                            setting.values.push_back(valueArray[i].get<std::vector<int>>());
+                            weapon.values.push_back(valueArray[i].get<std::vector<int>>());
                         }
                         else {
-                            std::cerr << "Invalid nested array for setting: " << setting.name << std::endl;
+                            std::cerr << "Invalid nested array for weapon: " << weapon.weaponname << std::endl;
                         }
                     }
 
-                    settings.push_back(setting);
+                    setting.weapondata.push_back(weapon);
                 }
                 else {
-                    std::cerr << "Invalid format for setting: " << setting.name << std::endl;
+                    std::cerr << "Invalid format for weapon: " << weapon.weaponname << std::endl;
                 }
             }
         }
+
+        // Set all options to false
+        setting.options = std::vector<bool>(setting.weapondata.size(), false);
+
+        settings.push_back(setting);
 	}
-	else if (setting.mode == "Character" || setting.mode == "character") {
-        // This is the big one
+	else if (mode == "Character" || mode == "character") {
+        for (auto& characterItem : jsonData.items()) {
+            if (characterItem.key() != "mode") {
+                setting.charactername = characterItem.key();
+
+                auto& characterData = characterItem.value();
+                if (!characterData.is_object()) {
+                    std::cerr << "Invalid data for character: " << setting.charactername << std::endl;
+                    continue;
+                }
+
+                for (auto& weaponItem : characterData.items()) {
+                    if (weaponItem.key() == "Options") {
+                        setting.options = weaponItem.value().get<std::vector<bool>>();
+                    }
+                    else {
+                        weaponData weapon;
+
+                        weapon.weaponname = weaponItem.key();
+                        auto& valueArray = weaponItem.value();
+
+                        if (valueArray.is_array() && valueArray.size() >= 3) {
+                            weapon.autofire = valueArray[0].get<bool>();
+                            weapon.xdeadtime = valueArray[1].get<int>();
+
+                            // Extract nested arrays of integers from index 2 onwards
+                            for (size_t i = 2; i < valueArray.size(); ++i) {
+                                if (valueArray[i].is_array()) {
+                                    weapon.values.push_back(valueArray[i].get<std::vector<int>>());
+                                }
+                                else {
+                                    std::cerr << "Invalid nested array for weapon: " << weapon.weaponname << std::endl;
+                                }
+                            }
+
+                            setting.weapondata.push_back(weapon);
+                        }
+                        else {
+                            std::cerr << "Invalid format for weapon: " << weapon.weaponname << std::endl;
+                        }
+                    }
+                }
+
+                settings.push_back(setting);
+            }
+        }
     }
     else {
-		std::cerr << "Invalid mode: " << setting.mode << std::endl;
+		std::cerr << "Invalid mode: " << mode << std::endl;
     }
-}
 
-void Settings::printSettings(const std::vector<Settings>& settings) {
-    for (const auto& setting : settings) {
-        std::cout << "Name: " << setting.name << std::endl;
-        std::cout << "Values:" << std::endl;
-        for (const auto& nestedArray : setting.values) {
-            std::cout << "  [ ";
-            for (const auto& value : nestedArray) {
-                std::cout << value << " ";
-            }
-            std::cout << "]" << std::endl;
-        }
-        std::cout << std::endl;
-    }
+    return mode;
 }

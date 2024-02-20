@@ -23,14 +23,18 @@ struct Globals
         bool hasFinished;
     } startup;
 
-    struct weaponInfo {
-        std::vector<Settings> weapons;
-        Settings selectedWeapon;
+    struct characterInfo {
+        std::string mode;
+    }
 
-        bool currautofire;
-        int currxdeadtime = 1;
+    //struct weaponInfo {
+    //    std::vector<Settings> weapons;
+    //    Settings selectedWeapon;
 
-        std::string weaponsText;
-        int selectedItem;
-    } weaponinfo;
+    //    bool currautofire;
+    //    int currxdeadtime = 1;
+
+    //    std::string weaponsText;
+    //    int selectedItem;
+    //} weaponinfo;
 };
