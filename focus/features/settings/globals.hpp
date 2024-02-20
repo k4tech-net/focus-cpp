@@ -23,9 +23,20 @@ struct Globals
         bool hasFinished;
     } startup;
 
-    struct characterInfo {
+    struct CharacterInfo {
         std::string mode;
-    }
+
+		std::vector<Settings> characters;
+		Settings selectedCharacter;
+
+		int selectedCharacterIndex = 0;
+        int selectedPrimary = 0;
+		int selectedSecondary = 0;
+
+		weaponData activeWeapon;
+
+        std::string jsonData;
+	} characterinfo;
 
     //struct weaponInfo {
     //    std::vector<Settings> weapons;

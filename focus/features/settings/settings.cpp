@@ -8,7 +8,7 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;
-        return;
+        return "";
     }
 
     json jsonData;
@@ -16,7 +16,7 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
 
     if (!jsonData.is_object()) {
         std::cerr << "Invalid JSON format." << std::endl;
-        return;
+        return "";
     }
 
     Settings setting;
@@ -60,9 +60,11 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
 
         settings.push_back(setting);
 	}
-	else if (mode == "Character" || mode == "character") {
+    else if (mode == "Character" || mode == "character") {
         for (auto& characterItem : jsonData.items()) {
             if (characterItem.key() != "mode") {
+                Settings setting; // Create a new Settings object for each character
+
                 setting.charactername = characterItem.key();
 
                 auto& characterData = characterItem.value();
@@ -103,7 +105,7 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
                     }
                 }
 
-                settings.push_back(setting);
+                settings.push_back(setting); // Push the Settings object for the current character
             }
         }
     }

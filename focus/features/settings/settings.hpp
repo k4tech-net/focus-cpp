@@ -34,12 +34,12 @@ public:
 	std::vector<weaponData> weapondata;
     std::vector<bool> options;
 
-    // Method to check if two Settings objects are equal
-    bool operator==(const Settings& other) const {
-        return charactername == other.charactername &&
-            weapondata == other.weapondata &&
-            options == other.options;
-    }
+    //// Method to check if two Settings objects are equal
+    //bool operator==(const Settings& other) const {
+    //    return charactername == other.charactername &&
+    //        weapondata == other.weapondata &&
+    //        options == other.options;
+    //}
 
     std::string readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
 };

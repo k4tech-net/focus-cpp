@@ -12,6 +12,8 @@
 
 #include "features/utils/utils.hpp"
 
+#define CHI g.characterinfo
+
 extern Globals g;
 extern TextEditor editor;
 extern Utils ut;
