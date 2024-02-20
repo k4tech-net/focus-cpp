@@ -15,7 +15,7 @@ void pressLKey(bool press) {
 	SendInput(1, &input, sizeof(INPUT));
 }
 
-//void Control::driveMouse() {
+void Control::driveMouse() {
 //
 //	static bool complete = false;
 //	Settings currwpn;
@@ -88,4 +88,4 @@ void pressLKey(bool press) {
 //
 //		ut.preciseSleep(0.0005);
 //	}
-//}
+}

@@ -69,7 +69,7 @@ void Gui()
 	bool openmodal = false;
 	bool initshutdownpopup = false;
 
-	g.editor.unsavedChanges = ut.isEdited(g.weaponinfo.weaponsText, editor.GetText());
+	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
 	if (ImGui::BeginMenuBar())
 	{
@@ -79,11 +79,11 @@ void Gui()
 			{
 				auto textToSave = editor.GetText();
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
+					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 
-				cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
-				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
+				CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+				CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 			}
 			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
 			{
@@ -96,8 +96,8 @@ void Gui()
 						if (!g.editor.unsavedChanges) {
 							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
 							g.editor.activeFile = g.editor.jsonFiles[i];
-							g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
-							cfg.readSettings(g.editor.jsonFiles[i].c_str(), g.weaponinfo.weapons, true);
+							CHI.jsonData = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
+							CHI.mode = cfg.readSettings(g.editor.jsonFiles[i].c_str(), CHI.characters, true);
 						}
 						else {
 							openmodal = true;
@@ -154,23 +154,47 @@ void Gui()
 
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
-		if (ImGui::BeginTabItem("Weapon")) {
-			if (g.weaponinfo.weapons.size() > 0) {
-				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
+		if (CHI.mode == "Generic" || CHI.mode == "generic") {
+			//if (ImGui::BeginTabItem("Weapon")) {
+			//	if (CHI.characters.size() > 0) {
+			//		CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-				if (mn.comboBox("Weapon", g.weaponinfo.selectedItem, g.weaponinfo.weapons, g.weaponinfo.currautofire, g.weaponinfo.currxdeadtime)) {
-					cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
+			//		if (mn.comboBoxGen("Weapon", CHI.selectedCharacterIndex, CHI.characters, g.weaponinfo.currautofire, g.weaponinfo.currxdeadtime)) {
+			//			CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+			//		}
+
+			//		ImGui::Checkbox("AutoFire", &g.weaponinfo.currautofire);
+			//		ImGui::SliderInt("X-Deadtime", &g.weaponinfo.currxdeadtime, 1, 10, (g.weaponinfo.currxdeadtime == 1) ? "Every cycle" : "Every %d cycles");
+			//	}
+			//	else {
+			//		ImGui::Text("Please load a weapons file");
+			//	}
+
+			//	ImGui::EndTabItem();
+			//}
+		}
+		else if (CHI.mode == "Character" || CHI.mode == "character") {
+			if (ImGui::BeginTabItem("Weapon")) {
+				if (CHI.characters.size() > 0) {
+					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+
+					if (mn.comboBoxChar("Character", CHI.selectedCharacterIndex, CHI.characters)) {
+						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+					}
+
+					if (mn.comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire)) {
+						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+					}
+
+				}
+				else {
+					ImGui::Text("Please load a weapons file");
 				}
 
-				ImGui::Checkbox("AutoFire", &g.weaponinfo.currautofire);
-				ImGui::SliderInt("X-Deadtime", &g.weaponinfo.currxdeadtime, 1, 10, (g.weaponinfo.currxdeadtime == 1) ? "Every cycle" : "Every %d cycles");
+				ImGui::EndTabItem();
 			}
-			else {
-				ImGui::Text("Please load a weapons file");
-			}
-
-			ImGui::EndTabItem();
 		}
+		
 
 		if (ImGui::BeginTabItem("Edit")) {
 
@@ -190,11 +214,11 @@ void Gui()
 			{
 				auto textToSave = editor.GetText();
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.activeFile.c_str());
+					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 
-				cfg.readSettings(g.editor.activeFile.c_str(), g.weaponinfo.weapons, true);
-				g.weaponinfo.selectedWeapon = g.weaponinfo.weapons[g.weaponinfo.selectedItem];
+				CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+				CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 			}
 
 			ImGui::EndTabItem();

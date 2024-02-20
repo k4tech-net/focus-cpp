@@ -1,14 +1,50 @@
 #include "menu.hpp"
 
 // In your Menu class implementation (menu.cpp)
-bool Menu::comboBox(const char* label, int& currentIndex, const std::vector<Settings>& items, bool& currautofire, int& currxdeadtime) {
-    if (ImGui::BeginCombo(label, items[currentIndex].name.c_str())) {
+bool Menu::comboBoxGen(const char* label, int& currentIndex, const std::vector<Settings>& items, bool& currautofire, int& currxdeadtime) {
+    //if (ImGui::BeginCombo(label, items[currentIndex].name.c_str())) {
+    //    for (int i = 0; i < items.size(); i++) {
+    //        const bool isSelected = (currentIndex == i);
+    //        if (ImGui::Selectable(items[i].name.c_str(), isSelected)) {
+    //            currentIndex = i; // Update the current index if an item is selected
+    //            currautofire = items[i].autofire;
+				//currxdeadtime = items[i].xdeadtime;
+
+    //            ImGui::SetItemDefaultFocus();
+    //            ImGui::EndCombo();
+    //            return true; // Return true if an item is selected
+    //        }
+    //    }
+    //    ImGui::EndCombo();
+    //}
+    //return false; // Return false if no item is selected
+    return false;
+}
+
+bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vector<Settings>& items) {
+    if (ImGui::BeginCombo(label, items[characterIndex].charactername.c_str())) {
         for (int i = 0; i < items.size(); i++) {
-            const bool isSelected = (currentIndex == i);
-            if (ImGui::Selectable(items[i].name.c_str(), isSelected)) {
-                currentIndex = i; // Update the current index if an item is selected
-                currautofire = items[i].autofire;
-				currxdeadtime = items[i].xdeadtime;
+            const bool isSelected = (characterIndex == i);
+            if (ImGui::Selectable(items[i].charactername.c_str(), isSelected)) {
+                characterIndex = i;
+
+                ImGui::SetItemDefaultFocus();
+                ImGui::EndCombo();
+                return true; // Return true if an item is selected
+            }
+        }
+        ImGui::EndCombo();
+    }
+    return false; // Return false if no item is selected
+}
+
+bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<Settings>& items, bool& currautofire) {
+    if (ImGui::BeginCombo(label, items[characterIndex].weapondata[weaponIndex].weaponname.c_str())) {
+        for (int i = 0; i < items[characterIndex].weapondata.size(); i++) {
+            const bool isSelected = (weaponIndex == i);
+            if (ImGui::Selectable(items[characterIndex].weapondata[i].weaponname.c_str(), isSelected)) {
+                weaponIndex = i; // Update the current index if an item is selected
+                currautofire = items[characterIndex].weapondata[i].autofire;
 
                 ImGui::SetItemDefaultFocus();
                 ImGui::EndCombo();
@@ -41,7 +77,7 @@ void Menu::popup(bool trigger, const char* type) {
                 ImGui::CloseCurrentPopup();
                 editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
                 g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
-                g.weaponinfo.weaponsText = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
+                g.characterinfo.jsonData = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
                 trigger = false;
             }
         }
