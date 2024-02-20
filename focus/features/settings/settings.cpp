@@ -58,6 +58,9 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
         // Set all options to false
         setting.options = std::vector<bool>(setting.weapondata.size(), false);
 
+        // Set default weapon to 0 for generic mode
+        setting.defaultweapon = std::vector<int>{ 0, 0 };
+
         settings.push_back(setting);
 	}
     else if (mode == "Character" || mode == "character") {
@@ -76,6 +79,9 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
                 for (auto& weaponItem : characterData.items()) {
                     if (weaponItem.key() == "Options") {
                         setting.options = weaponItem.value().get<std::vector<bool>>();
+                    }
+                    else if (weaponItem.key() == "Default Weapons") {
+                        setting.defaultweapon = weaponItem.value().get<std::vector<int>>();
                     }
                     else {
                         weaponData weapon;
