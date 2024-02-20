@@ -33,6 +33,7 @@ public:
     std::string charactername;
 	std::vector<weaponData> weapondata;
     std::vector<bool> options;
+    std::vector<int> defaultweapon;
 
     //// Method to check if two Settings objects are equal
     //bool operator==(const Settings& other) const {

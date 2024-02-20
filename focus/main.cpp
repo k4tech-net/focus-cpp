@@ -98,6 +98,8 @@ void Gui()
 							g.editor.activeFile = g.editor.jsonFiles[i];
 							CHI.jsonData = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
 							CHI.mode = cfg.readSettings(g.editor.jsonFiles[i].c_str(), CHI.characters, true);
+							CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
+							CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
 						}
 						else {
 							openmodal = true;
@@ -180,9 +182,15 @@ void Gui()
 
 					if (mn.comboBoxChar("Character", CHI.selectedCharacterIndex, CHI.characters)) {
 						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+						CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
+						CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
 					}
 
 					if (mn.comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire)) {
+						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+					}
+
+					if (mn.comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].autofire)) {
 						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
 					}
 
