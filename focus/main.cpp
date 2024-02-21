@@ -19,6 +19,16 @@ static void glfw_error_callback(int error, const char* description)
 	fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
+void updateCharacterData() {
+	CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+	CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+	CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
+	CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
+	CHI.primaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire;
+	CHI.secondaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].autofire;
+	CHI.characterOptions = CHI.characters[CHI.selectedCharacterIndex].options;
+}
+
 void startupchecks_gui() {
 	ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
 	ImGui::Begin("Startup Checks", NULL, STARTUPFLAGS);
@@ -71,6 +81,8 @@ void Gui()
 
 	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
+	std::vector<const char *> MultiOptions = { "Weapon Switch Detection", "Aux Detection" };
+
 	if (ImGui::BeginMenuBar())
 	{
 		if (ImGui::BeginMenu("File"))
@@ -83,7 +95,7 @@ void Gui()
 				}
 
 				CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
-				CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+				updateCharacterData();
 			}
 			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
 			{
@@ -95,11 +107,9 @@ void Gui()
 						g.editor.activeFileIndex = i;
 						if (!g.editor.unsavedChanges) {
 							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
-							g.editor.activeFile = g.editor.jsonFiles[i];
+							g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
 							CHI.jsonData = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
-							CHI.mode = cfg.readSettings(g.editor.jsonFiles[i].c_str(), CHI.characters, true);
-							CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
-							CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
+							updateCharacterData();
 						}
 						else {
 							openmodal = true;
@@ -181,19 +191,34 @@ void Gui()
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
 					if (mn.comboBoxChar("Character", CHI.selectedCharacterIndex, CHI.characters)) {
-						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
-						CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
-						CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
+						updateCharacterData();
 					}
 
-					if (mn.comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire)) {
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText("Primary");
+
+					if (mn.comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
 					}
+					ImGui::Checkbox("Primary AutoFire", &CHI.primaryAutofire);
 
-					if (mn.comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].autofire)) {
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText("Secondary");
+
+					if (mn.comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
 						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
 					}
+					ImGui::Checkbox("Secondary AutoFire", &CHI.secondaryAutofire);
 
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText("Options");
+
+					if (mn.multiCombo("Options", MultiOptions, CHI.characterOptions)) {
+						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+					}
 				}
 				else {
 					ImGui::Text("Please load a weapons file");
@@ -227,6 +252,11 @@ void Gui()
 
 				CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
 				CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+				CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
+				CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
+				CHI.primaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire;
+				CHI.secondaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].autofire;
+				CHI.characterOptions = CHI.characters[CHI.selectedCharacterIndex].options;
 			}
 
 			ImGui::EndTabItem();

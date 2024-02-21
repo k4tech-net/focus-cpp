@@ -33,6 +33,10 @@ struct Globals
         int selectedPrimary = 0;
 		int selectedSecondary = 0;
 
+        bool primaryAutofire;
+		bool secondaryAutofire;
+		std::vector<bool> characterOptions;
+
 		weaponData activeWeapon;
 
         std::string jsonData;

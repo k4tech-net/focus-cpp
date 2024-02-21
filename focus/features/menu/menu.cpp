@@ -56,6 +56,33 @@ bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex,
     return false; // Return false if no item is selected
 }
 
+bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::vector<bool>& selected) {
+    bool changed = false;
+    std::string displayString;
+    for (int i = 0; i < items.size(); ++i) {
+        if (selected[i]) {
+            if (!displayString.empty())
+                displayString += ", ";
+            displayString += items[i];
+        }
+    }
+
+    if (ImGui::BeginCombo(label, displayString.c_str())) {
+        for (int i = 0; i < items.size(); ++i) {
+            ImGui::PushID(i);
+            bool isSelected = selected[i];
+            if (ImGui::Selectable(items[i], &isSelected)) {
+                selected[i] = !selected[i];
+                changed = true;
+            }
+            ImGui::PopID();
+        }
+        ImGui::EndCombo();
+    }
+
+    return changed;
+}
+
 void Menu::popup(bool trigger, const char* type) {
     if (trigger) {
 		ImGui::OpenPopup(type);
