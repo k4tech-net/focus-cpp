@@ -34,6 +34,7 @@ public:
 	std::vector<weaponData> weapondata;
     std::vector<bool> options;
     std::vector<int> defaultweapon;
+	std::vector<int> keys;
 
     //// Method to check if two Settings objects are equal
     //bool operator==(const Settings& other) const {

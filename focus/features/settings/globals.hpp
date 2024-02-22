@@ -37,7 +37,7 @@ struct Globals
 		bool secondaryAutofire;
 		std::vector<bool> characterOptions;
 
-		weaponData activeWeapon;
+		weaponData activeWeapon; // Put this in the keybind controller
 
         std::string jsonData;
 	} characterinfo;

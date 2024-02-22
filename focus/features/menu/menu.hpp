@@ -2,6 +2,9 @@
 
 #include "../../includes.hpp"
 
+#define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)
+#define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar)
+
 class Menu
 {
 public:
@@ -10,4 +13,8 @@ public:
 	bool comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<Settings>& items, bool& currautofire);
 	bool multiCombo(const char* label, std::vector<const char*>& items, std::vector<bool>& selected);
 	void popup(bool trigger, const char* type);
+	
+	void updateCharacterData();
+	void startupchecks_gui();
+	void gui();
 };
