@@ -1,6 +1,6 @@
 #include "settings.hpp"
 
-std::string Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
+std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
     if (clearExisting) {
         settings.clear();
     }
@@ -8,7 +8,7 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
     std::ifstream file(filename);
     if (!file.is_open()) {
         std::cerr << "Error opening file: " << filename << std::endl;
-        return "";
+        return {};
     }
 
     json jsonData;
@@ -16,18 +16,24 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
 
     if (!jsonData.is_object()) {
         std::cerr << "Invalid JSON format." << std::endl;
-        return "";
+        return {};
     }
 
     Settings setting;
 
-	std::string mode = jsonData["mode"];
+	std::string mode = jsonData["Mode"];
+
+	std::vector<std::string> wpn_keybinds;
+    std::vector<std::string> aux_keybinds;
 
     if (mode == "Generic" || mode == "generic") {
        setting.charactername = "Generic";
 
+       wpn_keybinds = { "" };
+       aux_keybinds = { "" };
+
         for (auto& item : jsonData.items()) {
-            if (item.key() != "mode") {
+            if (item.key() != "Mode" && item.key() != "Weapon Keybinds" && item.key() != "Aux Keybinds") {
                 weaponData weapon;
 
                 weapon.weaponname = item.key();
@@ -61,14 +67,15 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
         // Set default weapon to 0 for generic mode
         setting.defaultweapon = std::vector<int>{ 0, 0 };
 
-        // Set keys to 0 for generic mode
-        setting.keys = std::vector<int>{ 0, 0 };
-
         settings.push_back(setting);
 	}
     else if (mode == "Character" || mode == "character") {
+
+        wpn_keybinds = jsonData["Weapon Keybinds"];
+        aux_keybinds = jsonData["Aux Keybinds"];
+
         for (auto& characterItem : jsonData.items()) {
-            if (characterItem.key() != "mode") {
+            if (characterItem.key() != "Mode" && characterItem.key() != "Weapon Keybinds" && characterItem.key() != "Aux Keybinds") {
                 Settings setting; // Create a new Settings object for each character
 
                 setting.charactername = characterItem.key();
@@ -85,9 +92,6 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
                     }
                     else if (weaponItem.key() == "Default Weapons") {
                         setting.defaultweapon = weaponItem.value().get<std::vector<int>>();
-                    }
-                    else if (weaponItem.key() == "Keybinds") {
-                        setting.keys = weaponItem.value().get<std::vector<int>>();
                     }
                     else {
                         weaponData weapon;
@@ -125,5 +129,5 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
 		std::cerr << "Invalid mode: " << mode << std::endl;
     }
 
-    return mode;
+    return std::make_tuple(mode, wpn_keybinds, aux_keybinds);
 }

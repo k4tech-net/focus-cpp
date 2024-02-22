@@ -122,8 +122,15 @@ void Menu::popup(bool trigger, const char* type) {
     }
 }
 
+void Menu::readGlobalSettings() {
+	auto settings = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+	CHI.mode = std::get<0>(settings);
+	CHI.wpn_keybinds = std::get<1>(settings);
+	CHI.aux_keybinds = std::get<2>(settings);
+}
+
 void Menu::updateCharacterData() {
-	CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+	readGlobalSettings();
 	CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 	CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
 	CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
@@ -169,9 +176,119 @@ void Menu::startupchecks_gui() {
     ImGui::End();
 }
 
+void weaponKeyHandler() {
+	static bool weaponPressedOld = false;
+	bool weaponPressed = false;
+
+	for (const auto& keybind : CHI.wpn_keybinds) {
+		if (GetAsyncKeyState(std::stoi(keybind, nullptr, 0))) {
+			if (!weaponPressedOld) {
+				CHI.isPrimaryActive = !CHI.isPrimaryActive;
+				weaponPressedOld = true;
+			}
+
+			weaponPressed = true;
+		}
+	}
+
+	if (!weaponPressed) {
+		weaponPressedOld = false; // Reset the flag if no key was pressed
+	}
+}
+
+// Low-level mouse hook procedure
+LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode == HC_ACTION) {
+		PMSLLHOOKSTRUCT pHookStruct = (PMSLLHOOKSTRUCT)lParam;
+		if (wParam == WM_MOUSEWHEEL) {
+			if (CHI.characterOptions[1]) {
+				CHI.isPrimaryActive = !CHI.isPrimaryActive;
+			}
+		}
+	}
+	return CallNextHookEx(NULL, nCode, wParam, lParam);
+}
+
+void Menu::mouseScrollHandler()
+{
+	HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, NULL, 0);
+	if (mouseHook == NULL) {
+		std::cerr << "Failed to set up mouse hook." << std::endl;
+		return;
+	}
+
+	// Message loop
+	MSG msg;
+	while (!g.shutdown) {
+		// Check for messages with a timeout of 0
+		DWORD result = MsgWaitForMultipleObjects(0, NULL, FALSE, 0, QS_ALLINPUT);
+		if (result == WAIT_OBJECT_0) {
+			// There are messages in the queue, process them
+			while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE)) {
+				TranslateMessage(&msg);
+				DispatchMessage(&msg);
+			}
+		}
+		else if (result == WAIT_FAILED) {
+			std::cerr << "MsgWaitForMultipleObjects error" << std::endl;
+			break;
+		}
+		// No messages in the queue
+	}
+
+	UnhookWindowsHookEx(mouseHook);
+
+	return;
+}
+
+void auxKeyHandler() {
+	static bool weaponPressedOld = false;
+	bool weaponPressed = false;
+
+	for (const auto& keybind : CHI.aux_keybinds) {
+		if (GetAsyncKeyState(std::stoi(keybind, nullptr, 0))) {
+			if (!weaponPressedOld) {
+				CHI.weaponOffOverride = !CHI.weaponOffOverride;
+				weaponPressedOld = true;
+			}
+
+			weaponPressed = true;
+		}
+	}
+
+	if (!weaponPressed) {
+		weaponPressedOld = false; // Reset the flag if no key was pressed
+	}
+}
+
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
+	if (CHI.mode != "Generic" && CHI.mode != "generic" && CHI.mode != "Character" && CHI.mode != "character") {
+		return;
+	}
+
+	static bool scrollThreadCreated;
+	std::thread scrollThread;
+
+	if (CHI.characterOptions[0]) {
+		weaponKeyHandler();
+	}
+
+	// Scrolling options is handled in its thread
+
+	if (CHI.characterOptions[2]) {
+		auxKeyHandler();
+	}
+
+	if (CHI.isPrimaryActive) {
+		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+		CHI.currAutofire = CHI.primaryAutofire;
+	}
+	else {
+		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
+		CHI.currAutofire = CHI.secondaryAutofire;
+	}
 }
 
 void Menu::gui()
@@ -189,7 +306,7 @@ void Menu::gui()
 
 	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
-	std::vector<const char*> MultiOptions = { "Weapon Switch Detection", "Aux Detection" };
+	std::vector<const char*> MultiOptions = { "Weapon Key Detection", "Weapon Scroll Detection", "Aux Detection" };
 
 	keybindManager();
 
@@ -204,7 +321,6 @@ void Menu::gui()
 					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 
-				CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
 				updateCharacterData();
 			}
 			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
@@ -306,19 +422,33 @@ void Menu::gui()
 
 					ImGui::Spacing();
 					ImGui::Spacing();
+
+					if (CHI.weaponOffOverride)
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+					else if (CHI.isPrimaryActive)
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 					ImGui::SeparatorText("Primary");
+					if (CHI.isPrimaryActive || CHI.weaponOffOverride)
+						ImGui::PopStyleColor();
 
 					if (comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+						readGlobalSettings();
 					}
 					ImGui::Checkbox("Primary AutoFire", &CHI.primaryAutofire);
 
 					ImGui::Spacing();
 					ImGui::Spacing();
+
+					if (CHI.weaponOffOverride)
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
+					else if (!CHI.isPrimaryActive)
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 					ImGui::SeparatorText("Secondary");
+					if (!CHI.isPrimaryActive || CHI.weaponOffOverride)
+						ImGui::PopStyleColor();
 
 					if (comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
-						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+						readGlobalSettings();
 					}
 					ImGui::Checkbox("Secondary AutoFire", &CHI.secondaryAutofire);
 
@@ -327,7 +457,7 @@ void Menu::gui()
 					ImGui::SeparatorText("Options");
 
 					if (multiCombo("Options", MultiOptions, CHI.characterOptions)) {
-						CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+						readGlobalSettings();
 					}
 				}
 				else {

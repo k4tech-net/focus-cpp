@@ -25,6 +25,13 @@ struct weaponData {
     bool autofire;
     int xdeadtime;
     std::vector<std::vector<int>> values;
+
+    bool operator==(const weaponData& other) const {
+        return weaponname == other.weaponname &&
+            autofire == other.autofire &&
+            xdeadtime == other.xdeadtime &&
+            values == other.values;
+    }
 };
 
 class Settings 
@@ -34,7 +41,6 @@ public:
 	std::vector<weaponData> weapondata;
     std::vector<bool> options;
     std::vector<int> defaultweapon;
-	std::vector<int> keys;
 
     //// Method to check if two Settings objects are equal
     //bool operator==(const Settings& other) const {
@@ -43,5 +49,5 @@ public:
     //        options == other.options;
     //}
 
-    std::string readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
+    std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
 };
