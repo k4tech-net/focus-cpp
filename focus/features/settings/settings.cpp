@@ -61,6 +61,9 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
         // Set default weapon to 0 for generic mode
         setting.defaultweapon = std::vector<int>{ 0, 0 };
 
+        // Set keys to 0 for generic mode
+        setting.keys = std::vector<int>{ 0, 0 };
+
         settings.push_back(setting);
 	}
     else if (mode == "Character" || mode == "character") {
@@ -82,6 +85,9 @@ std::string Settings::readSettings(const std::string& filename, std::vector<Sett
                     }
                     else if (weaponItem.key() == "Default Weapons") {
                         setting.defaultweapon = weaponItem.value().get<std::vector<int>>();
+                    }
+                    else if (weaponItem.key() == "Keybinds") {
+                        setting.keys = weaponItem.value().get<std::vector<int>>();
                     }
                     else {
                         weaponData weapon;
