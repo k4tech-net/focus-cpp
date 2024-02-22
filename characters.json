@@ -1,17 +1,18 @@
 {
-    "mode": "character",
-    "Keybinds": ["0x08", "0x09", "0x0D", 1, 2],
+    "Mode": "character",
+    "Weapon Keybinds": ["0x31", "0x32"],
+    "Aux Keybinds": ["0x35", "0x27"],
     "Ash": {
         "R4C_10": [false, 2, [0, 12, 30], [-1, 6, 200], [-1, 6, 200], [-1, 6, 200], [-1, 7, 200], [-1, 7, 200], [-1, 7, 200], [-1, 7, 200], [-1, 7, 200], [-1, 7, 200], [-1, 7, 70]],
         "PMM": [true, 1, [0, 5, 1000]],
         "HK": [true, 2, [0, 10, 1300]],
-        "Options": [false, true],
+        "Options": [true, true, true],
         "Default Weapons": [0, 2]
     }, 
     "Thatcher": {
         "L85A2_20": [false, 1, [0, 10, 200], [1, 9, 200], [1, 9, 200], [1, 9, 200], [1, 9, 200], [1, 9, 200], [1, 10, 200], [1, 10, 200], [1, 10, 200], [1, 10, 200], [1, 11, 200], [1, 11, 200]],
         "P10C": [true, 1, [0, 3, 1800]],
-        "Options": [true, false],
+        "Options": [true, false, false],
         "Default Weapons": [0, 1]
     }
 }

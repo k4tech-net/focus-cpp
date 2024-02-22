@@ -114,6 +114,7 @@ int main(int, char**)
 	startUpCheckThread.join();
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
+	std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
 
 	while (!glfwWindowShouldClose(g.window)) {
 		glfwPollEvents();
@@ -153,6 +154,7 @@ int main(int, char**)
 	g.shutdown = true;
 
 	driveMouseThread.join();
+	mouseScrollThread.join();
 
 	glfwDestroyWindow(g.window);
 	glfwTerminate();

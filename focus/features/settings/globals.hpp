@@ -25,6 +25,8 @@ struct Globals
 
     struct CharacterInfo {
         std::string mode;
+		std::vector<std::string> wpn_keybinds;
+        std::vector<std::string> aux_keybinds;
 
 		std::vector<Settings> characters;
 		Settings selectedCharacter;
@@ -37,7 +39,11 @@ struct Globals
 		bool secondaryAutofire;
 		std::vector<bool> characterOptions;
 
+		bool currAutofire;
+        
+		bool isPrimaryActive = true;
 		weaponData activeWeapon; // Put this in the keybind controller
+        bool weaponOffOverride;
 
         std::string jsonData;
 	} characterinfo;
