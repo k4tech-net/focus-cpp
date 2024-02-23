@@ -3,6 +3,7 @@
 Utils ut;
 
 void pressLKey(bool press) {
+
 	INPUT input;
 	input.type = INPUT_KEYBOARD;
 	input.ki.wVk = 0; // Ignored for scan codes
@@ -22,6 +23,7 @@ void Control::driveMouse() {
 	static int maxInstructions = 0;
 	static int cycles = 0;
 	static bool sendXMovement = false;
+	static bool flipFlop = false;
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
@@ -59,9 +61,7 @@ void Control::driveMouse() {
 						ms.mouse_move(0, 0, y, 0);
 					}
 					
-					if (CHI.currAutofire && cycles >= 5) {
-						// Toggle pressing and releasing of L key
-						static bool flipFlop = false;
+					if (CHI.currAutofire && cycles >= 8) {
 						pressLKey(flipFlop);
 						flipFlop = !flipFlop;
 					}
@@ -84,6 +84,10 @@ void Control::driveMouse() {
 		if (!GetAsyncKeyState(VK_LBUTTON) || !GetAsyncKeyState(VK_RBUTTON)) {
 			complete = false;
 			cycles = 0;
+			if (flipFlop) {
+				pressLKey(false);
+				flipFlop = false;
+			}
 		}
 
 		ut.preciseSleep(0.0005);
