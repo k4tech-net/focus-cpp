@@ -2,27 +2,6 @@
 
 Settings cfg;
 
-// In your Menu class implementation (menu.cpp)
-bool Menu::comboBoxGen(const char* label, int& currentIndex, const std::vector<Settings>& items, bool& currautofire, int& currxdeadtime) {
-    //if (ImGui::BeginCombo(label, items[currentIndex].name.c_str())) {
-    //    for (int i = 0; i < items.size(); i++) {
-    //        const bool isSelected = (currentIndex == i);
-    //        if (ImGui::Selectable(items[i].name.c_str(), isSelected)) {
-    //            currentIndex = i; // Update the current index if an item is selected
-    //            currautofire = items[i].autofire;
-				//currxdeadtime = items[i].xdeadtime;
-
-    //            ImGui::SetItemDefaultFocus();
-    //            ImGui::EndCombo();
-    //            return true; // Return true if an item is selected
-    //        }
-    //    }
-    //    ImGui::EndCombo();
-    //}
-    //return false; // Return false if no item is selected
-    return false;
-}
-
 bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vector<Settings>& items) {
     if (ImGui::BeginCombo(label, items[characterIndex].charactername.c_str())) {
         for (int i = 0; i < items.size(); i++) {
@@ -264,30 +243,30 @@ void auxKeyHandler() {
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
-	if (CHI.mode != "Generic" && CHI.mode != "generic" && CHI.mode != "Character" && CHI.mode != "character") {
-		return;
-	}
-
-	static bool scrollThreadCreated;
-	std::thread scrollThread;
-
-	if (CHI.characterOptions[0]) {
-		weaponKeyHandler();
-	}
-
-	// Scrolling options is handled in its thread
-
-	if (CHI.characterOptions[2]) {
-		auxKeyHandler();
-	}
-
-	if (CHI.isPrimaryActive) {
+	if (CHI.mode == "Generic" || CHI.mode == "generic") {
+		CHI.isPrimaryActive = true;
 		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
 		CHI.currAutofire = CHI.primaryAutofire;
 	}
-	else {
-		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
-		CHI.currAutofire = CHI.secondaryAutofire;
+	else if (CHI.mode == "Character" || CHI.mode == "character") {
+		if (CHI.characterOptions[0]) {
+			weaponKeyHandler();
+		}
+
+		// Scrolling options is handled in its thread
+
+		if (CHI.characterOptions[2]) {
+			auxKeyHandler();
+		}
+
+		if (CHI.isPrimaryActive) {
+			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+			CHI.currAutofire = CHI.primaryAutofire;
+		}
+		else {
+			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
+			CHI.currAutofire = CHI.secondaryAutofire;
+		}
 	}
 }
 
@@ -393,23 +372,28 @@ void Menu::gui()
 	if (ImGui::BeginTabBar("##TabBar"))
 	{
 		if (CHI.mode == "Generic" || CHI.mode == "generic") {
-			//if (ImGui::BeginTabItem("Weapon")) {
-			//	if (CHI.characters.size() > 0) {
-			//		CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+			if (ImGui::BeginTabItem("Weapon")) {
+				if (CHI.characters.size() > 0) {
+					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-			//		if (mn.comboBoxGen("Weapon", CHI.selectedCharacterIndex, CHI.characters, g.weaponinfo.currautofire, g.weaponinfo.currxdeadtime)) {
-			//			CHI.mode = cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
-			//		}
+					if (comboBoxWep("Weapon", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
+						readGlobalSettings();
+					}
 
-			//		ImGui::Checkbox("AutoFire", &g.weaponinfo.currautofire);
-			//		ImGui::SliderInt("X-Deadtime", &g.weaponinfo.currxdeadtime, 1, 10, (g.weaponinfo.currxdeadtime == 1) ? "Every cycle" : "Every %d cycles");
-			//	}
-			//	else {
-			//		ImGui::Text("Please load a weapons file");
-			//	}
+					ImGui::Checkbox("AutoFire", &CHI.primaryAutofire);
 
-			//	ImGui::EndTabItem();
-			//}
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText("Extra Weapon Data");
+
+					ImGui::Text("XDeadTime: %d", CHI.activeWeapon.xdeadtime);
+				}
+				else {
+					ImGui::Text("Please load a weapons file");
+				}
+
+				ImGui::EndTabItem();
+			}
 		}
 		else if (CHI.mode == "Character" || CHI.mode == "character") {
 			if (ImGui::BeginTabItem("Weapon")) {
@@ -423,13 +407,19 @@ void Menu::gui()
 					ImGui::Spacing();
 					ImGui::Spacing();
 
-					if (CHI.weaponOffOverride)
+					if (CHI.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-					else if (CHI.isPrimaryActive)
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-					ImGui::SeparatorText("Primary");
-					if (CHI.isPrimaryActive || CHI.weaponOffOverride)
+						ImGui::SeparatorText("Primary");
 						ImGui::PopStyleColor();
+					}
+					else if (CHI.isPrimaryActive) {
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+						ImGui::SeparatorText("Primary");
+						ImGui::PopStyleColor();
+					}
+					else {
+						ImGui::SeparatorText("Primary");
+					}
 
 					if (comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 						readGlobalSettings();
@@ -439,13 +429,19 @@ void Menu::gui()
 					ImGui::Spacing();
 					ImGui::Spacing();
 
-					if (CHI.weaponOffOverride)
+					if (CHI.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-					else if (!CHI.isPrimaryActive)
-						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-					ImGui::SeparatorText("Secondary");
-					if (!CHI.isPrimaryActive || CHI.weaponOffOverride)
+						ImGui::SeparatorText("Secondary");
 						ImGui::PopStyleColor();
+					}
+					else if (!CHI.isPrimaryActive) {
+						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+						ImGui::SeparatorText("Secondary");
+						ImGui::PopStyleColor();
+					}
+					else {
+						ImGui::SeparatorText("Secondary");
+					}
 
 					if (comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
 						readGlobalSettings();
@@ -459,6 +455,12 @@ void Menu::gui()
 					if (multiCombo("Options", MultiOptions, CHI.characterOptions)) {
 						readGlobalSettings();
 					}
+
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText("Extra Weapon Data");
+
+					ImGui::Text("XDeadTime: %d", CHI.activeWeapon.xdeadtime);
 				}
 				else {
 					ImGui::Text("Please load a weapons file");
