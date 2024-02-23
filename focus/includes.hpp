@@ -12,7 +12,10 @@
 
 #include "features/utils/utils.hpp"
 
+#define CHI g.characterinfo
+
 extern Globals g;
+extern Settings cfg;
 extern TextEditor editor;
 extern Utils ut;
 extern Mouse ms;

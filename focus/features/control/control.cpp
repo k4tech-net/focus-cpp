@@ -3,6 +3,7 @@
 Utils ut;
 
 void pressLKey(bool press) {
+
 	INPUT input;
 	input.type = INPUT_KEYBOARD;
 	input.ki.wVk = 0; // Ignored for scan codes
@@ -18,15 +19,16 @@ void pressLKey(bool press) {
 void Control::driveMouse() {
 
 	static bool complete = false;
-	Settings currwpn;
+	weaponData currwpn;
 	static int maxInstructions = 0;
 	static int cycles = 0;
 	static bool sendXMovement = false;
+	static bool flipFlop = false;
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
-		if (!(currwpn == g.weaponinfo.selectedWeapon)) {
-			currwpn = g.weaponinfo.selectedWeapon;
+		if (!(currwpn == CHI.activeWeapon)) {
+			currwpn = CHI.activeWeapon;
 
 			// Print the new weapon data
 			/*for (auto const& data : currwpn.values) {
@@ -37,7 +39,7 @@ void Control::driveMouse() {
 			maxInstructions = currwpn.values.size();
 		}
 
-		while (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON) && !complete) {
+		while (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON) && !complete && !CHI.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
 				int x = instruction[0], y = instruction[1], duration = instruction[2];
@@ -50,7 +52,7 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					sendXMovement = (g.weaponinfo.currxdeadtime > 0) && (cycles % g.weaponinfo.currxdeadtime) == 0;
+					sendXMovement = (currwpn.xdeadtime > 0) && (cycles % currwpn.xdeadtime) == 0;
 					
 					if (sendXMovement) {
 						ms.mouse_move(0, x, y, 0);
@@ -59,9 +61,7 @@ void Control::driveMouse() {
 						ms.mouse_move(0, 0, y, 0);
 					}
 					
-					if (g.weaponinfo.currautofire && cycles >= 8) {
-						// Toggle pressing and releasing of L key
-						static bool flipFlop = false;
+					if (CHI.currAutofire && cycles >= 8) {
 						pressLKey(flipFlop);
 						flipFlop = !flipFlop;
 					}
@@ -84,6 +84,10 @@ void Control::driveMouse() {
 		if (!GetAsyncKeyState(VK_LBUTTON) || !GetAsyncKeyState(VK_RBUTTON)) {
 			complete = false;
 			cycles = 0;
+			if (flipFlop) {
+				pressLKey(false);
+				flipFlop = false;
+			}
 		}
 
 		ut.preciseSleep(0.0005);

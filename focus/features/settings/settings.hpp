@@ -20,24 +20,34 @@ using json = nlohmann::json;
 class Settings;
 struct Globals;
 
-class Settings 
-{
-public:
-    std::string mode;
-    std::string name;
+struct weaponData {
+    std::string weaponname;
     bool autofire;
     int xdeadtime;
     std::vector<std::vector<int>> values;
 
-    // Method to check if two Settings objects are equal
-    bool operator==(const Settings& other) const {
-        return mode == other.mode &&
-            name == other.name &&
+    bool operator==(const weaponData& other) const {
+        return weaponname == other.weaponname &&
             autofire == other.autofire &&
             xdeadtime == other.xdeadtime &&
             values == other.values;
     }
+};
 
-    void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
-    void printSettings(const std::vector<Settings>& settings);
+class Settings 
+{
+public:
+    std::string charactername;
+	std::vector<weaponData> weapondata;
+    std::vector<bool> options;
+    std::vector<int> defaultweapon;
+
+    //// Method to check if two Settings objects are equal
+    //bool operator==(const Settings& other) const {
+    //    return charactername == other.charactername &&
+    //        weapondata == other.weapondata &&
+    //        options == other.options;
+    //}
+
+    std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
 };
