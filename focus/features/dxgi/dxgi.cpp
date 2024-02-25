@@ -149,12 +149,17 @@ void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActi
     // Define the color to compare
     cv::Vec3b targetColor(15, 255, 243); // RGB(15, 255, 243)
 
+    // Define the buffer size for color matching
+    int colorBuffer = 15;
+
     // Calculate the total area of matching color in each ROI
     double area1 = 0, area2 = 0;
     for (int y = 0; y < rgb1.rows; ++y) {
         for (int x = 0; x < rgb1.cols; ++x) {
             cv::Vec3b pixel = rgb1.at<cv::Vec3b>(y, x);
-            if (pixel[0] == targetColor[0] && pixel[1] == targetColor[1] && pixel[2] == targetColor[2]) {
+            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
+                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
+                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
                 area1++;
             }
         }
@@ -162,7 +167,9 @@ void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActi
     for (int y = 0; y < rgb2.rows; ++y) {
         for (int x = 0; x < rgb2.cols; ++x) {
             cv::Vec3b pixel = rgb2.at<cv::Vec3b>(y, x);
-            if (pixel[0] == targetColor[0] && pixel[1] == targetColor[1] && pixel[2] == targetColor[2]) {
+            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
+                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
+                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
                 area2++;
             }
         }
