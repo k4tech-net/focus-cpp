@@ -309,7 +309,7 @@ void Menu::gui()
 
 	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
-	std::vector<const char*> MultiOptions = { "Weapon Key Detection", "Weapon Scroll Detection", "Aux Detection" };
+	std::vector<const char*> MultiOptions = { "R6 Auto Weapon Detection", "Manual Weapon Detection", "Scroll Detection", "Aux Disable" };
 
 	keybindManager();
 
