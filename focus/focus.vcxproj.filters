@@ -48,6 +48,9 @@
     <ClCompile Include="imgui\plugins\TextEditor.cpp">
       <Filter>imgui\plugins</Filter>
     </ClCompile>
+    <ClCompile Include="features\dxgi\dxgi.cpp">
+      <Filter>features\dxgi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -85,6 +88,9 @@
     </Filter>
     <Filter Include="imgui\plugins">
       <UniqueIdentifier>{c0c8f340-1727-427b-a389-ff1648e29615}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\dxgi">
+      <UniqueIdentifier>{c3247a5c-446d-4113-b355-88fd040a944d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -148,6 +154,9 @@
     </ClInclude>
     <ClInclude Include="imgui\plugins\TextEditor.h">
       <Filter>imgui\plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="features\dxgi\dxgi.hpp">
+      <Filter>features\dxgi</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

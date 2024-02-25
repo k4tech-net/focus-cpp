@@ -11,6 +11,8 @@
 #include "../mouse_driver/mouse.hpp"
 #include "../settings/globals.hpp"
 
+#include "../dxgi/dxgi.hpp"
+
 class Utils
 {
 public:

@@ -15,6 +15,7 @@
 #define CHI g.characterinfo
 
 extern Globals g;
+extern DXGI dx;
 extern Settings cfg;
 extern TextEditor editor;
 extern Utils ut;

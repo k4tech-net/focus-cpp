@@ -112,7 +112,7 @@
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)imgui/libs/glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
@@ -135,12 +135,13 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>glfw3.lib;opengl32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>glfw3.lib;opengl32.lib;d3d11.lib;dxgi.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <AdditionalLibraryDirectories>$(ProjectDir)imgui/libs/glfw;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="features\control\control.cpp" />
+    <ClCompile Include="features\dxgi\dxgi.cpp" />
     <ClCompile Include="features\menu\menu.cpp" />
     <ClCompile Include="features\settings\settings.cpp" />
     <ClCompile Include="features\utils\utils.cpp" />
@@ -160,6 +161,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="features\control\control.hpp" />
+    <ClInclude Include="features\dxgi\dxgi.hpp" />
     <ClInclude Include="features\menu\menu.hpp" />
     <ClInclude Include="features\settings\globals.hpp" />
     <ClInclude Include="features\settings\settings.hpp" />

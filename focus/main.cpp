@@ -64,6 +64,8 @@ int main(int, char**)
 	ImGui_ImplGlfw_InitForOpenGL(g.window, true);
 	ImGui_ImplOpenGL3_Init(glsl_version);
 
+	//cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
+
 	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
 
 	bool startupchecks = true;

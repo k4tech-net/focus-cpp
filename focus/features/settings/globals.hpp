@@ -20,6 +20,7 @@ struct Globals
         bool passedstartup;
         bool driver;
         bool files;
+        bool dxgi;
         bool hasFinished;
     } startup;
 

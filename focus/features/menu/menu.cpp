@@ -152,6 +152,20 @@ void Menu::startupchecks_gui() {
         ImGui::PopStyleColor();
     }
 
+	ImGui::Separator();
+
+	if (g.startup.dxgi) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+		ImGui::Text("DXGI was initialised");
+		ImGui::PopStyleColor();
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::Text("DXGI could not be initialised");
+		ImGui::Text("Please contact support");
+		ImGui::PopStyleColor();
+	}
+
     ImGui::End();
 }
 
@@ -179,8 +193,8 @@ void weaponKeyHandler() {
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (nCode == HC_ACTION) {
 		PMSLLHOOKSTRUCT pHookStruct = (PMSLLHOOKSTRUCT)lParam;
-		if (wParam == WM_MOUSEWHEEL) {
-			if (CHI.characterOptions[1]) {
+		if (wParam == WM_MOUSEWHEEL && (CHI.mode == "Character" || CHI.mode == "character")) {
+			if (CHI.characterOptions[2]) {
 				CHI.isPrimaryActive = !CHI.isPrimaryActive;
 			}
 		}
@@ -249,13 +263,23 @@ void keybindManager() {
 		CHI.currAutofire = CHI.primaryAutofire;
 	}
 	else if (CHI.mode == "Character" || CHI.mode == "character") {
+
 		if (CHI.characterOptions[0]) {
+
+			cv::Mat src = dx.CaptureDesktopDXGI();
+			if (!src.empty()) {
+				dx.detectWeapon(src, 0, 0);
+				//imshow("output", src); // Debug window
+			}
+		}
+
+		if (CHI.characterOptions[1]) {
 			weaponKeyHandler();
 		}
 
 		// Scrolling options is handled in its thread
 
-		if (CHI.characterOptions[2]) {
+		if (CHI.characterOptions[3]) {
 			auxKeyHandler();
 		}
 

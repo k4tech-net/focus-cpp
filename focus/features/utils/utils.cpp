@@ -1,7 +1,7 @@
 #include "utils.hpp"
 
 Mouse ms;
-Globals g;
+DXGI dx;
 
 void Utils::preciseSleep(double seconds) {
 	using namespace std;
@@ -91,6 +91,15 @@ void Utils::startUpChecksRunner() {
 
 	if (g.editor.jsonFiles.size() > 0) {
 		g.startup.files = true;
+	}
+
+	if (dx.InitDXGI()) {
+		g.startup.dxgi = true;
+	}
+	else {
+		g.startup.passedstartup = false;
+		g.startup.hasFinished = true;
+		return;
 	}
 	
 	g.startup.hasFinished = true;
