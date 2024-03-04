@@ -7,12 +7,6 @@
 #include <fstream>
 #include <sstream>
 
-#include <GLFW/glfw3.h>
-
-#define GLFW_EXPOSE_NATIVE_WIN32
-#include <GLFW/glfw3native.h>
-
-
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;

@@ -30,12 +30,6 @@
     <ClCompile Include="imgui\imgui_freetype.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_glfw.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
-    <ClCompile Include="imgui\imgui_impl_opengl3.cpp">
-      <Filter>imgui</Filter>
-    </ClCompile>
     <ClCompile Include="imgui\imgui_stdlib.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
@@ -50,6 +44,12 @@
     </ClCompile>
     <ClCompile Include="features\dxgi\dxgi.cpp">
       <Filter>features\dxgi</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_dx11.cpp">
+      <Filter>imgui</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\imgui_impl_win32.cpp">
+      <Filter>imgui</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -73,18 +73,6 @@
     </Filter>
     <Filter Include="imgui">
       <UniqueIdentifier>{9a1bc72e-e314-4996-8652-6f54ad2297bf}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="imgui\libs">
-      <UniqueIdentifier>{3aca266f-7e85-4812-8393-a1c68c7b9ca2}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="imgui\libs\glfw">
-      <UniqueIdentifier>{08fca3f4-5b82-429e-a5f1-3f3393c23848}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="imgui\libs\glfw\include">
-      <UniqueIdentifier>{19d2f562-8fcc-4ae6-bea2-51c786ee1c39}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="imgui\libs\glfw\include\GLFW">
-      <UniqueIdentifier>{3657d958-8095-4f31-b4b3-3849144cb601}</UniqueIdentifier>
     </Filter>
     <Filter Include="imgui\plugins">
       <UniqueIdentifier>{c0c8f340-1727-427b-a389-ff1648e29615}</UniqueIdentifier>
@@ -122,15 +110,6 @@
     <ClInclude Include="imgui\imgui_freetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_glfw.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_opengl3.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui\imgui_impl_opengl3_loader.h">
-      <Filter>imgui</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\imgui_internal.h">
       <Filter>imgui</Filter>
     </ClInclude>
@@ -146,22 +125,17 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\libs\glfw\include\GLFW\glfw3.h">
-      <Filter>imgui\libs\glfw\include\GLFW</Filter>
-    </ClInclude>
-    <ClInclude Include="imgui\libs\glfw\include\GLFW\glfw3native.h">
-      <Filter>imgui\libs\glfw\include\GLFW</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\plugins\TextEditor.h">
       <Filter>imgui\plugins</Filter>
     </ClInclude>
     <ClInclude Include="features\dxgi\dxgi.hpp">
       <Filter>features\dxgi</Filter>
     </ClInclude>
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="imgui\libs\glfw\glfw3.lib">
-      <Filter>imgui\libs\glfw</Filter>
-    </Library>
+    <ClInclude Include="imgui\imgui_impl_dx11.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\imgui_impl_win32.h">
+      <Filter>imgui</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

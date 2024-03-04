@@ -92,7 +92,7 @@ void Menu::popup(bool trigger, const char* type) {
         else if (type == "InitShutdown") {
             if (ImGui::Button("Close Anyway", ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
-                glfwSetWindowShouldClose(g.window, true);
+                g.done = true;
                 trigger = false;
             }
         }
@@ -110,6 +110,11 @@ void Menu::readGlobalSettings() {
 
 void Menu::updateCharacterData() {
 	readGlobalSettings();
+
+	if (CHI.mode == "Generic" || CHI.mode == "generic") {
+		CHI.selectedCharacterIndex = 0;
+	}
+
 	CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 	CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
 	CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
@@ -529,7 +534,7 @@ void Menu::gui()
 
 	if (g.initshutdown) {
 		if (!g.editor.unsavedChanges) {
-			glfwSetWindowShouldClose(g.window, true);
+			g.done = true;
 		}
 		else {
 			initshutdownpopup = true;

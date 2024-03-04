@@ -7,7 +7,7 @@ struct Globals
     bool shutdown;
     bool initshutdown;
 
-    GLFWwindow* window;
+    bool done;
 
     struct Editor {
         std::vector<std::string> jsonFiles;
