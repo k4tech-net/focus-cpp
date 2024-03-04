@@ -4,10 +4,12 @@
 
 #include "features/control/control.hpp"
 #include "features/menu/menu.hpp"
+#include "features/crypto/crypto.hpp"
 
 Control ctr;
 Menu mn;
 TextEditor editor;
+Crypto cr;
 
 // Data
 static ID3D11Device* g_pd3dDevice = nullptr;
@@ -22,6 +24,9 @@ void CleanupDeviceD3D();
 void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
+
+std::string key = "ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8=";
+std::string clientVerificationKey = "4783086bd5eacdea0f09c8fc6fea1642df93bbd8a314541b67a46bc4401fb55e";
 
 int main()
 {	
@@ -72,7 +77,10 @@ int main()
 
 	//cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
 
+	//cr.lastAuthTime.store(std::chrono::steady_clock::now());
+
 	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
+	std::thread watchdogThread(&Crypto::watchdog, &cr);
 
 	bool startupchecks = true;
 	auto startuptimer = std::chrono::high_resolution_clock::now();
@@ -170,6 +178,7 @@ int main()
 
 	g.shutdown = true;
 
+	watchdogThread.join();
 	driveMouseThread.join();
 	mouseScrollThread.join();
 
@@ -182,6 +191,18 @@ int main()
 	return 0;
 }
 
+extern "C" __declspec(dllexport) bool verification(const char* iv, const char* verificationKey) {
+
+	std::string decryptedVerificationKey = cr.decryptDecode(verificationKey, key, iv);
+
+	if (decryptedVerificationKey == clientVerificationKey && !g.shutdown) {
+		cr.lastAuthTime.store(std::chrono::steady_clock::now());
+		return true;
+	}
+	else {
+		return false;
+	}
+}
 
 // Helper functions
 bool CreateDeviceD3D(HWND hWnd)

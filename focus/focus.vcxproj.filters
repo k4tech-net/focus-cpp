@@ -51,6 +51,12 @@
     <ClCompile Include="imgui\imgui_impl_win32.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
+    <ClCompile Include="features\crypto\base64.cpp">
+      <Filter>features\crypto</Filter>
+    </ClCompile>
+    <ClCompile Include="features\crypto\crypto.cpp">
+      <Filter>features\crypto</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -79,6 +85,9 @@
     </Filter>
     <Filter Include="features\dxgi">
       <UniqueIdentifier>{c3247a5c-446d-4113-b355-88fd040a944d}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\crypto">
+      <UniqueIdentifier>{70b25cbf-e585-44ac-9cf8-eae5b82c1848}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -136,6 +145,12 @@
     </ClInclude>
     <ClInclude Include="imgui\imgui_impl_win32.h">
       <Filter>imgui</Filter>
+    </ClInclude>
+    <ClInclude Include="features\crypto\base64.h">
+      <Filter>features\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="features\crypto\crypto.hpp">
+      <Filter>features\crypto</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
