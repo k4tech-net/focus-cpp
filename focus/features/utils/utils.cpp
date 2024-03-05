@@ -56,7 +56,7 @@ std::vector<std::string> Utils::scanCurrentDirectoryForJsonFiles() {
 	std::vector<std::string> jsonFiles;
 	std::filesystem::path currentPath = std::filesystem::current_path();
 	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
-		if (entry.is_regular_file() && entry.path().extension() == ".json") {
+		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".json")) {
 			jsonFiles.push_back(entry.path().filename().string());
 		}
 	}

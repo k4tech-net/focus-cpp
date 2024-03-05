@@ -70,18 +70,18 @@ void Menu::popup(bool trigger, const char* type) {
     }
 
     if (ImGui::BeginPopupModal(type)) {
-        ImGui::Text("You have unsaved changes. Are you sure you want to complete this action?");
+        ImGui::Text(xorstr_("You have unsaved changes. Are you sure you want to complete this action?"));
         ImGui::Separator();
 
-        if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+        if (ImGui::Button(xorstr_("Cancel"), ImVec2(120, 0))) {
             ImGui::CloseCurrentPopup();
             g.initshutdown = false;
             trigger = false;
         }
         ImGui::SameLine();
 
-        if (type == "Open") {
-            if (ImGui::Button("Open Anyway", ImVec2(120, 0))) {
+        if (type == xorstr_("Open")) {
+            if (ImGui::Button(xorstr_("Open Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
                 g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
@@ -89,8 +89,8 @@ void Menu::popup(bool trigger, const char* type) {
                 trigger = false;
             }
         }
-        else if (type == "InitShutdown") {
-            if (ImGui::Button("Close Anyway", ImVec2(120, 0))) {
+        else if (type == xorstr_("InitShutdown")) {
+            if (ImGui::Button(xorstr_("Close Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 g.done = true;
                 trigger = false;
@@ -111,8 +111,9 @@ void Menu::readGlobalSettings() {
 void Menu::updateCharacterData() {
 	readGlobalSettings();
 
-	if (CHI.mode == "Generic" || CHI.mode == "generic") {
+	if (CHI.mode == xorstr_("Generic") || CHI.mode == xorstr_("generic")) {
 		CHI.selectedCharacterIndex = 0;
+		CHI.weaponOffOverride = false;
 	}
 
 	CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
@@ -125,18 +126,18 @@ void Menu::updateCharacterData() {
 
 void Menu::startupchecks_gui() {
     ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
-    ImGui::Begin("Startup Checks", NULL, STARTUPFLAGS);
+    ImGui::Begin(xorstr_("Startup Checks"), NULL, STARTUPFLAGS);
 
     if (g.startup.driver) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-        ImGui::Text("Driver is running");
+        ImGui::Text(xorstr_("Driver is running"));
         std::string str = ut.wstring_to_string(ms.findDriver());
         ImGui::Text(str.c_str());
         ImGui::PopStyleColor();
     }
     else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-        ImGui::Text("Driver is not running");
+        ImGui::Text(xorstr_("Driver is not running"));
         ImGui::PopStyleColor();
     }
 
@@ -144,7 +145,7 @@ void Menu::startupchecks_gui() {
 
     if (g.startup.files) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-        ImGui::Text("Settings files found");
+        ImGui::Text(xorstr_("Settings files found"));
         for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
             ImGui::Text(g.editor.jsonFiles[i].c_str());
         }
@@ -152,8 +153,8 @@ void Menu::startupchecks_gui() {
     }
     else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.6f, 0.2f, 1.0f));
-        ImGui::Text("No settings files found");
-        ImGui::Text("Please create one and refresh from the file tab");
+        ImGui::Text(xorstr_("No settings files found"));
+        ImGui::Text(xorstr_("Please create one and refresh from the file tab"));
         ImGui::PopStyleColor();
     }
 
@@ -161,13 +162,13 @@ void Menu::startupchecks_gui() {
 
 	if (g.startup.dxgi) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-		ImGui::Text("DXGI was initialised");
+		ImGui::Text(xorstr_("DXGI was initialised"));
 		ImGui::PopStyleColor();
 	}
 	else {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-		ImGui::Text("DXGI could not be initialised");
-		ImGui::Text("Please contact support");
+		ImGui::Text(xorstr_("DXGI could not be initialised"));
+		ImGui::Text(xorstr_("Please contact support"));
 		ImGui::PopStyleColor();
 	}
 
@@ -198,7 +199,7 @@ void weaponKeyHandler() {
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (nCode == HC_ACTION) {
 		PMSLLHOOKSTRUCT pHookStruct = (PMSLLHOOKSTRUCT)lParam;
-		if (wParam == WM_MOUSEWHEEL && (CHI.mode == "Character" || CHI.mode == "character")) {
+		if (wParam == WM_MOUSEWHEEL && (CHI.mode == xorstr_("Character") || CHI.mode == xorstr_("character"))) {
 			if (CHI.characterOptions[2]) {
 				CHI.isPrimaryActive = !CHI.isPrimaryActive;
 			}
@@ -211,7 +212,7 @@ void Menu::mouseScrollHandler()
 {
 	HHOOK mouseHook = SetWindowsHookEx(WH_MOUSE_LL, LowLevelMouseProc, NULL, 0);
 	if (mouseHook == NULL) {
-		std::cerr << "Failed to set up mouse hook." << std::endl;
+		std::cerr << xorstr_("Failed to set up mouse hook.") << std::endl;
 		return;
 	}
 
@@ -228,7 +229,7 @@ void Menu::mouseScrollHandler()
 			}
 		}
 		else if (result == WAIT_FAILED) {
-			std::cerr << "MsgWaitForMultipleObjects error" << std::endl;
+			std::cerr << xorstr_("MsgWaitForMultipleObjects error") << std::endl;
 			break;
 		}
 		// No messages in the queue
@@ -262,12 +263,12 @@ void auxKeyHandler() {
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
-	if (CHI.mode == "Generic" || CHI.mode == "generic") {
+	if (CHI.mode == xorstr_("Generic") || CHI.mode == xorstr_("generic")) {
 		CHI.isPrimaryActive = true;
 		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
 		CHI.currAutofire = CHI.primaryAutofire;
 	}
-	else if (CHI.mode == "Character" || CHI.mode == "character") {
+	else if (CHI.mode == xorstr_("Character") || CHI.mode == xorstr_("character")) {
 
 		if (CHI.characterOptions[0]) {
 
@@ -304,7 +305,7 @@ void Menu::gui()
 	bool inverseShutdown = !g.initshutdown;
 
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
-	ImGui::Begin("Focus", &inverseShutdown, WINDOWFLAGS);
+	ImGui::Begin(xorstr_("Focus"), &inverseShutdown, WINDOWFLAGS);
 
 	auto cpos = editor.GetCursorPosition();
 	bool ro = editor.IsReadOnly();
@@ -314,15 +315,15 @@ void Menu::gui()
 
 	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
-	std::vector<const char*> MultiOptions = { "R6 Auto Weapon Detection", "Manual Weapon Detection", "Scroll Detection", "Aux Disable" };
+	std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Manual Weapon Detection"), xorstr_("Scroll Detection"), xorstr_("Aux Disable") };
 
 	keybindManager();
 
 	if (ImGui::BeginMenuBar())
 	{
-		if (ImGui::BeginMenu("File"))
+		if (ImGui::BeginMenu(xorstr_("File")))
 		{
-			if (ImGui::MenuItem("Save", "Ctrl-S", nullptr, !ro))
+			if (ImGui::MenuItem(xorstr_("Save"), xorstr_("Ctrl-S"), nullptr, !ro))
 			{
 				auto textToSave = editor.GetText();
 				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
@@ -331,11 +332,11 @@ void Menu::gui()
 
 				updateCharacterData();
 			}
-			if (ImGui::MenuItem("Refresh", "Ctrl-R"))
+			if (ImGui::MenuItem(xorstr_("Refresh"), xorstr_("Ctrl-R")))
 			{
 				g.editor.jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
 			}
-			if (ImGui::BeginMenu("Open")) {
+			if (ImGui::BeginMenu(xorstr_("Open"))) {
 				for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
 					if (ImGui::MenuItem(g.editor.jsonFiles[i].c_str())) {
 						g.editor.activeFileIndex = i;
@@ -355,81 +356,81 @@ void Menu::gui()
 
 			ImGui::EndMenu();
 		}
-		if (ImGui::BeginMenu("Edit"))
+		if (ImGui::BeginMenu(xorstr_("Edit")))
 		{
-			if (ImGui::MenuItem("Read-only mode", nullptr, &ro))
+			if (ImGui::MenuItem(xorstr_("Read-only mode"), nullptr, &ro))
 				editor.SetReadOnly(ro);
 			ImGui::Separator();
 
-			if (ImGui::MenuItem("Undo", "ALT-Backspace", nullptr, !ro && editor.CanUndo()))
+			if (ImGui::MenuItem(xorstr_("Undo"), xorstr_("ALT-Backspace"), nullptr, !ro && editor.CanUndo()))
 				editor.Undo();
-			if (ImGui::MenuItem("Redo", "Ctrl-Y", nullptr, !ro && editor.CanRedo()))
+			if (ImGui::MenuItem(xorstr_("Redo"), xorstr_("Ctrl-Y"), nullptr, !ro && editor.CanRedo()))
 				editor.Redo();
 
 			ImGui::Separator();
 
-			if (ImGui::MenuItem("Copy", "Ctrl-C", nullptr, editor.HasSelection()))
+			if (ImGui::MenuItem(xorstr_("Copy"), xorstr_("Ctrl-C"), nullptr, editor.HasSelection()))
 				editor.Copy();
-			if (ImGui::MenuItem("Cut", "Ctrl-X", nullptr, !ro && editor.HasSelection()))
+			if (ImGui::MenuItem(xorstr_("Cut"), xorstr_("Ctrl-X"), nullptr, !ro && editor.HasSelection()))
 				editor.Cut();
-			if (ImGui::MenuItem("Delete", "Del", nullptr, !ro && editor.HasSelection()))
+			if (ImGui::MenuItem(xorstr_("Delete"), xorstr_("Del"), nullptr, !ro && editor.HasSelection()))
 				editor.Delete();
-			if (ImGui::MenuItem("Paste", "Ctrl-V", nullptr, !ro && ImGui::GetClipboardText() != nullptr))
+			if (ImGui::MenuItem(xorstr_("Paste"), xorstr_("Ctrl-V"), nullptr, !ro && ImGui::GetClipboardText() != nullptr))
 				editor.Paste();
 
 			ImGui::Separator();
 
-			if (ImGui::MenuItem("Select all", nullptr, nullptr))
+			if (ImGui::MenuItem(xorstr_("Select all"), nullptr, nullptr))
 				editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
 
 			ImGui::EndMenu();
 		}
 
-		if (ImGui::BeginMenu("View"))
+		if (ImGui::BeginMenu(xorstr_("View")))
 		{
-			if (ImGui::MenuItem("Dark palette"))
+			if (ImGui::MenuItem(xorstr_("Dark palette")))
 				editor.SetPalette(TextEditor::GetDarkPalette());
-			if (ImGui::MenuItem("Light palette"))
+			if (ImGui::MenuItem(xorstr_("Light palette")))
 				editor.SetPalette(TextEditor::GetLightPalette());
-			if (ImGui::MenuItem("Retro blue palette"))
+			if (ImGui::MenuItem(xorstr_("Retro blue palette")))
 				editor.SetPalette(TextEditor::GetRetroBluePalette());
 			ImGui::EndMenu();
 		}
 		ImGui::EndMenuBar();
 	}
 
-	if (ImGui::BeginTabBar("##TabBar"))
+	if (ImGui::BeginTabBar(xorstr_("##TabBar")))
 	{
-		if (CHI.mode == "Generic" || CHI.mode == "generic") {
-			if (ImGui::BeginTabItem("Weapon")) {
+		if (CHI.mode == xorstr_("Generic") || CHI.mode == xorstr_("generic")) {
+			if (ImGui::BeginTabItem(xorstr_("Weapon"))) {
 				if (CHI.characters.size() > 0) {
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-					if (comboBoxWep("Weapon", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
+					if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 						readGlobalSettings();
 					}
 
-					ImGui::Checkbox("AutoFire", &CHI.primaryAutofire);
+					ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
 
 					ImGui::Spacing();
 					ImGui::Spacing();
-					ImGui::SeparatorText("Extra Weapon Data");
+					ImGui::SeparatorText(xorstr_("Extra Weapon Data"));
 
-					ImGui::Text("XDeadTime: %d", CHI.activeWeapon.xdeadtime);
+					ImGui::Text(xorstr_("XDeadTime: %d"), CHI.activeWeapon.xdeadtime);
 				}
 				else {
-					ImGui::Text("Please load a weapons file");
+					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
 
 				ImGui::EndTabItem();
 			}
 		}
-		else if (CHI.mode == "Character" || CHI.mode == "character") {
-			if (ImGui::BeginTabItem("Weapon")) {
+		else if (CHI.mode == xorstr_("Character") || CHI.mode == xorstr_("character")) {
+			if (ImGui::BeginTabItem(xorstr_("Weapon"))) {
 				if (CHI.characters.size() > 0) {
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-					if (comboBoxChar("Character", CHI.selectedCharacterIndex, CHI.characters)) {
+					if (comboBoxChar(xorstr_("Character"), CHI.selectedCharacterIndex, CHI.characters)) {
 						updateCharacterData();
 					}
 
@@ -438,61 +439,61 @@ void Menu::gui()
 
 					if (CHI.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-						ImGui::SeparatorText("Primary");
+						ImGui::SeparatorText(xorstr_("Primary"));
 						ImGui::PopStyleColor();
 					}
 					else if (CHI.isPrimaryActive) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-						ImGui::SeparatorText("Primary");
+						ImGui::SeparatorText(xorstr_("Primary"));
 						ImGui::PopStyleColor();
 					}
 					else {
-						ImGui::SeparatorText("Primary");
+						ImGui::SeparatorText(xorstr_("Primary"));
 					}
 
-					if (comboBoxWep("Primary", CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
+					if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 						readGlobalSettings();
 					}
-					ImGui::Checkbox("Primary AutoFire", &CHI.primaryAutofire);
+					ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
 
 					ImGui::Spacing();
 					ImGui::Spacing();
 
 					if (CHI.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
-						ImGui::SeparatorText("Secondary");
+						ImGui::SeparatorText(xorstr_("Secondary"));
 						ImGui::PopStyleColor();
 					}
 					else if (!CHI.isPrimaryActive) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-						ImGui::SeparatorText("Secondary");
+						ImGui::SeparatorText(xorstr_("Secondary"));
 						ImGui::PopStyleColor();
 					}
 					else {
-						ImGui::SeparatorText("Secondary");
+						ImGui::SeparatorText(xorstr_("Secondary"));
 					}
 
-					if (comboBoxWep("Secondary", CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
+					if (comboBoxWep(xorstr_("Secondary"), CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
 						readGlobalSettings();
 					}
-					ImGui::Checkbox("Secondary AutoFire", &CHI.secondaryAutofire);
+					ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
 
 					ImGui::Spacing();
 					ImGui::Spacing();
-					ImGui::SeparatorText("Options");
+					ImGui::SeparatorText(xorstr_("Options"));
 
-					if (multiCombo("Options", MultiOptions, CHI.characterOptions)) {
+					if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
 						readGlobalSettings();
 					}
 
 					ImGui::Spacing();
 					ImGui::Spacing();
-					ImGui::SeparatorText("Extra Weapon Data");
+					ImGui::SeparatorText(xorstr_("Extra Weapon Data"));
 
-					ImGui::Text("XDeadTime: %d", CHI.activeWeapon.xdeadtime);
+					ImGui::Text(xorstr_("XDeadTime: %d"), CHI.activeWeapon.xdeadtime);
 				}
 				else {
-					ImGui::Text("Please load a weapons file");
+					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
 
 				ImGui::EndTabItem();
@@ -500,18 +501,18 @@ void Menu::gui()
 		}
 
 
-		if (ImGui::BeginTabItem("Edit")) {
+		if (ImGui::BeginTabItem(xorstr_("Edit"))) {
 
-			ImGui::Text("%6d/%-6d %6d lines  | %s | %s | %s | %s | %s", cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-				editor.IsOverwrite() ? "Ovr" : "Ins",
-				editor.CanUndo() ? "*" : " ",
-				g.editor.unsavedChanges ? "*" : " ",
+			ImGui::Text(xorstr_("%6d/%-6d %6d lines  | %s | %s | %s | %s | %s"), cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
+				editor.IsOverwrite() ? xorstr_("Ovr") : xorstr_("Ins"),
+				editor.CanUndo() ? xorstr_("*") : xorstr_(" "),
+				g.editor.unsavedChanges ? xorstr_("*") : xorstr_(" "),
 				editor.GetLanguageDefinition().mName.c_str(), g.editor.activeFile.c_str());
 
 			ImGui::Spacing();
 			ImGui::Spacing();
 
-			editor.Render("TextEditor");
+			editor.Render(xorstr_("TextEditor"));
 
 			ImGuiIO& io = ImGui::GetIO();
 			if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
@@ -541,8 +542,8 @@ void Menu::gui()
 		}
 	}
 
-	popup(openmodal, "Open");
-	popup(initshutdownpopup, "InitShutdown");
+	popup(openmodal, xorstr_("Open"));
+	popup(initshutdownpopup, xorstr_("InitShutdown"));
 
 	ImGui::End();
 }

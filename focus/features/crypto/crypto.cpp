@@ -53,7 +53,7 @@ std::string Crypto::decrypt(std::string ciphertext, std::string key, std::string
 
     // The ciphertext should be a multiple of the block size for CBC mode
     if (ciphertext.length() % AES_BLOCK_SIZE != 0) {
-        throw std::runtime_error("Ciphertext length is not a multiple of the block size");
+        throw std::runtime_error(xorstr_("Ciphertext length is not a multiple of the block size"));
     }
 
     std::string decryptedText;
@@ -76,11 +76,11 @@ std::string Crypto::decrypt(std::string ciphertext, std::string key, std::string
             decryptedText.resize(decryptedText.length() - lastChar); // Remove padding bytes
         }
         else {
-            throw std::runtime_error("Invalid padding on decrypted text");
+            throw std::runtime_error(xorstr_("Invalid padding on decrypted text"));
         }
     }
     else {
-        throw std::runtime_error("Invalid padding on decrypted text");
+        throw std::runtime_error(xorstr_("Invalid padding on decrypted text"));
     }
 
     return decryptedText;
@@ -91,7 +91,7 @@ std::string Crypto::generateIV() {
 
     // Generate random bytes for the IV
     if (!RAND_bytes(iv.data(), AES_BLOCK_SIZE)) {
-        throw std::runtime_error("Failed to generate random IV");
+        throw std::runtime_error(xorstr_("Failed to generate random IV"));
     }
 
     // Convert the IV to a std::string
@@ -121,6 +121,8 @@ void Crypto::watchdog() {
             exit(0);
             break; // Exit the thread loop
         }
+
+        // Debugger in here too
 
         // Sleep for a short time before checking again
         std::this_thread::sleep_for(std::chrono::seconds(1));

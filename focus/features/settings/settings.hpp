@@ -6,6 +6,7 @@
 #include <optional>
 #include <fstream>
 #include <sstream>
+#include <xorstr.hpp>
 
 #include <nlohmann/json.hpp>
 

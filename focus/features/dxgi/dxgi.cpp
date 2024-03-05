@@ -7,7 +7,7 @@ bool DXGI::InitDXGI() {
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
     HRESULT hr = D3D11CreateDevice(nullptr, D3D_DRIVER_TYPE_HARDWARE, nullptr, 0, nullptr, 0, D3D11_SDK_VERSION, &gDevice, &featureLevel, &gContext);
     if (FAILED(hr)) {
-        std::cerr << "Failed to create D3D11 device" << std::endl;
+        std::cerr << xorstr_("Failed to create D3D11 device") << std::endl;
         return false;
     }
 
@@ -46,7 +46,7 @@ cv::Mat DXGI::CaptureDesktopDXGI() {
     // Try to acquire next frame
     HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
     if (FAILED(hr)) {
-        std::cerr << "Failed to acquire next frame" << std::endl;
+        std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
         return cv::Mat();
     }
 

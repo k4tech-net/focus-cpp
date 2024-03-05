@@ -7,7 +7,7 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
 
     std::ifstream file(filename);
     if (!file.is_open()) {
-        std::cerr << "Error opening file: " << filename << std::endl;
+        std::cerr << xorstr_("Error opening file: ") << filename << std::endl;
         return {};
     }
 
@@ -15,25 +15,25 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
     file >> jsonData;
 
     if (!jsonData.is_object()) {
-        std::cerr << "Invalid JSON format." << std::endl;
+        std::cerr << xorstr_("Invalid JSON format.") << std::endl;
         return {};
     }
 
     Settings setting;
 
-	std::string mode = jsonData["Mode"];
+	std::string mode = jsonData[xorstr_("Mode")];
 
 	std::vector<std::string> wpn_keybinds;
     std::vector<std::string> aux_keybinds;
 
-    if (mode == "Generic" || mode == "generic") {
-       setting.charactername = "Generic";
+    if (mode == xorstr_("Generic") || mode == xorstr_("generic")) {
+       setting.charactername = xorstr_("Generic");
 
        wpn_keybinds = { "" };
        aux_keybinds = { "" };
 
         for (auto& item : jsonData.items()) {
-            if (item.key() != "Mode" && item.key() != "Weapon Keybinds" && item.key() != "Aux Keybinds") {
+            if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Weapon Keybinds") && item.key() != xorstr_("Aux Keybinds")) {
                 weaponData weapon;
 
                 weapon.weaponname = item.key();
@@ -49,14 +49,14 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
                             weapon.values.push_back(valueArray[i].get<std::vector<int>>());
                         }
                         else {
-                            std::cerr << "Invalid nested array for weapon: " << weapon.weaponname << std::endl;
+                            std::cerr << xorstr_("Invalid nested array for weapon: ") << weapon.weaponname << std::endl;
                         }
                     }
 
                     setting.weapondata.push_back(weapon);
                 }
                 else {
-                    std::cerr << "Invalid format for weapon: " << weapon.weaponname << std::endl;
+                    std::cerr << xorstr_("Invalid format for weapon: ") << weapon.weaponname << std::endl;
                 }
             }
         }
@@ -69,28 +69,28 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
 
         settings.push_back(setting);
 	}
-    else if (mode == "Character" || mode == "character") {
+    else if (mode == xorstr_("Character") || mode == xorstr_("character")) {
 
-        wpn_keybinds = jsonData["Weapon Keybinds"];
-        aux_keybinds = jsonData["Aux Keybinds"];
+        wpn_keybinds = jsonData[xorstr_("Weapon Keybinds")];
+        aux_keybinds = jsonData[xorstr_("Aux Keybinds")];
 
         for (auto& characterItem : jsonData.items()) {
-            if (characterItem.key() != "Mode" && characterItem.key() != "Weapon Keybinds" && characterItem.key() != "Aux Keybinds") {
+            if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Weapon Keybinds") && characterItem.key() != xorstr_("Aux Keybinds")) {
                 Settings setting; // Create a new Settings object for each character
 
                 setting.charactername = characterItem.key();
 
                 auto& characterData = characterItem.value();
                 if (!characterData.is_object()) {
-                    std::cerr << "Invalid data for character: " << setting.charactername << std::endl;
+                    std::cerr << xorstr_("Invalid data for character: ") << setting.charactername << std::endl;
                     continue;
                 }
 
                 for (auto& weaponItem : characterData.items()) {
-                    if (weaponItem.key() == "Options") {
+                    if (weaponItem.key() == xorstr_("Options")) {
                         setting.options = weaponItem.value().get<std::vector<bool>>();
                     }
-                    else if (weaponItem.key() == "Default Weapons") {
+                    else if (weaponItem.key() == xorstr_("Default Weapons")) {
                         setting.defaultweapon = weaponItem.value().get<std::vector<int>>();
                     }
                     else {
@@ -109,14 +109,14 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
                                     weapon.values.push_back(valueArray[i].get<std::vector<int>>());
                                 }
                                 else {
-                                    std::cerr << "Invalid nested array for weapon: " << weapon.weaponname << std::endl;
+                                    std::cerr << xorstr_("Invalid nested array for weapon: ") << weapon.weaponname << std::endl;
                                 }
                             }
 
                             setting.weapondata.push_back(weapon);
                         }
                         else {
-                            std::cerr << "Invalid format for weapon: " << weapon.weaponname << std::endl;
+                            std::cerr << xorstr_("Invalid format for weapon: ") << weapon.weaponname << std::endl;
                         }
                     }
                 }
@@ -126,7 +126,7 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
         }
     }
     else {
-		std::cerr << "Invalid mode: " << mode << std::endl;
+		std::cerr << xorstr_("Invalid mode: ") << mode << std::endl;
     }
 
     return std::make_tuple(mode, wpn_keybinds, aux_keybinds);

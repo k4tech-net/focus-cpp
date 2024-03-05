@@ -6,6 +6,8 @@
 #include "features/menu/menu.hpp"
 #include "features/crypto/crypto.hpp"
 
+#include <xorstr.hpp>
+
 Control ctr;
 Menu mn;
 TextEditor editor;
@@ -25,8 +27,8 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-std::string key = "ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8=";
-std::string clientVerificationKey = "4783086bd5eacdea0f09c8fc6fea1642df93bbd8a314541b67a46bc4401fb55e";
+std::string key = xorstr_("ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8=");
+std::string clientVerificationKey = xorstr_("4783086bd5eacdea0f09c8fc6fea1642df93bbd8a314541b67a46bc4401fb55e");
 
 int main()
 {	
@@ -77,7 +79,7 @@ int main()
 
 	//cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
 
-	//cr.lastAuthTime.store(std::chrono::steady_clock::now());
+	cr.lastAuthTime.store(std::chrono::steady_clock::now());
 
 	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
 	std::thread watchdogThread(&Crypto::watchdog, &cr);

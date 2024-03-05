@@ -3,6 +3,7 @@
 #include <string>
 #include <vector>
 #include <iostream>
+#include <xorstr.hpp>
 
 #include <openssl/aes.h>
 #include <openssl/rand.h>
