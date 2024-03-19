@@ -77,12 +77,17 @@ int main()
 	ImGui_ImplWin32_Init(hwnd);
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
-	//cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
+	#if _DEBUG
+	cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
+	#endif
 
 	cr.lastAuthTime.store(std::chrono::steady_clock::now());
 
 	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
+
+	#if !_DEBUG
 	std::thread watchdogThread(&Crypto::watchdog, &cr);
+	#endif
 
 	bool startupchecks = true;
 	auto startuptimer = std::chrono::high_resolution_clock::now();
@@ -157,6 +162,12 @@ int main()
 
 		mn.gui();
 
+		std::cout << ImGui::GetPlatformIO().Viewports.Size << std::endl;
+		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
+			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[1];
+			viewport->Flags |= ImGuiViewportFlags_NoTaskBarIcon;
+		}
+
 		// Rendering
 		ImGui::Render();
 		const float clear_color_with_alpha[4] = { clear_color.x * clear_color.w, clear_color.y * clear_color.w, clear_color.z * clear_color.w, clear_color.w };
@@ -180,7 +191,9 @@ int main()
 
 	g.shutdown = true;
 
+#if !_DEBUG
 	watchdogThread.join();
+#endif
 	driveMouseThread.join();
 	mouseScrollThread.join();
 

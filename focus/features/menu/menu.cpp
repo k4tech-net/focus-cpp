@@ -274,8 +274,11 @@ void keybindManager() {
 
 			cv::Mat src = dx.CaptureDesktopDXGI();
 			if (!src.empty()) {
-				dx.detectWeapon(src, 0, 0);
-				//imshow("output", src); // Debug window
+				dx.detectWeaponR6(src, 0, 0);
+
+				#if _DEBUG
+				imshow("output", src); // Debug window
+				#endif
 			}
 		}
 

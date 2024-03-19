@@ -4,7 +4,7 @@
 int main();
 std::thread gAppThread;
 
-#if defined _DEBUG
+#if _DEBUG
 INT WINAPI WinMain(HINSTANCE /*hInstance*/, HINSTANCE /*hPrevInstance*/, PSTR /*lpCmdLine*/, INT /*nCmdShow*/)
 {
 	int exit_result = main();

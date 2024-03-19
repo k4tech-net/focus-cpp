@@ -76,9 +76,9 @@ cv::Mat DXGI::CaptureDesktopDXGI() {
 
     // Define ratios for crop region
     float cropRatioX = 0.8; // 20% from left
-    float cropRatioY = 0.86; // 20% from top
+    float cropRatioY = 0.82; // 20% from top
     float cropRatioWidth = 0.18; // 60% of total width
-    float cropRatioHeight = 0.1; // 60% of total height
+    float cropRatioHeight = 0.14; // 60% of total height
 
     // Calculate bottom right quarter
     int cropX = desc.Width * cropRatioX;
@@ -117,34 +117,43 @@ void DXGI::CleanupDXGI() {
     }
 }
 
-void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {
+void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {
     // Define the region of interest (ROI) coordinates as a percentage of the frame
     float roi1XPercent = 0.02; // X coordinate percentage for ROI 1
-    float roi1YPercent = 0.08; // Y coordinate percentage for ROI 1
+    float roi1YPercent = 0.06; // Y coordinate percentage for ROI 1
     float roi1WidthPercent = 0.9; // Width percentage for ROI 1
-    float roi1HeightPercent = 0.45; // Height percentage for ROI 1
+    float roi1HeightPercent = 0.25; // Height percentage for ROI 1
 
     float roi2XPercent = 0.02; // X coordinate percentage for ROI 2
-    float roi2YPercent = 0.53; // Y coordinate percentage for ROI 2
+    float roi2YPercent = 0.4; // Y coordinate percentage for ROI 2
     float roi2WidthPercent = 0.9; // Width percentage for ROI 2
-    float roi2HeightPercent = 0.45; // Height percentage for ROI 2
+    float roi2HeightPercent = 0.25; // Height percentage for ROI 2
+
+    float roi3XPercent = 0.02; // X coordinate percentage for ROI 3
+    float roi3YPercent = 0.7; // Y coordinate percentage for ROI 3
+    float roi3WidthPercent = 0.9; // Width percentage for ROI 3
+    float roi3HeightPercent = 0.25; // Height percentage for ROI 3
 
     // Calculate ROI coordinates based on percentage of frame dimensions
     cv::Rect roi1(src.cols * roi1XPercent, src.rows * roi1YPercent, src.cols * roi1WidthPercent, src.rows * roi1HeightPercent);
     cv::Rect roi2(src.cols * roi2XPercent, src.rows * roi2YPercent, src.cols * roi2WidthPercent, src.rows * roi2HeightPercent);
+    cv::Rect roi3(src.cols * roi3XPercent, src.rows * roi3YPercent, src.cols * roi3WidthPercent, src.rows * roi3HeightPercent);
 
     // Highlight the ROIs on the source image for alignment
     rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1
     rectangle(src, roi2, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 2
+    rectangle(src, roi3, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 3
 
     // Extract the ROIs from the source image
     cv::Mat roiImg1 = src(roi1);
     cv::Mat roiImg2 = src(roi2);
+    cv::Mat roiImg3 = src(roi3);
 
     // Convert ROIs to RGB for processing
-    cv::Mat rgb1, rgb2;
+    cv::Mat rgb1, rgb2, rgb3;
     cvtColor(roiImg1, rgb1, cv::COLOR_BGR2RGB);
     cvtColor(roiImg2, rgb2, cv::COLOR_BGR2RGB);
+    cvtColor(roiImg3, rgb3, cv::COLOR_BGR2RGB);
 
     // Define the color to compare
     cv::Vec3b targetColor(15, 255, 243); // RGB(15, 255, 243)
@@ -153,7 +162,7 @@ void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActi
     int colorBuffer = 15;
 
     // Calculate the total area of matching color in each ROI
-    double area1 = 0, area2 = 0;
+    double area1 = 0, area2 = 0, area3 = 0;
     for (int y = 0; y < rgb1.rows; ++y) {
         for (int x = 0; x < rgb1.cols; ++x) {
             cv::Vec3b pixel = rgb1.at<cv::Vec3b>(y, x);
@@ -174,6 +183,16 @@ void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActi
             }
         }
     }
+    for (int y = 0; y < rgb3.rows; ++y) {
+        for (int x = 0; x < rgb3.cols; ++x) {
+            cv::Vec3b pixel = rgb3.at<cv::Vec3b>(y, x);
+            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
+                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
+                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
+                area3++;
+            }
+        }
+    }
 
     // Apply hysteresis to prevent rapid changes in ROIs
     if (abs(area1 - prevArea1) < hysteresisThreshold) {
@@ -182,34 +201,42 @@ void DXGI::detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActi
     if (abs(area2 - prevArea2) < hysteresisThreshold) {
         area2 = prevArea2;
     }
+    if (abs(area3 - prevArea3) < hysteresisThreshold) {
+        area3 = prevArea3;
+    }
 
     // Update previous area values
     prevArea1 = area1;
     prevArea2 = area2;
+    prevArea3 = area3;
 
     // Determine which ROI has the largest area of the specified color
     int activeROI = 0;
-    if (area1 > minActiveAreaThreshold && area1 > area2) {
+    if (area1 > minActiveAreaThreshold && area1 > area2 && area1 > area3) {
         activeROI = 1;
         rectangle(src, roi1, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 1
     }
-    else if (area2 > minActiveAreaThreshold && area2 > area1) {
+    else if (area2 > minActiveAreaThreshold && area2 > area1 && area2 > area3) {
         activeROI = 2;
         rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
+    } 
+    else if (area3 > minActiveAreaThreshold && area3 > area1 && area3 > area2) {
+        activeROI = 3;
+        rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
     }
 
     // Print the index of the active ROI or indicate neither if both are not active
-    if (activeROI == 0) {
+    if (activeROI == 0 || activeROI == 1) {
         //std::cout << "Neither ROI is active" << std::endl;
         CHI.weaponOffOverride = true;
     }
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
         CHI.weaponOffOverride = false;
-		if (activeROI == 1) {
+		if (activeROI == 2) {
 			CHI.isPrimaryActive = true;
 		}
-		else if (activeROI == 2) {
+		else if (activeROI == 3) {
 			CHI.isPrimaryActive = false;
 		}
     }

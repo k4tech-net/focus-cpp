@@ -2,7 +2,7 @@
 
 #include "../../includes.hpp"
 
-#define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize)
+#define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiViewportFlags_NoDecoration)
 #define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar)
 
 class Menu

@@ -25,14 +25,14 @@ public:
 	bool InitDXGI();
 	cv::Mat CaptureDesktopDXGI();
 	void CleanupDXGI();
-	void detectWeapon(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
+	void detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
 
 private:
 	// DXGI variables
 	ID3D11Device* gDevice = nullptr;
 	ID3D11DeviceContext* gContext = nullptr;
 	IDXGIOutputDuplication* gOutputDuplication = nullptr;
-	double prevArea1 = 0, prevArea2 = 0;
+	double prevArea1 = 0, prevArea2 = 0, prevArea3 = 0;
 };
 
 extern Globals g;
