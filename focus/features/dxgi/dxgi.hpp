@@ -32,7 +32,8 @@ private:
 	ID3D11Device* gDevice = nullptr;
 	ID3D11DeviceContext* gContext = nullptr;
 	IDXGIOutputDuplication* gOutputDuplication = nullptr;
-	double prevArea1 = 0, prevArea2 = 0, prevArea3 = 0;
+	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
+	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
 };
 
 extern Globals g;

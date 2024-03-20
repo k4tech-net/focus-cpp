@@ -274,7 +274,7 @@ void keybindManager() {
 
 			cv::Mat src = dx.CaptureDesktopDXGI();
 			if (!src.empty()) {
-				dx.detectWeaponR6(src, 0, 0);
+				dx.detectWeaponR6(src, 25, 75);
 
 				#if _DEBUG
 				imshow("output", src); // Debug window
@@ -318,7 +318,7 @@ void Menu::gui()
 
 	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
 
-	std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Manual Weapon Detection"), xorstr_("Scroll Detection"), xorstr_("Aux Disable") };
+	std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Manual Weapon Detection"), xorstr_("Scroll Detection"), xorstr_("Aux Disable"), xorstr_("Gadget Detection Override") };
 
 	keybindManager();
 

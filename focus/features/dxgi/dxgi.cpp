@@ -155,74 +155,122 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     cvtColor(roiImg2, rgb2, cv::COLOR_BGR2RGB);
     cvtColor(roiImg3, rgb3, cv::COLOR_BGR2RGB);
 
-    // Define the color to compare
-    cv::Vec3b targetColor(15, 255, 243); // RGB(15, 255, 243)
+    cv::Vec3b primaryTargetColour = cv::Vec3b(15, 255, 243);
+    int primaryBuffer = 15;
 
-    // Define the buffer size for color matching
-    int colorBuffer = 15;
+    cv::Vec3b secondaryTargetColour = cv::Vec3b(160, 169, 153);
+    int secondaryBuffer = 15;
 
     // Calculate the total area of matching color in each ROI
-    double area1 = 0, area2 = 0, area3 = 0;
+    double primaryArea1 = 0, primaryArea2 = 0, primaryArea3 = 0;
+    double secondaryArea1 = 0, secondaryArea2 = 0, secondaryArea3 = 0;
+
     for (int y = 0; y < rgb1.rows; ++y) {
         for (int x = 0; x < rgb1.cols; ++x) {
             cv::Vec3b pixel = rgb1.at<cv::Vec3b>(y, x);
-            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
-                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
-                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
-                area1++;
+            if (pixel[0] >= primaryTargetColour[0] - primaryBuffer && pixel[0] <= primaryTargetColour[0] + primaryBuffer &&
+                pixel[1] >= primaryTargetColour[1] - primaryBuffer && pixel[1] <= primaryTargetColour[1] + primaryBuffer &&
+                pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
+                primaryArea1++;
+            }
+
+            if (CHI.characterOptions[4] &&
+                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
+                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
+                secondaryArea1++;
             }
         }
     }
     for (int y = 0; y < rgb2.rows; ++y) {
         for (int x = 0; x < rgb2.cols; ++x) {
             cv::Vec3b pixel = rgb2.at<cv::Vec3b>(y, x);
-            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
-                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
-                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
-                area2++;
+            if (pixel[0] >= primaryTargetColour[0] - primaryBuffer && pixel[0] <= primaryTargetColour[0] + primaryBuffer &&
+                pixel[1] >= primaryTargetColour[1] - primaryBuffer && pixel[1] <= primaryTargetColour[1] + primaryBuffer &&
+                pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
+                primaryArea2++;
+            }
+
+            if (CHI.characterOptions[4] &&
+                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
+                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
+                secondaryArea2++;
             }
         }
     }
     for (int y = 0; y < rgb3.rows; ++y) {
         for (int x = 0; x < rgb3.cols; ++x) {
             cv::Vec3b pixel = rgb3.at<cv::Vec3b>(y, x);
-            if (pixel[0] >= targetColor[0] - colorBuffer && pixel[0] <= targetColor[0] + colorBuffer &&
-                pixel[1] >= targetColor[1] - colorBuffer && pixel[1] <= targetColor[1] + colorBuffer &&
-                pixel[2] >= targetColor[2] - colorBuffer && pixel[2] <= targetColor[2] + colorBuffer) {
-                area3++;
+            if (pixel[0] >= primaryTargetColour[0] - primaryBuffer && pixel[0] <= primaryTargetColour[0] + primaryBuffer &&
+                pixel[1] >= primaryTargetColour[1] - primaryBuffer && pixel[1] <= primaryTargetColour[1] + primaryBuffer &&
+                pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
+                primaryArea3++;
+            }
+
+            if (CHI.characterOptions[4] &&
+                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
+                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
+                secondaryArea3++;
             }
         }
     }
 
     // Apply hysteresis to prevent rapid changes in ROIs
-    if (abs(area1 - prevArea1) < hysteresisThreshold) {
-        area1 = prevArea1;
+    if (abs(primaryArea1 - prevPrimaryArea1) < hysteresisThreshold) {
+        primaryArea1 = prevPrimaryArea1;
     }
-    if (abs(area2 - prevArea2) < hysteresisThreshold) {
-        area2 = prevArea2;
+    if (abs(primaryArea2 - prevPrimaryArea2) < hysteresisThreshold) {
+        primaryArea2 = prevPrimaryArea2;
     }
-    if (abs(area3 - prevArea3) < hysteresisThreshold) {
-        area3 = prevArea3;
+    if (abs(primaryArea3 - prevPrimaryArea3) < hysteresisThreshold) {
+        primaryArea3 = prevPrimaryArea3;
+    }
+    if (abs(secondaryArea1 - prevSecondaryArea1) < hysteresisThreshold) {
+        secondaryArea1 = prevSecondaryArea1;
+    }
+    if (abs(secondaryArea2 - prevSecondaryArea2) < hysteresisThreshold) {
+        secondaryArea2 = prevSecondaryArea2;
+    }
+    if (abs(secondaryArea3 - prevSecondaryArea3) < hysteresisThreshold) {
+        secondaryArea3 = prevSecondaryArea3;
     }
 
     // Update previous area values
-    prevArea1 = area1;
-    prevArea2 = area2;
-    prevArea3 = area3;
+    prevPrimaryArea1 = primaryArea1;
+    prevPrimaryArea2 = primaryArea2;
+    prevPrimaryArea3 = primaryArea3;
+	prevSecondaryArea1 = secondaryArea1;
+    prevSecondaryArea2 = secondaryArea2;
+    prevSecondaryArea3 = secondaryArea3;
 
     // Determine which ROI has the largest area of the specified color
     int activeROI = 0;
-    if (area1 > minActiveAreaThreshold && area1 > area2 && area1 > area3) {
-        activeROI = 1;
-        rectangle(src, roi1, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 1
+
+    if (CHI.characterOptions[4] && primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
+        if (secondaryArea2 > minActiveAreaThreshold && secondaryArea2 > secondaryArea1 && secondaryArea2 > secondaryArea3) {
+            activeROI = 2;
+            rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
+        }
+        else if (secondaryArea3 > minActiveAreaThreshold && secondaryArea3 > secondaryArea1 && secondaryArea3 > secondaryArea2) {
+			activeROI = 3;
+			rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
+		}
     }
-    else if (area2 > minActiveAreaThreshold && area2 > area1 && area2 > area3) {
-        activeROI = 2;
-        rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
-    } 
-    else if (area3 > minActiveAreaThreshold && area3 > area1 && area3 > area2) {
-        activeROI = 3;
-        rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
+    else {
+        if (primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
+            activeROI = 1;
+            rectangle(src, roi1, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 1
+        }
+        else if (primaryArea2 > minActiveAreaThreshold && primaryArea2 > primaryArea1 && primaryArea2 > primaryArea3) {
+            activeROI = 2;
+            rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
+        }
+        else if (primaryArea3 > minActiveAreaThreshold && primaryArea3 > primaryArea1 && primaryArea3 > primaryArea2) {
+            activeROI = 3;
+            rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
+        }
     }
 
     // Print the index of the active ROI or indicate neither if both are not active

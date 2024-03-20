@@ -162,7 +162,6 @@ int main()
 
 		mn.gui();
 
-		std::cout << ImGui::GetPlatformIO().Viewports.Size << std::endl;
 		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
 			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[1];
 			viewport->Flags |= ImGuiViewportFlags_NoTaskBarIcon;

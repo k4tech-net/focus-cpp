@@ -62,7 +62,7 @@ std::tuple<std::string, std::vector<std::string>, std::vector<std::string>> Sett
         }
 
         // Set all options to false
-        setting.options = std::vector<bool>{ false, false, false, false };
+        setting.options = std::vector<bool>{ false, false, false, false, false };
 
         // Set default weapon to 0 for generic mode
         setting.defaultweapon = std::vector<int>{ 0, 0 };
