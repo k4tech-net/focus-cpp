@@ -9,7 +9,7 @@
 #include <iostream>
 
 #include "../mouse_driver/mouse.hpp"
-#include "../settings/globals.hpp"
+#include "../settings/settings.hpp"
 
 #include "../dxgi/dxgi.hpp"
 

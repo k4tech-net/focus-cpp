@@ -15,9 +15,7 @@
 #include <iostream>
 
 #include "../mouse_driver/mouse.hpp"
-#include "../settings/globals.hpp"
-
-#define CHI g.characterinfo
+#include "../settings/settings.hpp"
 
 class DXGI
 {
@@ -35,5 +33,3 @@ private:
 	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
 	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
 };
-
-extern Globals g;

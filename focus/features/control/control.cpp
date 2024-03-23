@@ -22,8 +22,10 @@ void Control::driveMouse() {
 	weaponData currwpn;
 	static int maxInstructions = 0;
 	static int cycles = 0;
-	static bool sendXMovement = false;
 	static bool flipFlop = false;
+
+	static float xAccumulator = 0;
+	static float yAccumulator = 0;
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
@@ -42,7 +44,11 @@ void Control::driveMouse() {
 		while (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON) && !complete && !CHI.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
-				int x = instruction[0], y = instruction[1], duration = instruction[2];
+
+				float x = instruction[0] * CHI.activeWeaponSensXModifier;
+				float y = instruction[1] * CHI.activeWeaponSensYModifier;
+				float duration = instruction[2];
+
 				auto currtime = std::chrono::high_resolution_clock::now();
 				float int_timer = 0;
 				auto nextExecution = currtime;
@@ -52,14 +58,16 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					sendXMovement = (currwpn.xdeadtime > 0) && (cycles % currwpn.xdeadtime) == 0;
+					xAccumulator += x;
+					yAccumulator += y;
+
+					int xMove = static_cast<int>(xAccumulator);
+					int yMove = static_cast<int>(yAccumulator);
+
+					xAccumulator -= xMove;
+					yAccumulator -= yMove;
 					
-					if (sendXMovement) {
-						ms.mouse_move(0, x, y, 0);
-					}
-					else {
-						ms.mouse_move(0, 0, y, 0);
-					}
+					ms.mouse_move(0, xMove, yMove, 0);
 					
 					if (CHI.currAutofire && cycles >= 8) {
 						pressLKey(flipFlop);

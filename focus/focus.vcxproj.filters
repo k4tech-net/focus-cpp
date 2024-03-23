@@ -107,9 +107,6 @@
     <ClInclude Include="features\control\control.hpp">
       <Filter>features\control</Filter>
     </ClInclude>
-    <ClInclude Include="features\settings\globals.hpp">
-      <Filter>features\settings</Filter>
-    </ClInclude>
     <ClInclude Include="imgui\imconfig.h">
       <Filter>imgui</Filter>
     </ClInclude>

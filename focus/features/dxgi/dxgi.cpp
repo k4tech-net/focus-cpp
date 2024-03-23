@@ -1,7 +1,5 @@
 #include "dxgi.hpp"
 
-Globals g;
-
 bool DXGI::InitDXGI() {
     // Create device and context
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
@@ -228,7 +226,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         primaryArea3 = prevPrimaryArea3;
     }
     if (abs(secondaryArea1 - prevSecondaryArea1) < hysteresisThreshold) {
-        secondaryArea1 = prevSecondaryArea1;
+        secondaryArea1 = prevSecondaryArea1; 
     }
     if (abs(secondaryArea2 - prevSecondaryArea2) < hysteresisThreshold) {
         secondaryArea2 = prevSecondaryArea2;
@@ -241,14 +239,17 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     prevPrimaryArea1 = primaryArea1;
     prevPrimaryArea2 = primaryArea2;
     prevPrimaryArea3 = primaryArea3;
-	prevSecondaryArea1 = secondaryArea1;
+    prevSecondaryArea1 = secondaryArea1;
     prevSecondaryArea2 = secondaryArea2;
     prevSecondaryArea3 = secondaryArea3;
 
     // Determine which ROI has the largest area of the specified color
     int activeROI = 0;
 
-    if (CHI.characterOptions[4] && primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
+    if (((CHI.mode == xorstr_("Character") && CHI.characterOptions[4]) || 
+        (CHI.mode == xorstr_("Game") && CHI.game == xorstr_("Siege") && CHI.characterOptions[1])) &&
+        primaryArea1 > minActiveAreaThreshold&& primaryArea1 > primaryArea2&& primaryArea1 > primaryArea3) {
+
         if (secondaryArea2 > minActiveAreaThreshold && secondaryArea2 > secondaryArea1 && secondaryArea2 > secondaryArea3) {
             activeROI = 2;
             rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
