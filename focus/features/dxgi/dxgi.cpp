@@ -172,8 +172,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 primaryArea1++;
             }
 
-            if (CHI.characterOptions[4] &&
-                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
                 pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
                 pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
                 secondaryArea1++;
@@ -189,8 +188,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 primaryArea2++;
             }
 
-            if (CHI.characterOptions[4] &&
-                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
                 pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
                 pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
                 secondaryArea2++;
@@ -206,8 +204,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 primaryArea3++;
             }
 
-            if (CHI.characterOptions[4] &&
-                pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
+            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
                 pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
                 pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
                 secondaryArea3++;
