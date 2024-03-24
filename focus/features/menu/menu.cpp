@@ -309,7 +309,7 @@ std::vector<float> calculateSensitivityModifier() {
 				break;
 			case 1:
 				barrelXEffect = 0.75f;
-				barrelYEffect = 0.36f;
+				barrelYEffect = 0.4f;
 				break;
 			case 2:
 				barrelXEffect = 0.85f;
@@ -353,7 +353,7 @@ std::vector<float> calculateSensitivityModifier() {
 				break;
 			case 1:
 				barrelXEffect = 0.75f;
-				barrelYEffect = 0.36f;
+				barrelYEffect = 0.4f;
 				break;
 			case 2:
 				barrelXEffect = 0.85f;
