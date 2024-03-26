@@ -2,8 +2,20 @@
 
 Settings cfg;
 
+bool Menu::comboBoxGen(const char* label, int* current_item, const char* const items[], int items_count) {
+	ImGui::Spacing();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
+	ImGui::Text(label);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2);
+	return ImGui::Combo(std::string(xorstr_("##COMBOGEN__") + std::string(label)).c_str(), current_item, items, items_count);
+}
+
 bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vector<Settings>& items) {
-    if (ImGui::BeginCombo(label, items[characterIndex].charactername.c_str())) {
+	ImGui::Spacing();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
+	ImGui::Text(label);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2);
+	if (ImGui::BeginCombo(std::string(xorstr_("##COMBOCHAR__") + std::string(label)).c_str(), items[characterIndex].charactername.c_str())) {
         for (int i = 0; i < items.size(); i++) {
             const bool isSelected = (characterIndex == i);
             if (ImGui::Selectable(items[i].charactername.c_str(), isSelected)) {
@@ -20,7 +32,10 @@ bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vecto
 }
 
 bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<Settings>& items, bool& currautofire) {
-    if (ImGui::BeginCombo(label, items[characterIndex].weapondata[weaponIndex].weaponname.c_str())) {
+	//ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
+	//ImGui::Text(label);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2);
+    if (ImGui::BeginCombo(std::string(xorstr_("##COMBOWEP__") + std::string(label)).c_str(), items[characterIndex].weapondata[weaponIndex].weaponname.c_str())) {
         for (int i = 0; i < items[characterIndex].weapondata.size(); i++) {
             const bool isSelected = (weaponIndex == i);
             if (ImGui::Selectable(items[characterIndex].weapondata[i].weaponname.c_str(), isSelected)) {
@@ -48,7 +63,12 @@ bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::v
         }
     }
 
-    if (ImGui::BeginCombo(label, displayString.c_str())) {
+	ImGui::Spacing();
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
+	ImGui::Text(label);
+	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2);
+
+    if (ImGui::BeginCombo(std::string(xorstr_("##MULTICOMBO__") + std::string(label)).c_str(), displayString.c_str())) {
         for (int i = 0; i < items.size(); ++i) {
             ImGui::PushID(i);
             bool isSelected = selected[i];
@@ -686,19 +706,19 @@ void Menu::gui()
 
 						const char* Sights[] = { xorstr_("1x"), xorstr_("2.5x"), xorstr_("3.5x") };
 						const char* Grips[] = { xorstr_("Horizontal/Angled/None"), xorstr_("Vertical") };
-						const char* Barrels[] = { xorstr_("Supressor/Extended/None"), xorstr_("Muzzle Break (DMRs)"), xorstr_("Compensator"), xorstr_("Flash Hider") };
+						const char* Barrels[] = { xorstr_("Supressor/Extended/None"), xorstr_("Muzzle Break (Semi-Auto Only)"), xorstr_("Compensator"), xorstr_("Flash Hider") };
 
 						if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 							updateCharacterData(true, false, true, true, false);
 						}
 						ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
-						if (ImGui::Combo(xorstr_("Primary Sight"), &CHI.primaryAttachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Primary Sight"), &CHI.primaryAttachments[0], Sights, 3)) {
 							updateCharacterData(true, false, false, false, false);
 						}
-						if (ImGui::Combo(xorstr_("Primary Grip"), &CHI.primaryAttachments[1], Grips, 2)) {
+						if (comboBoxGen(xorstr_("Primary Grip"), &CHI.primaryAttachments[1], Grips, 2)) {
 							updateCharacterData(true, false, false, false, false);
 						}
-						if (ImGui::Combo(xorstr_("Primary Barrel"), &CHI.primaryAttachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Primary Barrel"), &CHI.primaryAttachments[2], Barrels, 4)) {
 							updateCharacterData(true, false, false, false, false);
 						}
 
@@ -724,13 +744,13 @@ void Menu::gui()
 
 						}
 						ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
-						if (ImGui::Combo(xorstr_("Secondary Sight"), &CHI.secondaryAttachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Secondary Sight"), &CHI.secondaryAttachments[0], Sights, 3)) {
 							updateCharacterData(true, false, false, false, false);
 						}
-						if (ImGui::Combo(xorstr_("Secondary Grip"), &CHI.secondaryAttachments[1], Grips, 2)) {
+						if (comboBoxGen(xorstr_("Secondary Grip"), &CHI.secondaryAttachments[1], Grips, 2)) {
 							updateCharacterData(true, false, false, false, false);
 						}
-						if (ImGui::Combo(xorstr_("Secondary Barrel"), &CHI.secondaryAttachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Secondary Barrel"), &CHI.secondaryAttachments[2], Barrels, 4)) {
 							updateCharacterData(true, false, false, false, false);
 						}
 

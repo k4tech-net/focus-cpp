@@ -62,7 +62,7 @@ int main()
 
 	//io.IniFilename = NULL;
 
-	ImGui::StyleColorsDark();
+	ImGui::StyleColorsCustom();
 
 	ImGuiStyle& style = ImGui::GetStyle();
 	if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
