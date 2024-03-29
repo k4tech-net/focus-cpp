@@ -45,8 +45,8 @@ int main()
 	}
 
 	// Show the window
-	::ShowWindow(hwnd, SW_SHOWDEFAULT);
-	::UpdateWindow(hwnd);
+	//::ShowWindow(hwnd, SW_SHOWDEFAULT);
+	//::UpdateWindow(hwnd);
 
 	ImVec4 clear_color = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
@@ -132,8 +132,11 @@ int main()
 	startUpCheckThread.join();
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
+
+	#if !_DEBUG
 	std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
-	
+	#endif
+
 	while (!g.done) {
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
@@ -162,10 +165,10 @@ int main()
 
 		mn.gui();
 
-		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
+		/*if (ImGui::GetPlatformIO().Viewports.Size > 1) {
 			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[1];
 			viewport->Flags |= ImGuiViewportFlags_NoTaskBarIcon;
-		}
+		}*/
 
 		// Rendering
 		ImGui::Render();
@@ -190,11 +193,14 @@ int main()
 
 	g.shutdown = true;
 
-#if !_DEBUG
+	#if !_DEBUG
 	watchdogThread.join();
-#endif
+	#endif
 	driveMouseThread.join();
+	
+	#if !_DEBUG
 	mouseScrollThread.join();
+	#endif
 
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);

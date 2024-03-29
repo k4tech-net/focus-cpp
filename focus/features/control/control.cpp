@@ -98,6 +98,7 @@ void Control::driveMouse() {
 			}
 		}
 
-		ut.preciseSleep(0.0005);
+		std::this_thread::sleep_for(std::chrono::microseconds(500));
+		//ut.preciseSleep(0.0005);
 	}
 }
