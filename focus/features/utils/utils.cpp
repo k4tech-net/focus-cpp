@@ -33,6 +33,17 @@ void Utils::preciseSleep(double seconds) {
 	while ((high_resolution_clock::now() - start).count() / 1e9 < seconds);
 }
 
+void Utils::preciseSleepUntil(const std::chrono::steady_clock::time_point& targetTime) {
+	using namespace std::chrono;
+
+	auto now = steady_clock::now();
+	while (now < targetTime) {
+		auto remainingTime = targetTime - now;
+		preciseSleep(duration_cast<duration<double>>(remainingTime).count());
+		now = steady_clock::now();
+	}
+}
+
 std::string Utils::readTextFromFile(const char* filePath) {
 	std::ifstream file(filePath);
 	std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());

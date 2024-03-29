@@ -69,6 +69,7 @@ struct Globals
 
     struct CharacterInfo {
         std::string mode;
+        bool potato;
         std::vector<std::string> wpn_keybinds;
         std::vector<std::string> aux_keybinds;
         

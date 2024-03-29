@@ -80,7 +80,12 @@ void Control::driveMouse() {
 
 					cycles++;
 
-					std::this_thread::sleep_until(nextExecution);
+					if (CHI.potato) {
+						std::this_thread::sleep_until(nextExecution);
+					}
+					else {
+						ut.preciseSleepUntil(nextExecution);
+					}
 				}
 
 				if (index == maxInstructions - 1) {
@@ -98,7 +103,9 @@ void Control::driveMouse() {
 			}
 		}
 
-		std::this_thread::sleep_for(std::chrono::microseconds(500));
-		//ut.preciseSleep(0.0005);
+		if (CHI.potato) {
+			std::this_thread::sleep_for(std::chrono::microseconds(500));
+		}
+		//ut.preciseSleepFor(0.0005); // uses too much resources
 	}
 }

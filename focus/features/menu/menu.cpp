@@ -597,6 +597,7 @@ void Menu::gui()
 					}
 
 					ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
+					ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
 				}
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
@@ -667,6 +668,8 @@ void Menu::gui()
 					if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
 						updateCharacterData(true, false, false, true, false);
 					}
+
+					ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
 				}
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
@@ -763,6 +766,8 @@ void Menu::gui()
 						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
 							updateCharacterData(true, false, false, false, false);
 						}
+
+						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
 
 						ImGui::Spacing();
 						ImGui::Spacing();
