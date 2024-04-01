@@ -1,5 +1,6 @@
 {
     "Mode": "Character",
+    "Potato": false,
     "Weapon Keybinds": ["0x31", "0x32"],
     "Aux Keybinds": ["0x35"],
     "Sledge": {
