@@ -65,6 +65,10 @@ cv::Mat DXGI::CaptureDesktopDXGI() {
     desc.MiscFlags = 0;
     gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
 
+    if (desktopImageTex == 0 || stagingTexture == 0) {
+        return cv::Mat();
+    }
+
     // Copy to staging texture
     gContext->CopyResource(stagingTexture, desktopImageTex);
 
@@ -73,16 +77,16 @@ cv::Mat DXGI::CaptureDesktopDXGI() {
     gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
 
     // Define ratios for crop region
-    float cropRatioX = 0.8; // 20% from left
-    float cropRatioY = 0.82; // 20% from top
-    float cropRatioWidth = 0.18; // 60% of total width
-    float cropRatioHeight = 0.14; // 60% of total height
+    float cropRatioX = 0.8f; // 20% from left
+    float cropRatioY = 0.82f; // 20% from top
+    float cropRatioWidth = 0.18f; // 60% of total width
+    float cropRatioHeight = 0.14f; // 60% of total height
 
     // Calculate bottom right quarter
-    int cropX = desc.Width * cropRatioX;
-    int cropY = desc.Height * cropRatioY;
-    int cropWidth = desc.Width * cropRatioWidth;
-    int cropHeight = desc.Height * cropRatioHeight;
+    int cropX = static_cast<int>(desc.Width * cropRatioX);
+    int cropY = static_cast<int>(desc.Height * cropRatioY);
+    int cropWidth = static_cast<int>(desc.Width * cropRatioWidth);
+    int cropHeight = static_cast<int>(desc.Height * cropRatioHeight);
 
     // Create OpenCV Mat
     cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
@@ -117,25 +121,36 @@ void DXGI::CleanupDXGI() {
 
 void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {
     // Define the region of interest (ROI) coordinates as a percentage of the frame
-    float roi1XPercent = 0.02; // X coordinate percentage for ROI 1
-    float roi1YPercent = 0.06; // Y coordinate percentage for ROI 1
-    float roi1WidthPercent = 0.9; // Width percentage for ROI 1
-    float roi1HeightPercent = 0.25; // Height percentage for ROI 1
+    float roi1XPercent = 0.02f; // X coordinate percentage for ROI 1
+    float roi1YPercent = 0.06f; // Y coordinate percentage for ROI 1
+    float roi1WidthPercent = 0.9f; // Width percentage for ROI 1
+    float roi1HeightPercent = 0.25f; // Height percentage for ROI 1
 
-    float roi2XPercent = 0.02; // X coordinate percentage for ROI 2
-    float roi2YPercent = 0.4; // Y coordinate percentage for ROI 2
-    float roi2WidthPercent = 0.9; // Width percentage for ROI 2
-    float roi2HeightPercent = 0.25; // Height percentage for ROI 2
+    float roi2XPercent = 0.02f; // X coordinate percentage for ROI 2
+    float roi2YPercent = 0.4f; // Y coordinate percentage for ROI 2
+    float roi2WidthPercent = 0.9f; // Width percentage for ROI 2
+    float roi2HeightPercent = 0.25f; // Height percentage for ROI 2
 
-    float roi3XPercent = 0.02; // X coordinate percentage for ROI 3
-    float roi3YPercent = 0.7; // Y coordinate percentage for ROI 3
-    float roi3WidthPercent = 0.9; // Width percentage for ROI 3
-    float roi3HeightPercent = 0.25; // Height percentage for ROI 3
+    float roi3XPercent = 0.02f; // X coordinate percentage for ROI 3
+    float roi3YPercent = 0.7f; // Y coordinate percentage for ROI 3
+    float roi3WidthPercent = 0.9f; // Width percentage for ROI 3
+    float roi3HeightPercent = 0.25f; // Height percentage for ROI 3
 
     // Calculate ROI coordinates based on percentage of frame dimensions
-    cv::Rect roi1(src.cols * roi1XPercent, src.rows * roi1YPercent, src.cols * roi1WidthPercent, src.rows * roi1HeightPercent);
-    cv::Rect roi2(src.cols * roi2XPercent, src.rows * roi2YPercent, src.cols * roi2WidthPercent, src.rows * roi2HeightPercent);
-    cv::Rect roi3(src.cols * roi3XPercent, src.rows * roi3YPercent, src.cols * roi3WidthPercent, src.rows * roi3HeightPercent);
+    cv::Rect roi1(static_cast<int>(src.cols * roi1XPercent),
+        static_cast<int>(src.rows * roi1YPercent),
+        static_cast<int>(src.cols * roi1WidthPercent),
+        static_cast<int>(src.rows * roi1HeightPercent));
+
+    cv::Rect roi2(static_cast<int>(src.cols * roi2XPercent),
+        static_cast<int>(src.rows * roi2YPercent), 
+        static_cast<int>(src.cols * roi2WidthPercent),
+        static_cast<int>(src.rows * roi2HeightPercent));
+
+    cv::Rect roi3(static_cast<int>(src.cols * roi3XPercent),
+        static_cast<int>(src.rows * roi3YPercent),
+        static_cast<int>(src.cols * roi3WidthPercent),
+        static_cast<int>(src.rows * roi3HeightPercent));
 
     // Highlight the ROIs on the source image for alignment
     rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1
@@ -157,7 +172,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     int primaryBuffer = 15;
 
     cv::Vec3b secondaryTargetColour = cv::Vec3b(160, 169, 153);
-    int secondaryBuffer = 15;
+    int secondaryBuffer = 25;
 
     // Calculate the total area of matching color in each ROI
     double primaryArea1 = 0, primaryArea2 = 0, primaryArea3 = 0;

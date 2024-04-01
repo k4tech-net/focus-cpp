@@ -292,23 +292,29 @@ std::vector<float> calculateSensitivityModifier() {
 
 	int activescope = 0;
 
-	float sightEffect = 1.0f;
+	float sightXEffect = 1.0f;
+	float sightYEffect = 1.0f;
+
 	float gripEffect = 1.0f;
+
 	float barrelXEffect = 1.0f;
 	float barrelYEffect = 1.0f;
 
 	if (CHI.isPrimaryActive) {
 		switch (CHI.primaryAttachments[0]) {
 			case 0:
-				sightEffect = 1.0f;
+				sightXEffect = 1.0f;
+				sightYEffect = 1.0f;
 				activescope = 1;
 				break;
 			case 1:
-				sightEffect = 2.42f;
+				sightXEffect = 2.f;
+				sightYEffect = 2.43f;
 				activescope = 2;
 				break;
 			case 2:
-				sightEffect = 3.5f;
+				sightXEffect = 3.5f;
+				sightYEffect = 3.5f;
 				activescope = 3;
 				break;
 		}
@@ -344,15 +350,18 @@ std::vector<float> calculateSensitivityModifier() {
 	else {
 		switch (CHI.secondaryAttachments[0]) {
 			case 0:
-				sightEffect = 1.0f;
+				sightXEffect = 1.0f;
+				sightYEffect = 1.0f;
 				activescope = 1;
 				break;
 			case 1:
-				sightEffect = 2.42f;
+				sightXEffect = 2.f;
+				sightYEffect = 2.43f;
 				activescope = 2;
 				break;
 			case 2:
-				sightEffect = 3.5f;
+				sightXEffect = 3.5f;
+				sightYEffect = 3.5f;
 				activescope = 3;
 				break;
 		}
@@ -386,8 +395,8 @@ std::vector<float> calculateSensitivityModifier() {
 		}
 	}
 
-	float totalAttachXEffect = sightEffect * barrelXEffect;
-	float totalAttachYEffect = sightEffect * gripEffect * barrelYEffect;
+	float totalAttachXEffect = sightXEffect * barrelXEffect;
+	float totalAttachYEffect = sightYEffect * gripEffect * barrelYEffect;
 
 	float scopeModifier = 0.f;
 	
@@ -414,7 +423,9 @@ void keybindManager() {
 
 	if (CHI.mode == xorstr_("Generic")) {
 		CHI.isPrimaryActive = true;
+		CHI.mutex_.lock();
 		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+		CHI.mutex_.unlock();
 		CHI.currAutofire = CHI.primaryAutofire;
 		CHI.activeWeaponSensXModifier = 1.f;
 		CHI.activeWeaponSensYModifier = 1.f;
@@ -447,11 +458,15 @@ void keybindManager() {
 		CHI.activeWeaponSensYModifier = 1.f;
 
 		if (CHI.isPrimaryActive) {
+			CHI.mutex_.lock();
 			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+			CHI.mutex_.unlock();
 			CHI.currAutofire = CHI.primaryAutofire;
 		}
 		else {
+			CHI.mutex_.lock();
 			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
+			CHI.mutex_.unlock();
 			CHI.currAutofire = CHI.secondaryAutofire;
 		}
 	}
@@ -475,11 +490,15 @@ void keybindManager() {
 			CHI.activeWeaponSensYModifier = sens[1];
 
 			if (CHI.isPrimaryActive) {
+				CHI.mutex_.lock();
 				CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+				CHI.mutex_.unlock();
 				CHI.currAutofire = CHI.primaryAutofire;
 			}
 			else {
+				CHI.mutex_.lock();
 				CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
+				CHI.mutex_.unlock();
 				CHI.currAutofire = CHI.secondaryAutofire;
 			}
 		}
@@ -491,7 +510,11 @@ void Menu::gui()
 	bool inverseShutdown = !g.initshutdown;
 
 	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+	#if !_DEBUG
 	ImGui::Begin(xorstr_("Focus"), &inverseShutdown, WINDOWFLAGS);
+	#else
+	ImGui::Begin(xorstr_("Focus DEBUG"), &inverseShutdown, WINDOWFLAGS);
+	#endif
 
 	auto cpos = editor.GetCursorPosition();
 	bool ro = editor.IsReadOnly();

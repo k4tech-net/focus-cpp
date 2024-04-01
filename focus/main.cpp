@@ -45,8 +45,8 @@ int main()
 	}
 
 	// Show the window
-	//::ShowWindow(hwnd, SW_SHOWDEFAULT);
-	//::UpdateWindow(hwnd);
+	::ShowWindow(hwnd, SW_SHOWDEFAULT);
+	::UpdateWindow(hwnd);
 
 	ImVec4 clear_color = ImVec4(0.00f, 0.00f, 0.00f, 0.00f);
 
@@ -165,10 +165,10 @@ int main()
 
 		mn.gui();
 
-		/*if (ImGui::GetPlatformIO().Viewports.Size > 1) {
+		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
 			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[1];
 			viewport->Flags |= ImGuiViewportFlags_NoTaskBarIcon;
-		}*/
+		}
 
 		// Rendering
 		ImGui::Render();
@@ -186,6 +186,8 @@ int main()
 		g_pSwapChain->Present(1, 0); // Present with vsync
 	}
 
+	std::cout << xorstr_("Shutting Down") << std::endl;
+
 	// Cleanup
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
@@ -196,6 +198,7 @@ int main()
 	#if !_DEBUG
 	watchdogThread.join();
 	#endif
+
 	driveMouseThread.join();
 	
 	#if !_DEBUG
@@ -270,6 +273,11 @@ void CreateRenderTarget()
 {
 	ID3D11Texture2D* pBackBuffer;
 	g_pSwapChain->GetBuffer(0, IID_PPV_ARGS(&pBackBuffer));
+
+	if (pBackBuffer == 0) {
+		return;
+	}
+
 	g_pd3dDevice->CreateRenderTargetView(pBackBuffer, nullptr, &g_mainRenderTargetView);
 	pBackBuffer->Release();
 }

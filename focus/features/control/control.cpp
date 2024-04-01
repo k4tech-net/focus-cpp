@@ -20,7 +20,7 @@ void Control::driveMouse() {
 
 	static bool complete = false;
 	weaponData currwpn;
-	static int maxInstructions = 0;
+	static size_t maxInstructions = 0;
 	static int cycles = 0;
 	static bool flipFlop = false;
 
@@ -29,6 +29,7 @@ void Control::driveMouse() {
 
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
+		CHI.mutex_.lock();
 		if (!(currwpn == CHI.activeWeapon)) {
 			currwpn = CHI.activeWeapon;
 
@@ -40,6 +41,7 @@ void Control::driveMouse() {
 			// Update maxInstructions
 			maxInstructions = currwpn.values.size();
 		}
+		CHI.mutex_.unlock();
 
 		while (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON) && !complete && !CHI.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
@@ -97,6 +99,8 @@ void Control::driveMouse() {
 		if (!GetAsyncKeyState(VK_LBUTTON) || !GetAsyncKeyState(VK_RBUTTON)) {
 			complete = false;
 			cycles = 0;
+			xAccumulator = 0;
+			yAccumulator = 0;
 			if (flipFlop) {
 				pressLKey(false);
 				flipFlop = false;

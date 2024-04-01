@@ -8,15 +8,16 @@
 #include <sstream>
 #include <xorstr.hpp>
 #include <variant>
+#include <mutex>
 
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
 
 struct weaponData {
-    std::string weaponname;
-    bool autofire;
-    std::vector<int> attachments;
+    std::string weaponname = "";
+    bool autofire = false;
+    std::vector<int> attachments = { 0, 0, 0 };
     std::vector<std::vector<float>> values;
 
     bool operator==(const weaponData& other) const {
@@ -30,10 +31,10 @@ struct weaponData {
 class Settings 
 {
 public:
-    std::string charactername;
+    std::string charactername = "";
 	std::vector<weaponData> weapondata;
-    std::vector<bool> options;
-    std::vector<int> defaultweapon;
+    std::vector<bool> options = { false, false, false, false, false };
+    std::vector<int> defaultweapon = { 0, 0 };
 
     //// Method to check if two Settings objects are equal
     //bool operator==(const Settings& other) const {
@@ -47,34 +48,34 @@ public:
 
 struct Globals
 {
-    bool shutdown;
-    bool initshutdown;
+    bool shutdown = false;
+    bool initshutdown = false;
 
-    bool done;
+    bool done = false;
 
     struct Editor {
         std::vector<std::string> jsonFiles;
-        std::string activeFile;
-        bool unsavedChanges;
-        int activeFileIndex;
+        std::string activeFile = "";
+        bool unsavedChanges = false;
+        int activeFileIndex = 0;
     } editor;
 
     struct Startup {
-        bool passedstartup;
-        bool driver;
-        bool files;
-        bool dxgi;
-        bool hasFinished;
+        bool passedstartup = false;
+        bool driver = false;
+        bool files = false;
+        bool dxgi = false;
+        bool hasFinished = false;
     } startup;
 
     struct CharacterInfo {
-        std::string mode;
-        bool potato;
+        std::string mode = "";
+        bool potato = false;
         std::vector<std::string> wpn_keybinds;
         std::vector<std::string> aux_keybinds;
         
-        std::string game;
-        std::vector<float> sensitivity;
+        std::string game = "";
+        std::vector<float> sensitivity = { 0, 0, 0, 0, 0 };
 
         std::vector<Settings> characters;
         Settings selectedCharacter;
@@ -83,32 +84,24 @@ struct Globals
         int selectedPrimary = 0;
         int selectedSecondary = 0;
 
-        bool primaryAutofire;
-        bool secondaryAutofire;
-        std::vector<int> primaryAttachments;
-		std::vector<int> secondaryAttachments;
-        std::vector<bool> characterOptions;
+        bool primaryAutofire = false;
+        bool secondaryAutofire = false;
+        std::vector<int> primaryAttachments = { 0, 0, 0 };
+		std::vector<int> secondaryAttachments = { 0, 0, 0 };
+        std::vector<bool> characterOptions = { false, false, false, false, false };
 
-        bool currAutofire;
+        bool currAutofire = false;
 
         bool isPrimaryActive = true;
         weaponData activeWeapon; // Put this in the keybind controller
-        float activeWeaponSensXModifier;
-        float activeWeaponSensYModifier;
-        bool weaponOffOverride;
+        float activeWeaponSensXModifier = 0;
+        float activeWeaponSensYModifier = 0;
+        bool weaponOffOverride = false;
 
-        std::string jsonData;
+        std::string jsonData = "";
+
+        std::mutex mutex_;
     } characterinfo;
-
-    //struct weaponInfo {
-    //    std::vector<Settings> weapons;
-    //    Settings selectedWeapon;
-
-    //    bool currautofire;
-
-    //    std::string weaponsText;
-    //    int selectedItem;
-    //} weaponinfo;
 };
 
 extern Globals g;
