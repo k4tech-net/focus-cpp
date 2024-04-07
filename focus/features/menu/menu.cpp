@@ -23,12 +23,12 @@ bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vecto
 
                 ImGui::SetItemDefaultFocus();
                 ImGui::EndCombo();
-                return true; // Return true if an item is selected
+                return true;
             }
         }
         ImGui::EndCombo();
     }
-    return false; // Return false if no item is selected
+    return false;
 }
 
 bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<Settings>& items, bool& currautofire) {
@@ -39,17 +39,17 @@ bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex,
         for (int i = 0; i < items[characterIndex].weapondata.size(); i++) {
             const bool isSelected = (weaponIndex == i);
             if (ImGui::Selectable(items[characterIndex].weapondata[i].weaponname.c_str(), isSelected)) {
-                weaponIndex = i; // Update the current index if an item is selected
+                weaponIndex = i; 
                 currautofire = items[characterIndex].weapondata[i].autofire;
 
                 ImGui::SetItemDefaultFocus();
                 ImGui::EndCombo();
-                return true; // Return true if an item is selected
+                return true;
             }
         }
         ImGui::EndCombo();
     }
-    return false; // Return false if no item is selected
+    return false;
 }
 
 bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::vector<bool>& selected) {

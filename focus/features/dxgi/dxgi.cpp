@@ -143,7 +143,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         static_cast<int>(src.rows * roi1HeightPercent));
 
     cv::Rect roi2(static_cast<int>(src.cols * roi2XPercent),
-        static_cast<int>(src.rows * roi2YPercent), 
+        static_cast<int>(src.rows * roi2YPercent),
         static_cast<int>(src.cols * roi2WidthPercent),
         static_cast<int>(src.rows * roi2HeightPercent));
 
@@ -171,13 +171,10 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     cv::Vec3b primaryTargetColour = cv::Vec3b(15, 255, 243);
     int primaryBuffer = 15;
 
-    cv::Vec3b secondaryTargetColour = cv::Vec3b(160, 169, 153);
-    int secondaryBuffer = 25;
-
-    // Calculate the total area of matching color in each ROI
     double primaryArea1 = 0, primaryArea2 = 0, primaryArea3 = 0;
-    double secondaryArea1 = 0, secondaryArea2 = 0, secondaryArea3 = 0;
+    double maxBrightness1 = 0, maxBrightness2 = 0, maxBrightness3 = 0;
 
+    // Calculate the total area of matching color and maximum brightness in each ROI
     for (int y = 0; y < rgb1.rows; ++y) {
         for (int x = 0; x < rgb1.cols; ++x) {
             cv::Vec3b pixel = rgb1.at<cv::Vec3b>(y, x);
@@ -186,11 +183,9 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
                 primaryArea1++;
             }
-
-            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
-                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
-                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
-                secondaryArea1++;
+            double brightness = 0.2126 * pixel[2] + 0.7152 * pixel[1] + 0.0722 * pixel[0]; // Calculate the brightness
+            if (brightness > maxBrightness1) {
+                maxBrightness1 = brightness;
             }
         }
     }
@@ -202,11 +197,9 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
                 primaryArea2++;
             }
-
-            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
-                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
-                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
-                secondaryArea2++;
+            double brightness = 0.2126 * pixel[2] + 0.7152 * pixel[1] + 0.0722 * pixel[0]; // Calculate the brightness
+            if (brightness > maxBrightness2) {
+                maxBrightness2 = brightness;
             }
         }
     }
@@ -218,11 +211,9 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
                 pixel[2] >= primaryTargetColour[2] - primaryBuffer && pixel[2] <= primaryTargetColour[2] + primaryBuffer) {
                 primaryArea3++;
             }
-
-            if (pixel[0] >= secondaryTargetColour[0] - secondaryBuffer && pixel[0] <= secondaryTargetColour[0] + secondaryBuffer &&
-                pixel[1] >= secondaryTargetColour[1] - secondaryBuffer && pixel[1] <= secondaryTargetColour[1] + secondaryBuffer &&
-                pixel[2] >= secondaryTargetColour[2] - secondaryBuffer && pixel[2] <= secondaryTargetColour[2] + secondaryBuffer) {
-                secondaryArea3++;
+            double brightness = 0.2126 * pixel[2] + 0.7152 * pixel[1] + 0.0722 * pixel[0]; // Calculate the brightness
+            if (brightness > maxBrightness3) {
+                maxBrightness3 = brightness;
             }
         }
     }
@@ -237,39 +228,26 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     if (abs(primaryArea3 - prevPrimaryArea3) < hysteresisThreshold) {
         primaryArea3 = prevPrimaryArea3;
     }
-    if (abs(secondaryArea1 - prevSecondaryArea1) < hysteresisThreshold) {
-        secondaryArea1 = prevSecondaryArea1; 
-    }
-    if (abs(secondaryArea2 - prevSecondaryArea2) < hysteresisThreshold) {
-        secondaryArea2 = prevSecondaryArea2;
-    }
-    if (abs(secondaryArea3 - prevSecondaryArea3) < hysteresisThreshold) {
-        secondaryArea3 = prevSecondaryArea3;
-    }
 
     // Update previous area values
     prevPrimaryArea1 = primaryArea1;
     prevPrimaryArea2 = primaryArea2;
     prevPrimaryArea3 = primaryArea3;
-    prevSecondaryArea1 = secondaryArea1;
-    prevSecondaryArea2 = secondaryArea2;
-    prevSecondaryArea3 = secondaryArea3;
 
-    // Determine which ROI has the largest area of the specified color
     int activeROI = 0;
 
     if (((CHI.mode == xorstr_("Character") && CHI.characterOptions[4]) || 
         (CHI.mode == xorstr_("Game") && CHI.game == xorstr_("Siege") && CHI.characterOptions[1])) &&
         primaryArea1 > minActiveAreaThreshold&& primaryArea1 > primaryArea2&& primaryArea1 > primaryArea3) {
-
-        if (secondaryArea2 > minActiveAreaThreshold && secondaryArea2 > secondaryArea1 && secondaryArea2 > secondaryArea3) {
+    
+        if (maxBrightness3 > minActiveAreaThreshold && maxBrightness3 > maxBrightness2) {
             activeROI = 2;
             rectangle(src, roi2, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 2
         }
-        else if (secondaryArea3 > minActiveAreaThreshold && secondaryArea3 > secondaryArea1 && secondaryArea3 > secondaryArea2) {
-			activeROI = 3;
-			rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
-		}
+        else if (maxBrightness2 > minActiveAreaThreshold && maxBrightness2 > maxBrightness3) {             ///// We reverse this because the weapons actually turn black when selected :/
+    		activeROI = 3;
+    		rectangle(src, roi3, cv::Scalar(0, 255, 0), 2); // Green rectangle for active ROI 3
+    	}
     }
     else {
         if (primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
@@ -294,11 +272,11 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
         CHI.weaponOffOverride = false;
-		if (activeROI == 2) {
-			CHI.isPrimaryActive = true;
-		}
-		else if (activeROI == 3) {
-			CHI.isPrimaryActive = false;
-		}
+        if (activeROI == 2) {
+            CHI.isPrimaryActive = true;
+        }
+        else if (activeROI == 3) {
+            CHI.isPrimaryActive = false;
+        }
     }
 }
