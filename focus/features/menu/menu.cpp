@@ -280,7 +280,7 @@ void auxKeyHandler() {
 	}
 }
 
-std::vector<float> calculateSensitivityModifier() {
+std::vector<float> calculateSensitivityModifierR6() {
 	float oldBaseSens = 10;
 	float oldRelativeSens = 50;
 
@@ -418,6 +418,67 @@ std::vector<float> calculateSensitivityModifier() {
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
 
+std::vector<float> calculateSensitivityModifierRust() {
+	float oldBaseSens = 0.509f;
+	float oldADSSens = 1;
+
+	float newBaseSens = CHI.sensitivity[0];
+	float newADSSens = CHI.sensitivity[1];
+
+	int activescope = 0;
+
+	float sightXEffect = 1.0f;
+	float sightYEffect = 1.0f;
+
+	float barrelXEffect = 1.0f;
+	float barrelYEffect = 1.0f;
+
+	switch (CHI.primaryAttachments[0]) {
+	case 0:
+		sightXEffect = 1.0f;
+		sightYEffect = 1.0f;
+		activescope = 1;
+		break;
+	case 1:
+		sightXEffect = 2.f;
+		sightYEffect = 2.43f;
+		activescope = 2;
+		break;
+	case 2:
+		sightXEffect = 3.5f;
+		sightYEffect = 3.5f;
+		activescope = 3;
+		break;
+	}
+
+	switch (CHI.primaryAttachments[2]) {
+	case 0:
+		barrelXEffect = 1.0f;
+		barrelYEffect = 1.0f;
+		break;
+	case 1:
+		barrelXEffect = 0.75f;
+		barrelYEffect = 0.4f;
+		break;
+	case 2:
+		barrelXEffect = 0.85f;
+		barrelYEffect = 1.0f;
+		break;
+	case 3:
+		barrelXEffect = 1.0f;
+		barrelYEffect = 0.85f;
+		break;
+	}
+
+	float totalAttachXEffect = sightXEffect * barrelXEffect;
+	float totalAttachYEffect = sightYEffect * barrelYEffect;
+
+	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect);
+	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect);
+
+	return std::vector<float>{ newSensXModifier, newSensYModifier };
+}
+
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
@@ -434,13 +495,8 @@ void keybindManager() {
 
 		if (CHI.characterOptions[0]) {
 
-			cv::Mat src = dx.CaptureDesktopDXGI();
-			if (!src.empty()) {
-				dx.detectWeaponR6(src, 25, 75);
-
-				#if _DEBUG
-				imshow("output", src); // Debug window
-				#endif
+			if (!g.desktopMat.empty()) {
+				dx.detectWeaponR6(g.desktopMat, 25, 75);
 			}
 		}
 
@@ -474,17 +530,13 @@ void keybindManager() {
 		if (CHI.game == xorstr_("Siege")) {
 			if (CHI.characterOptions[0]) {
 
-				cv::Mat src = dx.CaptureDesktopDXGI();
-				if (!src.empty()) {
-					dx.detectWeaponR6(src, 25, 75);
-
-					#if _DEBUG
-					imshow("output", src); // Debug window
-					#endif
+				if (!g.desktopMat.empty()) {
+					dx.detectWeaponR6(g.desktopMat, 25, 75);
+					dx.aimbot();
 				}
 			}
 
-			std::vector<float> sens = calculateSensitivityModifier();
+			std::vector<float> sens = calculateSensitivityModifierR6();
 
 			CHI.activeWeaponSensXModifier = sens[0];
 			CHI.activeWeaponSensYModifier = sens[1];
@@ -501,6 +553,23 @@ void keybindManager() {
 				CHI.mutex_.unlock();
 				CHI.currAutofire = CHI.secondaryAutofire;
 			}
+		}
+		else if (CHI.game == xorstr_("Rust")) {
+			if (CHI.characterOptions[0]) {
+				if (!g.desktopMat.empty()) {
+					//dx.detectWeaponRust(g.desktopMat);
+				}
+			}
+
+			std::vector<float> sens = calculateSensitivityModifierRust();
+			CHI.activeWeaponSensXModifier = sens[0];
+			CHI.activeWeaponSensYModifier = sens[1];
+
+			CHI.isPrimaryActive = true;
+			CHI.mutex_.lock();
+			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+			CHI.mutex_.unlock();
+			CHI.currAutofire = CHI.primaryAutofire;
 		}
 	}
 }
@@ -702,7 +771,7 @@ void Menu::gui()
 			}
 		}
 		else if (CHI.mode == xorstr_("Game")) {
-			if (CHI.game == "Siege") {
+			if (CHI.game == xorstr_("Siege")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
 					if (CHI.characters.size() > 0) {
 						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
@@ -801,6 +870,46 @@ void Menu::gui()
 						ImGui::SliderFloat(xorstr_("1x Sensitivity"), &CHI.sensitivity[2], 0.0f, 200.0f, xorstr_("%.0f"));
 						ImGui::SliderFloat(xorstr_("2.5x Sensitivity"), &CHI.sensitivity[3], 0.0f, 200.0f, xorstr_("%.0f"));
 						ImGui::SliderFloat(xorstr_("3.5x Sensitivity"), &CHI.sensitivity[4], 0.0f, 200.0f, xorstr_("%.0f"));
+
+						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
+						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);
+					}
+					else {
+						ImGui::Text(xorstr_("Please load a weapons file"));
+					}
+
+					ImGui::EndTabItem();
+				}
+			}
+			else if (CHI.game == xorstr_("Rust")) {
+				if (ImGui::BeginTabItem(xorstr_("Game"))) {
+					if (CHI.characters.size() > 0) {
+						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
+
+						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+
+						if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
+							updateCharacterData(true, false, true, true, true);
+						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Options"));
+
+						std::vector<const char*> MultiOptions = { xorstr_("Rust Auto Weapon Detection") };
+
+						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
+							updateCharacterData(true, false, false, false, false);
+						}
+
+						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Extra Data"));
+
+						ImGui::SliderFloat(xorstr_("Sensitivity"), &CHI.sensitivity[0], 0.0f, 10.0f, xorstr_("%.3f"));
+						ImGui::SliderFloat(xorstr_("Aiming Sensitivity"), &CHI.sensitivity[1], 0.0f, 10.0f, xorstr_("%.3f"));
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);

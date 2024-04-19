@@ -203,7 +203,58 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
                     settings.push_back(setting); // Push the Settings object for the current character
                 }
             }
-        }
+        } 
+        else if (CHI.game == xorstr_("Rust")) {
+            setting.charactername = xorstr_("Rust");
+
+            CHI.wpn_keybinds = { "" };
+            CHI.aux_keybinds = { "" };
+
+            CHI.sensitivity = jsonData[xorstr_("Sensitivity")].get<std::vector<float>>();
+
+            for (auto& item : jsonData.items()) {
+                if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Game") && item.key() != xorstr_("Sensitivity") && item.key() != xorstr_("Options")) {
+                    weaponData weapon;
+
+                    weapon.weaponname = item.key();
+                    auto& valueArray = item.value();
+
+                    if (valueArray.is_array() && valueArray.size() >= 2) {
+                        weapon.autofire = valueArray[0].get<bool>();
+                        weapon.attachments = { 0, 0, 0 };
+
+                        // Assuming the nested arrays are now wrapped in another array at index 2
+                        if (valueArray[1].is_array()) {
+                            auto& nestedArrays = valueArray[1];
+                            for (auto& nestedArray : nestedArrays) {
+                                if (nestedArray.is_array()) {
+                                    weapon.values.push_back(nestedArray.get<std::vector<float>>());
+                                }
+                                else {
+                                    std::cerr << xorstr_("Invalid nested array format for weapon: ") << weapon.weaponname << std::endl;
+                                }
+                            }
+                        }
+                        else {
+                            std::cerr << xorstr_("Expected a nested array for weapon values: ") << weapon.weaponname << std::endl;
+                        }
+
+                        setting.weapondata.push_back(weapon);
+                    }
+                    else {
+                        std::cerr << xorstr_("Invalid format for weapon: ") << weapon.weaponname << std::endl;
+                    }
+                }
+            }
+
+            // Set all options to false
+            setting.options = jsonData[xorstr_("Options")].get<std::vector<bool>>();
+
+            // Set default weapon to 0 for generic mode
+            setting.defaultweapon = std::vector<int>{ 0, 0 };
+
+            settings.push_back(setting);
+		}
         else {
 			std::cerr << xorstr_("Invalid game: ") << CHI.game << std::endl;
         }

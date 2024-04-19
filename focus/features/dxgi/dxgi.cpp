@@ -37,74 +37,65 @@ bool DXGI::InitDXGI() {
     return true;
 }
 
-cv::Mat DXGI::CaptureDesktopDXGI() {
-    IDXGIResource* desktopResource = nullptr;
-    DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
+void DXGI::CaptureDesktopDXGI() {
+    while (!g.shutdown) {
 
-    // Try to acquire next frame
-    HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
-    if (FAILED(hr)) {
-        std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
-        return cv::Mat();
+        IDXGIResource* desktopResource = nullptr;
+        DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
+
+        // Try to acquire next frame
+        HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
+        if (FAILED(hr)) {
+            std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
+            continue;
+        }
+
+        // Query for ID3D11Texture2D
+        ID3D11Texture2D* desktopImageTex = nullptr;
+        desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
+        desktopResource->Release();
+
+        // Get metadata to create Mat
+        D3D11_TEXTURE2D_DESC desc;
+        desktopImageTex->GetDesc(&desc);
+
+        // Create staging texture
+        ID3D11Texture2D* stagingTexture = nullptr;
+        desc.Usage = D3D11_USAGE_STAGING;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        desc.BindFlags = 0;
+        desc.MiscFlags = 0;
+        gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
+
+        if (desktopImageTex == 0 || stagingTexture == 0) {
+            continue;
+        }
+
+        // Copy to staging texture
+        gContext->CopyResource(stagingTexture, desktopImageTex);
+
+        // Map resource
+        D3D11_MAPPED_SUBRESOURCE resource;
+        gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
+
+        // Create OpenCV Mat
+        cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
+
+        // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
+        cv::Mat frameCopy = desktopImage.clone();
+
+        // Unmap and release
+        gContext->Unmap(stagingTexture, 0);
+        stagingTexture->Release();
+        desktopImageTex->Release();
+        gOutputDuplication->ReleaseFrame();
+
+        g.desktopMutex_.lock();
+        g.desktopMat = frameCopy;
+        g.desktopMutex_.unlock();
+
+        //imshow("output", frameCopy); // Debug window
     }
-
-    // Query for ID3D11Texture2D
-    ID3D11Texture2D* desktopImageTex = nullptr;
-    desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
-    desktopResource->Release();
-
-    // Get metadata to create Mat
-    D3D11_TEXTURE2D_DESC desc;
-    desktopImageTex->GetDesc(&desc);
-
-    // Create staging texture
-    ID3D11Texture2D* stagingTexture = nullptr;
-    desc.Usage = D3D11_USAGE_STAGING;
-    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    desc.BindFlags = 0;
-    desc.MiscFlags = 0;
-    gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
-
-    if (desktopImageTex == 0 || stagingTexture == 0) {
-        return cv::Mat();
-    }
-
-    // Copy to staging texture
-    gContext->CopyResource(stagingTexture, desktopImageTex);
-
-    // Map resource
-    D3D11_MAPPED_SUBRESOURCE resource;
-    gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
-
-    // Define ratios for crop region
-    float cropRatioX = 0.8f; // 20% from left
-    float cropRatioY = 0.82f; // 20% from top
-    float cropRatioWidth = 0.18f; // 60% of total width
-    float cropRatioHeight = 0.14f; // 60% of total height
-
-    // Calculate bottom right quarter
-    int cropX = static_cast<int>(desc.Width * cropRatioX);
-    int cropY = static_cast<int>(desc.Height * cropRatioY);
-    int cropWidth = static_cast<int>(desc.Width * cropRatioWidth);
-    int cropHeight = static_cast<int>(desc.Height * cropRatioHeight);
-
-    // Create OpenCV Mat
-    cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
-
-    cv::Rect cropRegion(cropX, cropY, cropWidth, cropHeight);
-
-    cv::Mat croppedImage = desktopImage(cropRegion).clone(); // Clone is needed as desktopImage data will be invalidated
-
-    // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
-    //Mat frameCopy = desktopImage.clone();
-
-    // Unmap and release
-    gContext->Unmap(stagingTexture, 0);
-    stagingTexture->Release();
-    desktopImageTex->Release();
-    gOutputDuplication->ReleaseFrame();
-
-    return croppedImage;
 }
 
 void DXGI::CleanupDXGI() {
@@ -117,6 +108,19 @@ void DXGI::CleanupDXGI() {
     if (gDevice) {
         gDevice->Release();
     }
+}
+
+void DXGI::aimbot() { 
+    // Lock the desktop mat to access it safely
+    g.desktopMutex_.lock();
+    cv::Mat desktopImage = g.desktopMat.clone();
+    g.desktopMutex_.unlock();
+
+    cv::resize(desktopImage, desktopImage, cv::Size(1088, 1088));
+
+    desktopImage.convertTo(desktopImage, CV_32FC3, 1.0 / 255.0);
+
+    performInference(desktopImage);
 }
 
 void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {
@@ -273,4 +277,8 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
             CHI.isPrimaryActive = false;
         }
     }
+}
+
+void DXGI::detectWeaponRust(cv::Mat& src) {
+
 }
