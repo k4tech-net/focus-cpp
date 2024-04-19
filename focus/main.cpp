@@ -133,9 +133,9 @@ int main()
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 
-	#if !_DEBUG
-	std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
-	#endif
+	//#if !_DEBUG
+	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
+	//#endif
 
 	while (!g.done) {
 		MSG msg;
@@ -201,9 +201,9 @@ int main()
 
 	driveMouseThread.join();
 	
-	#if !_DEBUG
-	mouseScrollThread.join();
-	#endif
+	//#if !_DEBUG
+	//mouseScrollThread.join();
+	//#endif
 
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
