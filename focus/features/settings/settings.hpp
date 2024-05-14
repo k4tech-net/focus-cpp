@@ -106,6 +106,9 @@ struct Globals
 
         std::string jsonData = "";
 
+        int aimbotCorrectionX = 0;
+		int aimbotCorrectionY = 0;
+
         std::mutex mutex_;
     } characterinfo;
 };

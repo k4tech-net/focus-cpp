@@ -531,7 +531,7 @@ void keybindManager() {
 			if (CHI.characterOptions[0]) {
 
 				if (!g.desktopMat.empty()) {
-					dx.detectWeaponR6(g.desktopMat, 25, 75);
+					//dx.detectWeaponR6(g.desktopMat, 25, 75);
 					dx.aimbot();
 				}
 			}

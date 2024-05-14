@@ -1,5 +1,7 @@
 #include "dxgi.hpp"
 
+Engine en;
+
 bool DXGI::InitDXGI() {
     // Create device and context
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
@@ -110,17 +112,86 @@ void DXGI::CleanupDXGI() {
     }
 }
 
-void DXGI::aimbot() { 
-    // Lock the desktop mat to access it safely
-    g.desktopMutex_.lock();
-    cv::Mat desktopImage = g.desktopMat.clone();
-    g.desktopMutex_.unlock();
+//void DXGI::aimbot() {
+// //   // Lock the desktop mat to access it safely
+//    g.desktopMutex_.lock();
+//    cv::Mat desktopImage = g.desktopMat.clone();
+//    g.desktopMutex_.unlock();
+//
+// //   auto [aimbotCorrectionX, aimbotCorrectionY, detection] = en.runInference(desktopImage);
+//
+// //   //performInference(desktopImage);
+// //   cv::imshow("output", detection);
+//
+// //   CHI.aimbotCorrectionX = aimbotCorrectionX;
+//	//CHI.aimbotCorrectionY = aimbotCorrectionY;
+//
+// //   std::cout << aimbotCorrectionX << ", " << aimbotCorrectionY << std::endl;
+//
+//    std::wstring model_path = L"last.onnx";
+//
+//    // Initialize the ONNX inferencer
+//    ONNXInferencer inferencer(model_path);
+//
+//    // Read and preprocess the input image
+//    if (desktopImage.empty()) {
+//        std::cerr << "Error: Unable to load image!" << std::endl;
+//        return;
+//    }
+//
+//    // Run inference
+//    std::vector<float> results = inferencer.runInference(desktopImage);
+//
+//    // Check if inference was successful
+//    if (results.empty()) {
+//        std::cerr << "Inference failed!" << std::endl;
+//        return;
+//    }
+//    
+//    // Process the results
+//    // Here you would typically interpret the results according to your model's output format
+//    std::cout << "Inference results:" << std::endl;
+//    std::cout << std::endl;
+//}
 
-    cv::resize(desktopImage, desktopImage, cv::Size(1088, 1088));
+void DXGI::aimbot() {
+    //   // Lock the desktop mat to access it safely
 
-    desktopImage.convertTo(desktopImage, CV_32FC3, 1.0 / 255.0);
+    //   auto [aimbotCorrectionX, aimbotCorrectionY, detection] = en.runInference(desktopImage);
 
-    performInference(desktopImage);
+    //   //performInference(desktopImage);
+    //   cv::imshow("output", detection);
+
+    //   CHI.aimbotCorrectionX = aimbotCorrectionX;
+       //CHI.aimbotCorrectionY = aimbotCorrectionY;
+
+    //   std::cout << aimbotCorrectionX << ", " << aimbotCorrectionY << std::endl;
+
+    std::wstring model_path = L"last.onnx";
+    ONNXInferencer2 inferencer(model_path, false);
+
+    while (true) {
+        g.desktopMutex_.lock();
+        cv::Mat desktopImage = g.desktopMat.clone();
+        g.desktopMutex_.unlock();
+
+        if (desktopImage.empty()) {
+            break; // End of video stream
+        }
+
+        std::vector<float> results = inferencer.infer(desktopImage);
+
+        if (results.empty()) {
+            std::cerr << "Inference failed!" << std::endl;
+            return;
+        }
+        else {
+			// Process the results
+			// Here you would typically interpret the results according to your model's output format
+			std::cout << "Inference results:" << std::endl;
+			std::cout << std::endl;
+        }
+    }
 }
 
 void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {

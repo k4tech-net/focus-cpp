@@ -1,14 +1,9 @@
 #pragma once
 
 #include <iostream>
-#include "opencv2/imgproc.hpp"
-#include "opencv2/highgui.hpp"
-#include "opencv2/dnn.hpp"
 #include <dxgi1_2.h>
 #include <d3d11.h>
 #include <d3dcompiler.h>
-
-#include <onnxruntime_cxx_api.h>
    
 #include <sstream>
 #include <chrono>
@@ -20,6 +15,9 @@
 
 #include "../mouse_driver/mouse.hpp"
 #include "../settings/settings.hpp"
+#include "../yoloV8-Engine/engine.hpp"
+
+#include <onnxruntime_cxx_api.h>
 
 class DXGI
 {

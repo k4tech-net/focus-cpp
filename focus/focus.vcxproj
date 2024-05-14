@@ -108,7 +108,7 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)onnxruntime\include;$(ProjectDir)imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)imgui;D:\Programs\onnxruntime-win-x64-1.17.3\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -116,12 +116,13 @@
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;onnxruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>$(ProjectDir)onnxruntime\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>D:\Programs\onnxruntime-win-x64-1.17.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
     <PostBuildEvent>
-      <Command>copy "$(ProjectDir)onnxruntime\lib\onnxruntime.dll" "$(OutDir)"</Command>
+      <Command>
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
@@ -166,6 +167,13 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouse_driver\mouse.cpp" />
     <ClCompile Include="WinMain.cpp" />
+    <ClCompile Include="yoloV8-Engine\engine.cpp" />
+    <ClCompile Include="yoloV8-Engine\engine\autobackend.cpp" />
+    <ClCompile Include="yoloV8-Engine\engine\onnx_model_base.cpp" />
+    <ClCompile Include="yoloV8-Engine\old_engine.cpp" />
+    <ClCompile Include="yoloV8-Engine\utils\augment.cpp" />
+    <ClCompile Include="yoloV8-Engine\utils\common.cpp" />
+    <ClCompile Include="yoloV8-Engine\utils\ops.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="features\control\control.hpp" />
@@ -188,6 +196,13 @@
     <ClInclude Include="imgui\plugins\TextEditor.h" />
     <ClInclude Include="includes.hpp" />
     <ClInclude Include="mouse_driver\mouse.hpp" />
+    <ClInclude Include="yoloV8-Engine\constants.h" />
+    <ClInclude Include="yoloV8-Engine\engine.hpp" />
+    <ClInclude Include="yoloV8-Engine\engine\autobackend.h" />
+    <ClInclude Include="yoloV8-Engine\engine\onnx_model_base.h" />
+    <ClInclude Include="yoloV8-Engine\utils\augment.h" />
+    <ClInclude Include="yoloV8-Engine\utils\common.h" />
+    <ClInclude Include="yoloV8-Engine\utils\ops.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />
