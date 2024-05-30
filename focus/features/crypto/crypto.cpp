@@ -116,7 +116,7 @@ void Crypto::watchdog() {
         auto lastAuth = lastAuthTime.load();
 
         // Check if more than 10 seconds have passed since last authentication
-        if (now - lastAuth > std::chrono::seconds(3)) {
+        if (now - lastAuth > std::chrono::seconds(15)) {
             // Authentication timeout - perform cleanup and exit
             std::cout << xorstr_("Authentication timed out") << std::endl;
             exit(0);
