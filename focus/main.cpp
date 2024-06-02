@@ -135,9 +135,9 @@ int main()
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
 
-	#if !_DEBUG
+	//#if !_DEBUG
 	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
-	#endif
+	//#endif
 
 	while (!g.done) {
 		MSG msg;
@@ -210,10 +210,10 @@ int main()
 	aimbotThread.join();
 	captureDesktopThread.join();
 	driveMouseThread.join();
-	
-	#if !_DEBUG
+  
+	//#if !_DEBUG
 	//mouseScrollThread.join();
-	#endif
+	//#endif
 
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
