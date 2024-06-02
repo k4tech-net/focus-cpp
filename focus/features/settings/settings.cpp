@@ -26,6 +26,10 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
 	CHI.mode = jsonData[xorstr_("Mode")];
     CHI.potato = jsonData[xorstr_("Potato")];
 
+    g.aimbotinfo.provider = jsonData[xorstr_("Aim Assist")][0].get<int>();
+    g.aimbotinfo.smoothing = jsonData[xorstr_("Aim Assist")][1].get<int>();
+    g.aimbotinfo.maxDistance = jsonData[xorstr_("Aim Assist")][2].get<int>();
+
     if (CHI.mode == xorstr_("Generic")) {
        setting.charactername = xorstr_("Generic");
 
@@ -33,7 +37,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
        CHI.aux_keybinds = { "" };
 
         for (auto& item : jsonData.items()) {
-            if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato")) {
+            if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Aim Assist")) {
                 weaponData weapon;
 
                 weapon.weaponname = item.key();
@@ -81,7 +85,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
         CHI.aux_keybinds = jsonData[xorstr_("Aux Keybinds")];
 
         for (auto& characterItem : jsonData.items()) {
-            if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Potato") && characterItem.key() != xorstr_("Weapon Keybinds") && characterItem.key() != xorstr_("Aux Keybinds")) {
+            if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Potato") && characterItem.key() != xorstr_("Aim Assist") && characterItem.key() != xorstr_("Weapon Keybinds") && characterItem.key() != xorstr_("Aux Keybinds")) {
                 Settings setting; // Create a new Settings object for each character
 
                 setting.charactername = characterItem.key();
@@ -148,7 +152,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
             CHI.sensitivity = jsonData[xorstr_("Sensitivity")].get<std::vector<float>>();
 
             for (auto& characterItem : jsonData.items()) {
-                if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Potato") && characterItem.key() != xorstr_("Game") && characterItem.key() != xorstr_("Sensitivity")) {
+                if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Potato") && characterItem.key() != xorstr_("Aim Assist") && characterItem.key() != xorstr_("Game") && characterItem.key() != xorstr_("Sensitivity")) {
                     Settings setting; // Create a new Settings object for each character
 
                     setting.charactername = characterItem.key();
@@ -203,7 +207,58 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
                     settings.push_back(setting); // Push the Settings object for the current character
                 }
             }
-        }
+        } 
+        else if (CHI.game == xorstr_("Rust")) {
+            setting.charactername = xorstr_("Rust");
+
+            CHI.wpn_keybinds = { "" };
+            CHI.aux_keybinds = { "" };
+
+            CHI.sensitivity = jsonData[xorstr_("Sensitivity")].get<std::vector<float>>();
+
+            for (auto& item : jsonData.items()) {
+                if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Aim Assist") && item.key() != xorstr_("Game") && item.key() != xorstr_("Sensitivity") && item.key() != xorstr_("Options")) {
+                    weaponData weapon;
+
+                    weapon.weaponname = item.key();
+                    auto& valueArray = item.value();
+
+                    if (valueArray.is_array() && valueArray.size() >= 2) {
+                        weapon.autofire = valueArray[0].get<bool>();
+                        weapon.attachments = { 0, 0, 0 };
+
+                        // Assuming the nested arrays are now wrapped in another array at index 2
+                        if (valueArray[1].is_array()) {
+                            auto& nestedArrays = valueArray[1];
+                            for (auto& nestedArray : nestedArrays) {
+                                if (nestedArray.is_array()) {
+                                    weapon.values.push_back(nestedArray.get<std::vector<float>>());
+                                }
+                                else {
+                                    std::cerr << xorstr_("Invalid nested array format for weapon: ") << weapon.weaponname << std::endl;
+                                }
+                            }
+                        }
+                        else {
+                            std::cerr << xorstr_("Expected a nested array for weapon values: ") << weapon.weaponname << std::endl;
+                        }
+
+                        setting.weapondata.push_back(weapon);
+                    }
+                    else {
+                        std::cerr << xorstr_("Invalid format for weapon: ") << weapon.weaponname << std::endl;
+                    }
+                }
+            }
+
+            // Set all options to false
+            setting.options = jsonData[xorstr_("Options")].get<std::vector<bool>>();
+
+            // Set default weapon to 0 for generic mode
+            setting.defaultweapon = std::vector<int>{ 0, 0 };
+
+            settings.push_back(setting);
+		}
         else {
 			std::cerr << xorstr_("Invalid game: ") << CHI.game << std::endl;
         }

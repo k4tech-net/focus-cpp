@@ -84,12 +84,22 @@ bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::v
     return changed;
 }
 
-void Menu::popup(bool trigger, const char* type) {
+void Menu::popup(bool trigger, int type) {
+
+	const char* chartype;
+
+	if (type == 0) {
+		chartype = xorstr_("Open");
+	}
+	else if (type == 1) {
+		chartype = xorstr_("InitShutdown");
+	}
+
     if (trigger) {
-		ImGui::OpenPopup(type);
+		ImGui::OpenPopup(chartype);
     }
 
-    if (ImGui::BeginPopupModal(type)) {
+    if (ImGui::BeginPopupModal(chartype)) {
         ImGui::Text(xorstr_("You have unsaved changes. Are you sure you want to complete this action?"));
         ImGui::Separator();
 
@@ -100,7 +110,7 @@ void Menu::popup(bool trigger, const char* type) {
         }
         ImGui::SameLine();
 
-        if (type == xorstr_("Open")) {
+        if (type == 0) {
             if (ImGui::Button(xorstr_("Open Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
@@ -109,7 +119,7 @@ void Menu::popup(bool trigger, const char* type) {
                 trigger = false;
             }
         }
-        else if (type == xorstr_("InitShutdown")) {
+        else if (type == 1) {
             if (ImGui::Button(xorstr_("Close Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 g.done = true;
@@ -280,7 +290,7 @@ void auxKeyHandler() {
 	}
 }
 
-std::vector<float> calculateSensitivityModifier() {
+std::vector<float> calculateSensitivityModifierR6() {
 	float oldBaseSens = 10;
 	float oldRelativeSens = 50;
 
@@ -418,6 +428,67 @@ std::vector<float> calculateSensitivityModifier() {
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
 
+std::vector<float> calculateSensitivityModifierRust() {
+	float oldBaseSens = 0.509f;
+	float oldADSSens = 1;
+
+	float newBaseSens = CHI.sensitivity[0];
+	float newADSSens = CHI.sensitivity[1];
+
+	int activescope = 0;
+
+	float sightXEffect = 1.0f;
+	float sightYEffect = 1.0f;
+
+	float barrelXEffect = 1.0f;
+	float barrelYEffect = 1.0f;
+
+	switch (CHI.primaryAttachments[0]) {
+	case 0:
+		sightXEffect = 1.0f;
+		sightYEffect = 1.0f;
+		activescope = 1;
+		break;
+	case 1:
+		sightXEffect = 2.f;
+		sightYEffect = 2.43f;
+		activescope = 2;
+		break;
+	case 2:
+		sightXEffect = 3.5f;
+		sightYEffect = 3.5f;
+		activescope = 3;
+		break;
+	}
+
+	switch (CHI.primaryAttachments[2]) {
+	case 0:
+		barrelXEffect = 1.0f;
+		barrelYEffect = 1.0f;
+		break;
+	case 1:
+		barrelXEffect = 0.75f;
+		barrelYEffect = 0.4f;
+		break;
+	case 2:
+		barrelXEffect = 0.85f;
+		barrelYEffect = 1.0f;
+		break;
+	case 3:
+		barrelXEffect = 1.0f;
+		barrelYEffect = 0.85f;
+		break;
+	}
+
+	float totalAttachXEffect = sightXEffect * barrelXEffect;
+	float totalAttachYEffect = sightYEffect * barrelYEffect;
+
+	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect);
+	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect);
+
+	return std::vector<float>{ newSensXModifier, newSensYModifier };
+}
+
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
@@ -434,13 +505,8 @@ void keybindManager() {
 
 		if (CHI.characterOptions[0]) {
 
-			cv::Mat src = dx.CaptureDesktopDXGI();
-			if (!src.empty()) {
-				dx.detectWeaponR6(src, 25, 75);
-
-				#if _DEBUG
-				imshow("output", src); // Debug window
-				#endif
+			if (!g.desktopMat.empty()) {
+				dx.detectWeaponR6(g.desktopMat, 25, 75);
 			}
 		}
 
@@ -474,17 +540,40 @@ void keybindManager() {
 		if (CHI.game == xorstr_("Siege")) {
 			if (CHI.characterOptions[0]) {
 
-				cv::Mat src = dx.CaptureDesktopDXGI();
-				if (!src.empty()) {
-					dx.detectWeaponR6(src, 25, 75);
+				if (!g.desktopMat.empty()) {
+					int screenWidth = g.desktopMat.cols;
+					int screenHeight = g.desktopMat.rows;
 
-					#if _DEBUG
-					imshow("output", src); // Debug window
-					#endif
+					// Define ratios for crop region
+					float cropRatioX = 0.8f; // 20% from left
+					float cropRatioY = 0.82f; // 20% from top
+					float cropRatioWidth = 0.18f; // 18% of total width
+					float cropRatioHeight = 0.14f; // 14% of total height
+
+					// Calculate the region of interest (ROI) based on ratios
+					int x = static_cast<int>(cropRatioX * screenWidth);
+					int y = static_cast<int>(cropRatioY * screenHeight);
+					int width = static_cast<int>(cropRatioWidth * screenWidth);
+					int height = static_cast<int>(cropRatioHeight * screenHeight);
+
+					// Ensure the ROI is within the bounds of the desktopMat
+					x = std::max(0, x);
+					y = std::max(0, y);
+					width = std::min(width, screenWidth - x);
+					height = std::min(height, screenHeight - y);
+
+					cv::Rect roi(x, y, width, height);
+
+					// Extract the region of interest from the desktopMat
+					g.desktopMutex_.lock();
+					cv::Mat smallRegion = g.desktopMat(roi);
+
+
+					dx.detectWeaponR6(smallRegion, 25, 75);
 				}
 			}
 
-			std::vector<float> sens = calculateSensitivityModifier();
+			std::vector<float> sens = calculateSensitivityModifierR6();
 
 			CHI.activeWeaponSensXModifier = sens[0];
 			CHI.activeWeaponSensYModifier = sens[1];
@@ -501,6 +590,23 @@ void keybindManager() {
 				CHI.mutex_.unlock();
 				CHI.currAutofire = CHI.secondaryAutofire;
 			}
+		}
+		else if (CHI.game == xorstr_("Rust")) {
+			if (CHI.characterOptions[0]) {
+				if (!g.desktopMat.empty()) {
+					//dx.detectWeaponRust(g.desktopMat);
+				}
+			}
+
+			std::vector<float> sens = calculateSensitivityModifierRust();
+			CHI.activeWeaponSensXModifier = sens[0];
+			CHI.activeWeaponSensYModifier = sens[1];
+
+			CHI.isPrimaryActive = true;
+			CHI.mutex_.lock();
+			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
+			CHI.mutex_.unlock();
+			CHI.currAutofire = CHI.primaryAutofire;
 		}
 	}
 }
@@ -628,6 +734,23 @@ void Menu::gui()
 
 				ImGui::EndTabItem();
 			}
+
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+				}
+
+				ImGui::EndTabItem();
+			}
 		}
 		else if (CHI.mode == xorstr_("Character")) {
 			if (ImGui::BeginTabItem(xorstr_("Character"))) {
@@ -700,9 +823,26 @@ void Menu::gui()
 
 				ImGui::EndTabItem();
 			}
+
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+				}
+
+				ImGui::EndTabItem();
+			}
 		}
 		else if (CHI.mode == xorstr_("Game")) {
-			if (CHI.game == "Siege") {
+			if (CHI.game == xorstr_("Siege")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
 					if (CHI.characters.size() > 0) {
 						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
@@ -812,11 +952,67 @@ void Menu::gui()
 					ImGui::EndTabItem();
 				}
 			}
+			else if (CHI.game == xorstr_("Rust")) {
+				if (ImGui::BeginTabItem(xorstr_("Game"))) {
+					if (CHI.characters.size() > 0) {
+						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
+
+						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+
+						if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
+							updateCharacterData(true, false, true, true, true);
+						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Options"));
+
+						std::vector<const char*> MultiOptions = { xorstr_("Rust Auto Weapon Detection") };
+
+						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
+							updateCharacterData(true, false, false, false, false);
+						}
+
+						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Extra Data"));
+
+						ImGui::SliderFloat(xorstr_("Sensitivity"), &CHI.sensitivity[0], 0.0f, 10.0f, xorstr_("%.3f"));
+						ImGui::SliderFloat(xorstr_("Aiming Sensitivity"), &CHI.sensitivity[1], 0.0f, 10.0f, xorstr_("%.3f"));
+
+						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
+						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);
+					}
+					else {
+						ImGui::Text(xorstr_("Please load a weapons file"));
+					}
+
+					ImGui::EndTabItem();
+				}
+			}
 			else {
 				ImGui::Text(xorstr_("Please load a valid game config"));
 			}
-		}
 
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+				}
+
+				ImGui::EndTabItem();
+			}
+		}
 
 		if (ImGui::BeginTabItem(xorstr_("Edit"))) {
 
@@ -859,8 +1055,8 @@ void Menu::gui()
 		}
 	}
 
-	popup(openmodal, xorstr_("Open"));
-	popup(initshutdownpopup, xorstr_("InitShutdown"));
+	popup(openmodal, 0);
+	popup(initshutdownpopup, 1);
 
 	ImGui::End();
 }

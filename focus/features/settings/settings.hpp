@@ -10,6 +10,9 @@
 #include <variant>
 #include <mutex>
 
+#include "opencv2/imgproc.hpp"
+#include "opencv2/highgui.hpp"
+
 #include <nlohmann/json.hpp>
 
 using json = nlohmann::json;
@@ -50,6 +53,9 @@ struct Globals
 {
     bool shutdown = false;
     bool initshutdown = false;
+   
+    cv::Mat desktopMat;
+    std::mutex desktopMutex_;
 
     bool done = false;
 
@@ -102,6 +108,17 @@ struct Globals
 
         std::mutex mutex_;
     } characterinfo;
+
+    struct AimbotInfo {
+        int correctionX = 0;
+        int correctionY = 0;
+
+        bool enabled = false;
+        int provider = 0;
+
+        int smoothing = 0;
+        int maxDistance = 0;
+    } aimbotinfo;
 };
 
 extern Globals g;

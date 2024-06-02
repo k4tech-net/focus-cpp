@@ -1,11 +1,10 @@
 #pragma once
 
 #include <iostream>
-#include "opencv2/imgproc.hpp"
-#include "opencv2/highgui.hpp"
 #include <dxgi1_2.h>
 #include <d3d11.h>
-
+#include <d3dcompiler.h>
+   
 #include <sstream>
 #include <chrono>
 #include <thread>
@@ -16,14 +15,19 @@
 
 #include "../mouse_driver/mouse.hpp"
 #include "../settings/settings.hpp"
+#include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
+
+#include <onnxruntime_cxx_api.h>
 
 class DXGI
 {
 public:
 	bool InitDXGI();
-	cv::Mat CaptureDesktopDXGI();
+	void CaptureDesktopDXGI();
 	void CleanupDXGI();
+	void aimbot();
 	void detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
+	void detectWeaponRust(cv::Mat& src);
 
 private:
 	// DXGI variables

@@ -1,0 +1,10 @@
+{
+    "Mode": "Game",
+    "Potato": false,
+    "Game": "Rust",
+    "Sensitivity": [0.509, 1],
+    "Assualt Rifle": [false, [[0, 5, 2000], [1, 5, 2000]]],
+    "LR300": [false, [[0, 5, 2000], [1, 5, 2000]]],
+    "M249": [false, [[0, 5, 2000], [1, 5, 2000]]],
+    "Options": [true]
+}

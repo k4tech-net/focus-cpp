@@ -57,6 +57,9 @@
     <ClCompile Include="features\crypto\crypto.cpp">
       <Filter>features\crypto</Filter>
     </ClCompile>
+    <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp">
+      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -88,6 +91,9 @@
     </Filter>
     <Filter Include="features\crypto">
       <UniqueIdentifier>{70b25cbf-e585-44ac-9cf8-eae5b82c1848}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YoloV8-ONNXRuntime-CPP">
+      <UniqueIdentifier>{f2f4c344-1df6-4a70-a9ba-21474d368f5a}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -148,6 +154,9 @@
     </ClInclude>
     <ClInclude Include="features\crypto\crypto.hpp">
       <Filter>features\crypto</Filter>
+    </ClInclude>
+    <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp">
+      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

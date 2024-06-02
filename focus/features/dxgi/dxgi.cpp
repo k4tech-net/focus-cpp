@@ -1,5 +1,7 @@
 #include "dxgi.hpp"
 
+//Engine en;
+
 bool DXGI::InitDXGI() {
     // Create device and context
     D3D_FEATURE_LEVEL featureLevel = D3D_FEATURE_LEVEL_11_0;
@@ -37,74 +39,68 @@ bool DXGI::InitDXGI() {
     return true;
 }
 
-cv::Mat DXGI::CaptureDesktopDXGI() {
-    IDXGIResource* desktopResource = nullptr;
-    DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
+void DXGI::CaptureDesktopDXGI() {
+    cv::Mat buffer1, buffer2;
+    cv::Mat* currentBuffer = &buffer1;
+    cv::Mat* processingBuffer = &buffer2;
 
-    // Try to acquire next frame
-    HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
-    if (FAILED(hr)) {
-        std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
-        return cv::Mat();
+    while (!g.shutdown) {
+        IDXGIResource* desktopResource = nullptr;
+        DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
+
+        // Try to acquire next frame
+        HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
+        if (FAILED(hr)) {
+            std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
+            continue;
+        }
+
+        // Query for ID3D11Texture2D
+        ID3D11Texture2D* desktopImageTex = nullptr;
+        desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
+        desktopResource->Release();
+
+        // Get metadata to create Mat
+        D3D11_TEXTURE2D_DESC desc;
+        desktopImageTex->GetDesc(&desc);
+
+        // Create staging texture
+        ID3D11Texture2D* stagingTexture = nullptr;
+        desc.Usage = D3D11_USAGE_STAGING;
+        desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+        desc.BindFlags = 0;
+        desc.MiscFlags = 0;
+        gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
+
+        if (desktopImageTex == 0 || stagingTexture == 0) {
+            continue;
+        }
+
+        // Copy to staging texture
+        gContext->CopyResource(stagingTexture, desktopImageTex);
+
+        // Map resource
+        D3D11_MAPPED_SUBRESOURCE resource;
+        gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
+
+        // Create OpenCV Mat
+        *currentBuffer = cv::Mat(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch).clone();
+
+        // Unmap and release
+        gContext->Unmap(stagingTexture, 0);
+        stagingTexture->Release();
+        desktopImageTex->Release();
+        gOutputDuplication->ReleaseFrame();
+
+        // Swap buffers
+        g.desktopMutex_.lock();
+        std::swap(g.desktopMat, *processingBuffer);
+        g.desktopMutex_.unlock();
+
+        std::swap(currentBuffer, processingBuffer);
+
+        //imshow("output", frameCopy); // Debug window
     }
-
-    // Query for ID3D11Texture2D
-    ID3D11Texture2D* desktopImageTex = nullptr;
-    desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
-    desktopResource->Release();
-
-    // Get metadata to create Mat
-    D3D11_TEXTURE2D_DESC desc;
-    desktopImageTex->GetDesc(&desc);
-
-    // Create staging texture
-    ID3D11Texture2D* stagingTexture = nullptr;
-    desc.Usage = D3D11_USAGE_STAGING;
-    desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
-    desc.BindFlags = 0;
-    desc.MiscFlags = 0;
-    gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
-
-    if (desktopImageTex == 0 || stagingTexture == 0) {
-        return cv::Mat();
-    }
-
-    // Copy to staging texture
-    gContext->CopyResource(stagingTexture, desktopImageTex);
-
-    // Map resource
-    D3D11_MAPPED_SUBRESOURCE resource;
-    gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
-
-    // Define ratios for crop region
-    float cropRatioX = 0.8f; // 20% from left
-    float cropRatioY = 0.82f; // 20% from top
-    float cropRatioWidth = 0.18f; // 60% of total width
-    float cropRatioHeight = 0.14f; // 60% of total height
-
-    // Calculate bottom right quarter
-    int cropX = static_cast<int>(desc.Width * cropRatioX);
-    int cropY = static_cast<int>(desc.Height * cropRatioY);
-    int cropWidth = static_cast<int>(desc.Width * cropRatioWidth);
-    int cropHeight = static_cast<int>(desc.Height * cropRatioHeight);
-
-    // Create OpenCV Mat
-    cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
-
-    cv::Rect cropRegion(cropX, cropY, cropWidth, cropHeight);
-
-    cv::Mat croppedImage = desktopImage(cropRegion).clone(); // Clone is needed as desktopImage data will be invalidated
-
-    // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
-    //Mat frameCopy = desktopImage.clone();
-
-    // Unmap and release
-    gContext->Unmap(stagingTexture, 0);
-    stagingTexture->Release();
-    desktopImageTex->Release();
-    gOutputDuplication->ReleaseFrame();
-
-    return croppedImage;
 }
 
 void DXGI::CleanupDXGI() {
@@ -116,6 +112,94 @@ void DXGI::CleanupDXGI() {
     }
     if (gDevice) {
         gDevice->Release();
+    }
+}
+
+std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass) {
+    int imageCenterX = image.cols / 2;
+    int imageCenterY = image.rows / 2;
+
+    float minDistance = std::numeric_limits<float>::max();
+    cv::Point2f closestDetectionCenter(imageCenterX, imageCenterY);
+    bool found = false;
+
+    for (const auto& detection : detections) {
+        if (detection.class_id == targetClass) {
+            cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.0f,
+                detection.box.y + detection.box.height / 2.0f);
+            float distance = cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY));
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDetectionCenter = detectionCenter;
+                found = true;
+            }
+        }
+    }
+
+    if (!found) {
+        return { 0.0f, 0.0f };
+    }
+
+    float correctionX = closestDetectionCenter.x - imageCenterX;
+    float correctionY = closestDetectionCenter.y - imageCenterY;
+
+    return { correctionX, correctionY };
+}
+
+void DXGI::aimbot() {
+
+    std::wstring modelPath = xorstr_(L"focus.onnx");
+    const char* logid = xorstr_("yolo_inference");
+    const char* provider;
+
+    bool aimbotInit = false;
+
+    std::unique_ptr<YoloInferencer> inferencer;
+
+    while (!g.shutdown) {
+        if (!g.aimbotinfo.enabled) {
+            if (aimbotInit) {
+                inferencer.reset();
+                aimbotInit = false;
+			}
+            g.aimbotinfo.correctionX = 0;
+            g.aimbotinfo.correctionY = 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            continue;
+        }
+
+        if (!aimbotInit) {
+            if (g.aimbotinfo.provider == 1) {
+                provider = xorstr_("CUDA");
+            }
+            else {
+				provider = xorstr_("CPU");
+            }
+
+            inferencer = std::make_unique<YoloInferencer>(modelPath, logid, provider);
+            aimbotInit = true;
+        }
+
+        if (!aimbotInit) {
+            continue;
+        }
+
+        g.desktopMutex_.lock();
+        cv::Mat desktopImage = g.desktopMat.clone();
+        g.desktopMutex_.unlock();
+
+        if (desktopImage.empty()) {
+            continue;
+        }
+
+		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.1, 0.5);
+
+        int target_class_id = 1; // Replace with the actual class ID you are targeting
+        std::vector<float> corrections = calculateCorrections(desktopImage, detections, target_class_id);
+
+        g.aimbotinfo.correctionX = corrections[0];
+        g.aimbotinfo.correctionY = corrections[1];
     }
 }
 
@@ -153,7 +237,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         static_cast<int>(src.rows * roi3HeightPercent));
 
     // Highlight the ROIs on the source image for alignment
-    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1
+    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1  // Keeps crashing here
     rectangle(src, roi2, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 2
     rectangle(src, roi3, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 3
 
@@ -273,4 +357,8 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
             CHI.isPrimaryActive = false;
         }
     }
+}
+
+void DXGI::detectWeaponRust(cv::Mat& src) {
+
 }
