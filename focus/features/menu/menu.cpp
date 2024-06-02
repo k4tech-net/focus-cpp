@@ -567,7 +567,7 @@ void keybindManager() {
 					// Extract the region of interest from the desktopMat
 					g.desktopMutex_.lock();
 					cv::Mat smallRegion = g.desktopMat(roi);
-
+					g.desktopMutex_.unlock();
 
 					dx.detectWeaponR6(smallRegion, 25, 75);
 				}
