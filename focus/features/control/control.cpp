@@ -27,11 +27,19 @@ void Control::driveMouse() {
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
 
+	// New variables for smoothin
+	static int currentIteration = 0;
+	static float totalCorrectionX = 0;
+	static float totalCorrectionY = 0;
+	static float smoothedCorrectionX = 0;
+	static float smoothedCorrectionY = 0;
+
 	while (!g.shutdown) {
 		// Check if the selected weapon has changed
 		CHI.mutex_.lock();
 		if (!(currwpn == CHI.activeWeapon)) {
 			currwpn = CHI.activeWeapon;
+			CHI.mutex_.unlock();
 
 			// Print the new weapon data
 			/*for (auto const& data : currwpn.values) {
@@ -41,7 +49,11 @@ void Control::driveMouse() {
 			// Update maxInstructions
 			maxInstructions = currwpn.values.size();
 		}
-		CHI.mutex_.unlock();
+		else {
+			CHI.mutex_.unlock();
+		}
+
+		int smoothingIterations = g.aimbotinfo.smoothing;
 
 		while (GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON) && !complete && !CHI.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
@@ -68,6 +80,23 @@ void Control::driveMouse() {
 
 					xAccumulator -= xMove;
 					yAccumulator -= yMove;
+
+					// Apply smoothing
+					totalCorrectionX = g.aimbotinfo.correctionX;
+					totalCorrectionY = g.aimbotinfo.correctionY;
+					currentIteration++;
+
+					if (currentIteration >= smoothingIterations && (totalCorrectionX != 0 || totalCorrectionY != 0)) {
+						smoothedCorrectionX = totalCorrectionX / smoothingIterations;
+						smoothedCorrectionY = totalCorrectionY / smoothingIterations;
+
+						totalCorrectionX = 0;
+						totalCorrectionY = 0;
+						currentIteration = 0;
+					}
+
+					xMove += std::clamp(static_cast<int>(smoothedCorrectionX), -g.aimbotinfo.maxDistance, g.aimbotinfo.maxDistance);
+					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -g.aimbotinfo.maxDistance, g.aimbotinfo.maxDistance);
 					
 					ms.mouse_move(0, xMove, yMove, 0);
 					
@@ -101,6 +130,13 @@ void Control::driveMouse() {
 			cycles = 0;
 			xAccumulator = 0;
 			yAccumulator = 0;
+
+			totalCorrectionX = 0;
+			totalCorrectionY = 0;
+			currentIteration = 0;
+			smoothedCorrectionX = 0;
+			smoothedCorrectionY = 0;
+
 			if (flipFlop) {
 				pressLKey(false);
 				flipFlop = false;
@@ -108,7 +144,7 @@ void Control::driveMouse() {
 		}
 
 		if (CHI.potato) {
-			std::this_thread::sleep_for(std::chrono::microseconds(500));
+			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 		//ut.preciseSleepFor(0.0005); // uses too much resources
 	}

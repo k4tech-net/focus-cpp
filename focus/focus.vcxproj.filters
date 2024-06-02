@@ -57,26 +57,8 @@
     <ClCompile Include="features\crypto\crypto.cpp">
       <Filter>features\crypto</Filter>
     </ClCompile>
-    <ClCompile Include="yoloV8-Engine\old_engine.cpp">
-      <Filter>yoloV8-Engine</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\utils\augment.cpp">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\utils\common.cpp">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\utils\ops.cpp">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\engine\autobackend.cpp">
-      <Filter>yoloV8-Engine\engine</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\engine\onnx_model_base.cpp">
-      <Filter>yoloV8-Engine\engine</Filter>
-    </ClCompile>
-    <ClCompile Include="yoloV8-Engine\engine.cpp">
-      <Filter>yoloV8-Engine</Filter>
+    <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp">
+      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -110,14 +92,8 @@
     <Filter Include="features\crypto">
       <UniqueIdentifier>{70b25cbf-e585-44ac-9cf8-eae5b82c1848}</UniqueIdentifier>
     </Filter>
-    <Filter Include="yoloV8-Engine">
+    <Filter Include="YoloV8-ONNXRuntime-CPP">
       <UniqueIdentifier>{f2f4c344-1df6-4a70-a9ba-21474d368f5a}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="yoloV8-Engine\utils">
-      <UniqueIdentifier>{76093ba5-235b-417e-bed4-33f3702e6e1e}</UniqueIdentifier>
-    </Filter>
-    <Filter Include="yoloV8-Engine\engine">
-      <UniqueIdentifier>{2c464fa9-87af-4606-8018-459cc7f8e04d}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -179,26 +155,8 @@
     <ClInclude Include="features\crypto\crypto.hpp">
       <Filter>features\crypto</Filter>
     </ClInclude>
-    <ClInclude Include="yoloV8-Engine\engine\autobackend.h">
-      <Filter>yoloV8-Engine\engine</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\engine\onnx_model_base.h">
-      <Filter>yoloV8-Engine\engine</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\utils\augment.h">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\utils\common.h">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\utils\ops.h">
-      <Filter>yoloV8-Engine\utils</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\constants.h">
-      <Filter>yoloV8-Engine</Filter>
-    </ClInclude>
-    <ClInclude Include="yoloV8-Engine\engine.hpp">
-      <Filter>yoloV8-Engine</Filter>
+    <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp">
+      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -133,9 +133,10 @@ int main()
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
+	std::thread aimbotThread(&DXGI::aimbot, &dx);
 
 	#if !_DEBUG
-	std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
+	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
 	#endif
 
 	while (!g.done) {
@@ -206,11 +207,12 @@ int main()
 	watchdogThread.join();
 	#endif
 
+	aimbotThread.join();
 	captureDesktopThread.join();
 	driveMouseThread.join();
 	
 	#if !_DEBUG
-	mouseScrollThread.join();
+	//mouseScrollThread.join();
 	#endif
 
 	CleanupDeviceD3D();

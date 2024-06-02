@@ -1,6 +1,7 @@
 {
     "Mode": "Character",
-    "Potato": false,
+    "Potato": true,
+    "Aim Assist": [0, 50, 5],
     "Weapon Keybinds": ["0x31", "0x32"],
     "Aux Keybinds": ["0x35"],
     "Sledge": {

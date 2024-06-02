@@ -15,7 +15,7 @@
 
 #include "../mouse_driver/mouse.hpp"
 #include "../settings/settings.hpp"
-#include "../yoloV8-Engine/engine.hpp"
+#include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
 
 #include <onnxruntime_cxx_api.h>
 

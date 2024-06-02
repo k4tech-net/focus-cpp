@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|Win32">
@@ -108,15 +108,15 @@
       <WarningLevel>Level3</WarningLevel>
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>$(ProjectDir)imgui;D:\Programs\onnxruntime-win-x64-1.17.3\include</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)imgui;D:\Programs\onnxruntime-win-x64-gpu-1.17.3\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
     <Link>
       <SubSystem>Console</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;onnxruntime.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>D:\Programs\onnxruntime-win-x64-1.17.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;onnxruntime.lib;onnxruntime_providers_cuda.lib;onnxruntime_providers_shared.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Programs\onnxruntime-win-x64-gpu-1.17.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
       <IgnoreSpecificDefaultLibraries>
       </IgnoreSpecificDefaultLibraries>
     </Link>
@@ -133,7 +133,7 @@
       <SDLCheck>false</SDLCheck>
       <PreprocessorDefinitions>NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <ConformanceMode>true</ConformanceMode>
-      <AdditionalIncludeDirectories>$(ProjectDir)imgui</AdditionalIncludeDirectories>
+      <AdditionalIncludeDirectories>$(ProjectDir)imgui;D:\Programs\onnxruntime-win-x64-gpu-1.17.3\include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp20</LanguageStandard>
       <LanguageStandard_C>stdc17</LanguageStandard_C>
     </ClCompile>
@@ -142,8 +142,8 @@
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
-      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;%(AdditionalDependencies)</AdditionalDependencies>
-      <AdditionalLibraryDirectories>%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;d3dcompiler.lib;onnxruntime.lib;onnxruntime_providers_cuda.lib;onnxruntime_providers_shared.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalLibraryDirectories>D:\Programs\onnxruntime-win-x64-gpu-1.17.3\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -167,13 +167,7 @@
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouse_driver\mouse.cpp" />
     <ClCompile Include="WinMain.cpp" />
-    <ClCompile Include="yoloV8-Engine\engine.cpp" />
-    <ClCompile Include="yoloV8-Engine\engine\autobackend.cpp" />
-    <ClCompile Include="yoloV8-Engine\engine\onnx_model_base.cpp" />
-    <ClCompile Include="yoloV8-Engine\old_engine.cpp" />
-    <ClCompile Include="yoloV8-Engine\utils\augment.cpp" />
-    <ClCompile Include="yoloV8-Engine\utils\common.cpp" />
-    <ClCompile Include="yoloV8-Engine\utils\ops.cpp" />
+    <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="features\control\control.hpp" />
@@ -196,13 +190,7 @@
     <ClInclude Include="imgui\plugins\TextEditor.h" />
     <ClInclude Include="includes.hpp" />
     <ClInclude Include="mouse_driver\mouse.hpp" />
-    <ClInclude Include="yoloV8-Engine\constants.h" />
-    <ClInclude Include="yoloV8-Engine\engine.hpp" />
-    <ClInclude Include="yoloV8-Engine\engine\autobackend.h" />
-    <ClInclude Include="yoloV8-Engine\engine\onnx_model_base.h" />
-    <ClInclude Include="yoloV8-Engine\utils\augment.h" />
-    <ClInclude Include="yoloV8-Engine\utils\common.h" />
-    <ClInclude Include="yoloV8-Engine\utils\ops.h" />
+    <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

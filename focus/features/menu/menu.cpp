@@ -84,12 +84,22 @@ bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::v
     return changed;
 }
 
-void Menu::popup(bool trigger, const char* type) {
+void Menu::popup(bool trigger, int type) {
+
+	const char* chartype;
+
+	if (type == 0) {
+		chartype = xorstr_("Open");
+	}
+	else if (type == 1) {
+		chartype = xorstr_("InitShutdown");
+	}
+
     if (trigger) {
-		ImGui::OpenPopup(type);
+		ImGui::OpenPopup(chartype);
     }
 
-    if (ImGui::BeginPopupModal(type)) {
+    if (ImGui::BeginPopupModal(chartype)) {
         ImGui::Text(xorstr_("You have unsaved changes. Are you sure you want to complete this action?"));
         ImGui::Separator();
 
@@ -100,7 +110,7 @@ void Menu::popup(bool trigger, const char* type) {
         }
         ImGui::SameLine();
 
-        if (type == xorstr_("Open")) {
+        if (type == 0) {
             if (ImGui::Button(xorstr_("Open Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
@@ -109,7 +119,7 @@ void Menu::popup(bool trigger, const char* type) {
                 trigger = false;
             }
         }
-        else if (type == xorstr_("InitShutdown")) {
+        else if (type == 1) {
             if (ImGui::Button(xorstr_("Close Anyway"), ImVec2(120, 0))) {
                 ImGui::CloseCurrentPopup();
                 g.done = true;
@@ -531,8 +541,35 @@ void keybindManager() {
 			if (CHI.characterOptions[0]) {
 
 				if (!g.desktopMat.empty()) {
-					//dx.detectWeaponR6(g.desktopMat, 25, 75);
-					dx.aimbot();
+					int screenWidth = g.desktopMat.cols;
+					int screenHeight = g.desktopMat.rows;
+
+					// Define ratios for crop region
+					float cropRatioX = 0.8f; // 20% from left
+					float cropRatioY = 0.82f; // 20% from top
+					float cropRatioWidth = 0.18f; // 18% of total width
+					float cropRatioHeight = 0.14f; // 14% of total height
+
+					// Calculate the region of interest (ROI) based on ratios
+					int x = static_cast<int>(cropRatioX * screenWidth);
+					int y = static_cast<int>(cropRatioY * screenHeight);
+					int width = static_cast<int>(cropRatioWidth * screenWidth);
+					int height = static_cast<int>(cropRatioHeight * screenHeight);
+
+					// Ensure the ROI is within the bounds of the desktopMat
+					x = std::max(0, x);
+					y = std::max(0, y);
+					width = std::min(width, screenWidth - x);
+					height = std::min(height, screenHeight - y);
+
+					cv::Rect roi(x, y, width, height);
+
+					// Extract the region of interest from the desktopMat
+					g.desktopMutex_.lock();
+					cv::Mat smallRegion = g.desktopMat(roi);
+
+
+					dx.detectWeaponR6(smallRegion, 25, 75);
 				}
 			}
 
@@ -697,6 +734,23 @@ void Menu::gui()
 
 				ImGui::EndTabItem();
 			}
+
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+				}
+
+				ImGui::EndTabItem();
+			}
 		}
 		else if (CHI.mode == xorstr_("Character")) {
 			if (ImGui::BeginTabItem(xorstr_("Character"))) {
@@ -765,6 +819,23 @@ void Menu::gui()
 				}
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
+				}
+
+				ImGui::EndTabItem();
+			}
+
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
 				}
 
 				ImGui::EndTabItem();
@@ -924,8 +995,24 @@ void Menu::gui()
 			else {
 				ImGui::Text(xorstr_("Please load a valid game config"));
 			}
-		}
 
+			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+
+				if (!g.aimbotinfo.enabled) {
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+				}
+
+				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+
+				if (g.aimbotinfo.enabled) {
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+				}
+
+				ImGui::EndTabItem();
+			}
+		}
 
 		if (ImGui::BeginTabItem(xorstr_("Edit"))) {
 
@@ -968,8 +1055,8 @@ void Menu::gui()
 		}
 	}
 
-	popup(openmodal, xorstr_("Open"));
-	popup(initshutdownpopup, xorstr_("InitShutdown"));
+	popup(openmodal, 0);
+	popup(initshutdownpopup, 1);
 
 	ImGui::End();
 }

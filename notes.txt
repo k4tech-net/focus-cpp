@@ -1,6 +1,0 @@
-todo:
-adjust multiplier for fov
-
-changes:
-now captures entire desktop
-desktop capture runs in seperrate thread

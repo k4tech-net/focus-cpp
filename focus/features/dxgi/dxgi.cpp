@@ -1,6 +1,6 @@
 #include "dxgi.hpp"
 
-Engine en;
+//Engine en;
 
 bool DXGI::InitDXGI() {
     // Create device and context
@@ -40,8 +40,11 @@ bool DXGI::InitDXGI() {
 }
 
 void DXGI::CaptureDesktopDXGI() {
-    while (!g.shutdown) {
+    cv::Mat buffer1, buffer2;
+    cv::Mat* currentBuffer = &buffer1;
+    cv::Mat* processingBuffer = &buffer2;
 
+    while (!g.shutdown) {
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 
@@ -81,10 +84,7 @@ void DXGI::CaptureDesktopDXGI() {
         gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
 
         // Create OpenCV Mat
-        cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
-
-        // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
-        cv::Mat frameCopy = desktopImage.clone();
+        *currentBuffer = cv::Mat(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch).clone();
 
         // Unmap and release
         gContext->Unmap(stagingTexture, 0);
@@ -92,9 +92,12 @@ void DXGI::CaptureDesktopDXGI() {
         desktopImageTex->Release();
         gOutputDuplication->ReleaseFrame();
 
+        // Swap buffers
         g.desktopMutex_.lock();
-        g.desktopMat = frameCopy;
+        std::swap(g.desktopMat, *processingBuffer);
         g.desktopMutex_.unlock();
+
+        std::swap(currentBuffer, processingBuffer);
 
         //imshow("output", frameCopy); // Debug window
     }
@@ -112,85 +115,91 @@ void DXGI::CleanupDXGI() {
     }
 }
 
-//void DXGI::aimbot() {
-// //   // Lock the desktop mat to access it safely
-//    g.desktopMutex_.lock();
-//    cv::Mat desktopImage = g.desktopMat.clone();
-//    g.desktopMutex_.unlock();
-//
-// //   auto [aimbotCorrectionX, aimbotCorrectionY, detection] = en.runInference(desktopImage);
-//
-// //   //performInference(desktopImage);
-// //   cv::imshow("output", detection);
-//
-// //   CHI.aimbotCorrectionX = aimbotCorrectionX;
-//	//CHI.aimbotCorrectionY = aimbotCorrectionY;
-//
-// //   std::cout << aimbotCorrectionX << ", " << aimbotCorrectionY << std::endl;
-//
-//    std::wstring model_path = L"last.onnx";
-//
-//    // Initialize the ONNX inferencer
-//    ONNXInferencer inferencer(model_path);
-//
-//    // Read and preprocess the input image
-//    if (desktopImage.empty()) {
-//        std::cerr << "Error: Unable to load image!" << std::endl;
-//        return;
-//    }
-//
-//    // Run inference
-//    std::vector<float> results = inferencer.runInference(desktopImage);
-//
-//    // Check if inference was successful
-//    if (results.empty()) {
-//        std::cerr << "Inference failed!" << std::endl;
-//        return;
-//    }
-//    
-//    // Process the results
-//    // Here you would typically interpret the results according to your model's output format
-//    std::cout << "Inference results:" << std::endl;
-//    std::cout << std::endl;
-//}
+std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass) {
+    int imageCenterX = image.cols / 2;
+    int imageCenterY = image.rows / 2;
+
+    float minDistance = std::numeric_limits<float>::max();
+    cv::Point2f closestDetectionCenter(imageCenterX, imageCenterY);
+    bool found = false;
+
+    for (const auto& detection : detections) {
+        if (detection.class_id == targetClass) {
+            cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.0f,
+                detection.box.y + detection.box.height / 2.0f);
+            float distance = cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY));
+
+            if (distance < minDistance) {
+                minDistance = distance;
+                closestDetectionCenter = detectionCenter;
+                found = true;
+            }
+        }
+    }
+
+    if (!found) {
+        return { 0.0f, 0.0f };
+    }
+
+    float correctionX = closestDetectionCenter.x - imageCenterX;
+    float correctionY = closestDetectionCenter.y - imageCenterY;
+
+    return { correctionX, correctionY };
+}
 
 void DXGI::aimbot() {
-    //   // Lock the desktop mat to access it safely
 
-    //   auto [aimbotCorrectionX, aimbotCorrectionY, detection] = en.runInference(desktopImage);
+    std::wstring modelPath = xorstr_(L"focus.onnx");
+    const char* logid = xorstr_("yolo_inference");
+    const char* provider;
 
-    //   //performInference(desktopImage);
-    //   cv::imshow("output", detection);
+    bool aimbotInit = false;
 
-    //   CHI.aimbotCorrectionX = aimbotCorrectionX;
-       //CHI.aimbotCorrectionY = aimbotCorrectionY;
+    std::unique_ptr<YoloInferencer> inferencer;
 
-    //   std::cout << aimbotCorrectionX << ", " << aimbotCorrectionY << std::endl;
+    while (!g.shutdown) {
+        if (!g.aimbotinfo.enabled) {
+            if (aimbotInit) {
+                inferencer.reset();
+                aimbotInit = false;
+			}
+            g.aimbotinfo.correctionX = 0;
+            g.aimbotinfo.correctionY = 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            continue;
+        }
 
-    std::wstring model_path = L"last.onnx";
-    ONNXInferencer2 inferencer(model_path, false);
+        if (!aimbotInit) {
+            if (g.aimbotinfo.provider == 1) {
+                provider = xorstr_("CUDA");
+            }
+            else {
+				provider = xorstr_("CPU");
+            }
 
-    while (true) {
+            inferencer = std::make_unique<YoloInferencer>(modelPath, logid, provider);
+            aimbotInit = true;
+        }
+
+        if (!aimbotInit) {
+            continue;
+        }
+
         g.desktopMutex_.lock();
         cv::Mat desktopImage = g.desktopMat.clone();
         g.desktopMutex_.unlock();
 
         if (desktopImage.empty()) {
-            break; // End of video stream
+            continue;
         }
 
-        std::vector<float> results = inferencer.infer(desktopImage);
+		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.1, 0.5);
 
-        if (results.empty()) {
-            std::cerr << "Inference failed!" << std::endl;
-            return;
-        }
-        else {
-			// Process the results
-			// Here you would typically interpret the results according to your model's output format
-			std::cout << "Inference results:" << std::endl;
-			std::cout << std::endl;
-        }
+        int target_class_id = 1; // Replace with the actual class ID you are targeting
+        std::vector<float> corrections = calculateCorrections(desktopImage, detections, target_class_id);
+
+        g.aimbotinfo.correctionX = corrections[0];
+        g.aimbotinfo.correctionY = corrections[1];
     }
 }
 
@@ -228,7 +237,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         static_cast<int>(src.rows * roi3HeightPercent));
 
     // Highlight the ROIs on the source image for alignment
-    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1
+    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1  // Keeps crashing here
     rectangle(src, roi2, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 2
     rectangle(src, roi3, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 3
 

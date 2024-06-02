@@ -106,11 +106,19 @@ struct Globals
 
         std::string jsonData = "";
 
-        int aimbotCorrectionX = 0;
-		int aimbotCorrectionY = 0;
-
         std::mutex mutex_;
     } characterinfo;
+
+    struct AimbotInfo {
+        int correctionX = 0;
+        int correctionY = 0;
+
+        bool enabled = false;
+        int provider = 0;
+
+        int smoothing = 0;
+        int maxDistance = 0;
+    } aimbotinfo;
 };
 
 extern Globals g;
