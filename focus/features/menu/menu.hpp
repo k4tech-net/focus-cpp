@@ -14,7 +14,7 @@ public:
 	bool multiCombo(const char* label, std::vector<const char*>& items, std::vector<bool>& selected);
 	void popup(bool trigger, int type);
 	
-	void updateCharacterData(bool updatecharacter, bool updatewpns, bool updateautofire, bool updateattachments, bool updateoptions);
+	void updateCharacterData(bool updatecharacter, bool updatewpns, bool updateautofire, bool updateattachments, bool updateoptions, bool updateAimbotInfo);
 	void startupchecks_gui();
 	void mouseScrollHandler();
 	void gui();

@@ -131,8 +131,8 @@ void Menu::popup(bool trigger, int type) {
     }
 }
 
-void Menu::updateCharacterData(bool updatecharacter, bool updatewpns, bool updateautofire, bool updateattachments, bool updateoptions) {
-	cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true);
+void Menu::updateCharacterData(bool updatecharacter, bool updatewpns, bool updateautofire, bool updateattachments, bool updateoptions, bool updateAimbotInfo) {
+	cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true, updateAimbotInfo);
 
 	if (updatecharacter) {
 		CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
@@ -293,12 +293,14 @@ void auxKeyHandler() {
 std::vector<float> calculateSensitivityModifierR6() {
 	float oldBaseSens = 10;
 	float oldRelativeSens = 50;
+	float oldMultiplier = 0.02f;
 
 	float newBaseXSens = CHI.sensitivity[0];
 	float newBaseYSens = CHI.sensitivity[1];
 	float new1xSens = CHI.sensitivity[2];
 	float new25xSens = CHI.sensitivity[3];
 	float new35xSens = CHI.sensitivity[4];
+	float newMultiplier = CHI.sensitivity[5];
 
 	int activescope = 0;
 
@@ -422,8 +424,8 @@ std::vector<float> calculateSensitivityModifierR6() {
 			break;
 	}
 
-	float newSensXModifier = ((oldBaseSens * oldRelativeSens) / (scopeModifier * newBaseXSens) * totalAttachXEffect);
-	float newSensYModifier = ((oldBaseSens * oldRelativeSens) / (scopeModifier * newBaseYSens) * totalAttachYEffect);
+	float newSensXModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier) * totalAttachXEffect);
+	float newSensYModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier) * totalAttachYEffect);
 
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
@@ -506,7 +508,35 @@ void keybindManager() {
 		if (CHI.characterOptions[0]) {
 
 			if (!g.desktopMat.empty()) {
-				dx.detectWeaponR6(g.desktopMat, 25, 75);
+				int screenWidth = g.desktopMat.cols;
+				int screenHeight = g.desktopMat.rows;
+
+				// Define ratios for crop region
+				float cropRatioX = 0.8f; // 20% from left
+				float cropRatioY = 0.82f; // 20% from top
+				float cropRatioWidth = 0.18f; // 18% of total width
+				float cropRatioHeight = 0.14f; // 14% of total height
+
+				// Calculate the region of interest (ROI) based on ratios
+				int x = static_cast<int>(cropRatioX * screenWidth);
+				int y = static_cast<int>(cropRatioY * screenHeight);
+				int width = static_cast<int>(cropRatioWidth * screenWidth);
+				int height = static_cast<int>(cropRatioHeight * screenHeight);
+
+				// Ensure the ROI is within the bounds of the desktopMat
+				x = std::max(0, x);
+				y = std::max(0, y);
+				width = std::min(width, screenWidth - x);
+				height = std::min(height, screenHeight - y);
+
+				cv::Rect roi(x, y, width, height);
+
+				// Extract the region of interest from the desktopMat
+				g.desktopMutex_.lock();
+				cv::Mat smallRegion = g.desktopMat(roi);
+				g.desktopMutex_.unlock();
+
+				dx.detectWeaponR6(smallRegion, 25, 75);
 			}
 		}
 
@@ -643,7 +673,7 @@ void Menu::gui()
 					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 
-				updateCharacterData(true, true, true, true, true);
+				updateCharacterData(true, true, true, true, true, true);
 			}
 			if (ImGui::MenuItem(xorstr_("Refresh"), xorstr_("Ctrl-R")))
 			{
@@ -659,7 +689,7 @@ void Menu::gui()
 							CHI.jsonData = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
 							CHI.selectedCharacterIndex = 0;
 							CHI.weaponOffOverride = false;
-							updateCharacterData(true, true, true, true, true);
+							updateCharacterData(true, true, true, true, true, true);
 						}
 						else {
 							openmodal = true;
@@ -722,7 +752,7 @@ void Menu::gui()
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
 					if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-						updateCharacterData(true, false, true, true, true);
+						updateCharacterData(true, false, true, true, true, false);
 					}
 
 					ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
@@ -745,8 +775,12 @@ void Menu::gui()
 				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
 
 				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
+					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
+
+					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
+					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
 				}
 
 				ImGui::EndTabItem();
@@ -758,7 +792,7 @@ void Menu::gui()
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
 					if (comboBoxChar(xorstr_("Character"), CHI.selectedCharacterIndex, CHI.characters)) {
-						updateCharacterData(true, true, true, true, true);
+						updateCharacterData(true, true, true, true, true, false);
 					}
 
 					ImGui::Spacing();
@@ -779,7 +813,7 @@ void Menu::gui()
 					}
 
 					if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-						updateCharacterData(true, false, true, true, false);
+						updateCharacterData(true, false, true, true, false, false);
 					}
 					ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
 
@@ -801,7 +835,7 @@ void Menu::gui()
 					}
 
 					if (comboBoxWep(xorstr_("Secondary"), CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
-						updateCharacterData(true, false, true, true, false);
+						updateCharacterData(true, false, true, true, false, false);
 					}
 					ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
 
@@ -812,7 +846,7 @@ void Menu::gui()
 					std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Manual Weapon Detection"), xorstr_("Scroll Detection"), xorstr_("Aux Disable"), xorstr_("Gadget Detection Override") };
 
 					if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-						updateCharacterData(true, false, false, true, false);
+						updateCharacterData(true, false, false, true, false, false);
 					}
 
 					ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
@@ -834,8 +868,12 @@ void Menu::gui()
 				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
 
 				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
+					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
+
+					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
+					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
 				}
 
 				ImGui::EndTabItem();
@@ -850,7 +888,7 @@ void Menu::gui()
 						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
 						if (comboBoxChar(xorstr_("Character"), CHI.selectedCharacterIndex, CHI.characters)) {
-							updateCharacterData(true, true, true, true, true);
+							updateCharacterData(true, true, true, true, true, false);
 						}
 
 						ImGui::Spacing();
@@ -875,17 +913,17 @@ void Menu::gui()
 						const char* Barrels[] = { xorstr_("Supressor/Extended/None"), xorstr_("Muzzle Break (Semi-Auto Only)"), xorstr_("Compensator"), xorstr_("Flash Hider") };
 
 						if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-							updateCharacterData(true, false, true, true, false);
+							updateCharacterData(true, false, true, true, false, false);
 						}
 						ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
 						if (comboBoxGen(xorstr_("Primary Sight"), &CHI.primaryAttachments[0], Sights, 3)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 						if (comboBoxGen(xorstr_("Primary Grip"), &CHI.primaryAttachments[1], Grips, 2)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 						if (comboBoxGen(xorstr_("Primary Barrel"), &CHI.primaryAttachments[2], Barrels, 4)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 
 						ImGui::Spacing();
@@ -906,18 +944,18 @@ void Menu::gui()
 						}
 
 						if (comboBoxWep(xorstr_("Secondary"), CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
-							updateCharacterData(true, false, true, true, false);
+							updateCharacterData(true, false, true, true, false, false);
 
 						}
 						ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
 						if (comboBoxGen(xorstr_("Secondary Sight"), &CHI.secondaryAttachments[0], Sights, 3)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 						if (comboBoxGen(xorstr_("Secondary Grip"), &CHI.secondaryAttachments[1], Grips, 2)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 						if (comboBoxGen(xorstr_("Secondary Barrel"), &CHI.secondaryAttachments[2], Barrels, 4)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 
 						ImGui::Spacing();
@@ -927,7 +965,7 @@ void Menu::gui()
 						std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Gadget Detection Override") };
 
 						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 
 						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
@@ -941,6 +979,7 @@ void Menu::gui()
 						ImGui::SliderFloat(xorstr_("1x Sensitivity"), &CHI.sensitivity[2], 0.0f, 200.0f, xorstr_("%.0f"));
 						ImGui::SliderFloat(xorstr_("2.5x Sensitivity"), &CHI.sensitivity[3], 0.0f, 200.0f, xorstr_("%.0f"));
 						ImGui::SliderFloat(xorstr_("3.5x Sensitivity"), &CHI.sensitivity[4], 0.0f, 200.0f, xorstr_("%.0f"));
+						ImGui::SliderFloat(xorstr_("Sensitivity Multiplier"), &CHI.sensitivity[5], 0.0f, 1.0f, xorstr_("%.3f"));
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);
@@ -960,7 +999,7 @@ void Menu::gui()
 						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
 						if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-							updateCharacterData(true, false, true, true, true);
+							updateCharacterData(true, false, true, true, true, false);
 						}
 
 						ImGui::Spacing();
@@ -970,7 +1009,7 @@ void Menu::gui()
 						std::vector<const char*> MultiOptions = { xorstr_("Rust Auto Weapon Detection") };
 
 						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-							updateCharacterData(true, false, false, false, false);
+							updateCharacterData(true, false, false, false, false, false);
 						}
 
 						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
@@ -1006,8 +1045,12 @@ void Menu::gui()
 				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
 
 				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200, xorstr_(""));
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 1000, xorstr_(""));
+					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
+					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
+					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
+
+					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
+					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
 				}
 
 				ImGui::EndTabItem();
@@ -1035,7 +1078,7 @@ void Menu::gui()
 					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
 				}
 
-				updateCharacterData(true, true, true, true, true);
+				updateCharacterData(true, true, true, true, true, true);
 			}
 
 			ImGui::EndTabItem();

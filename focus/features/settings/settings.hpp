@@ -46,7 +46,7 @@ public:
     //        options == other.options;
     //}
 
-    void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting);
+    void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting, bool updateAimbotInfo);
 };
 
 struct Globals
@@ -118,6 +118,8 @@ struct Globals
 
         int smoothing = 0;
         int maxDistance = 0;
+        float percentDistance = 0.1f;
+        int hitbox = 0;
     } aimbotinfo;
 };
 

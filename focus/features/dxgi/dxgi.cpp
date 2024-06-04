@@ -40,11 +40,9 @@ bool DXGI::InitDXGI() {
 }
 
 void DXGI::CaptureDesktopDXGI() {
-    cv::Mat buffer1, buffer2;
-    cv::Mat* currentBuffer = &buffer1;
-    cv::Mat* processingBuffer = &buffer2;
 
     while (!g.shutdown) {
+
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 
@@ -84,7 +82,10 @@ void DXGI::CaptureDesktopDXGI() {
         gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
 
         // Create OpenCV Mat
-        *currentBuffer = cv::Mat(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch).clone();
+        cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
+
+        // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
+        cv::Mat frameCopy = desktopImage.clone();
 
         // Unmap and release
         gContext->Unmap(stagingTexture, 0);
@@ -94,10 +95,8 @@ void DXGI::CaptureDesktopDXGI() {
 
         // Swap buffers
         g.desktopMutex_.lock();
-        std::swap(g.desktopMat, *processingBuffer);
+        g.desktopMat = frameCopy;
         g.desktopMutex_.unlock();
-
-        std::swap(currentBuffer, processingBuffer);
 
         //imshow("output", frameCopy); // Debug window
     }
@@ -124,7 +123,8 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
     bool found = false;
 
     for (const auto& detection : detections) {
-        if (detection.class_id == targetClass) {
+        // Find the closest detection if targetClass is 2, otherwise filter by targetClass
+        if (targetClass == 2 || detection.class_id == targetClass) {
             cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.0f,
                 detection.box.y + detection.box.height / 2.0f);
             float distance = cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY));
@@ -165,7 +165,7 @@ void DXGI::aimbot() {
 			}
             g.aimbotinfo.correctionX = 0;
             g.aimbotinfo.correctionY = 0;
-            std::this_thread::sleep_for(std::chrono::milliseconds(50));
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
             continue;
         }
 
@@ -193,17 +193,34 @@ void DXGI::aimbot() {
             continue;
         }
 
-		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.1, 0.5);
+		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.05, 0.5);
 
-        int target_class_id = 1; // Replace with the actual class ID you are targeting
-        std::vector<float> corrections = calculateCorrections(desktopImage, detections, target_class_id);
+        std::vector<float> corrections = calculateCorrections(desktopImage, detections, g.aimbotinfo.hitbox);
 
-        g.aimbotinfo.correctionX = corrections[0];
-        g.aimbotinfo.correctionY = corrections[1];
+        if (corrections[0] == 0 || g.aimbotinfo.percentDistance == 0) {
+            g.aimbotinfo.correctionX = corrections[0];
+        }
+        else {
+            g.aimbotinfo.correctionX = corrections[0] * g.aimbotinfo.percentDistance;
+        }
+
+		if (corrections[1] == 0 || g.aimbotinfo.percentDistance == 0) {
+			g.aimbotinfo.correctionY = corrections[1];
+		}
+		else {
+			g.aimbotinfo.correctionY = corrections[1] * g.aimbotinfo.percentDistance;
+		}
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
 void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold) {
+
+    if (src.empty()) {
+        return;
+    }
+
     // Define the region of interest (ROI) coordinates as a percentage of the frame
     float roi1XPercent = 0.02f; // X coordinate percentage for ROI 1
     float roi1YPercent = 0.06f; // Y coordinate percentage for ROI 1
@@ -235,6 +252,13 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         static_cast<int>(src.rows * roi3YPercent),
         static_cast<int>(src.cols * roi3WidthPercent),
         static_cast<int>(src.rows * roi3HeightPercent));
+
+    // Ensure the ROIs are within the bounds of the source image
+    if ((roi1 & cv::Rect(0, 0, src.cols, src.rows)) != roi1 ||
+        (roi2 & cv::Rect(0, 0, src.cols, src.rows)) != roi2 ||
+        (roi3 & cv::Rect(0, 0, src.cols, src.rows)) != roi3) {
+        return;
+    }
 
     // Highlight the ROIs on the source image for alignment
     rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1  // Keeps crashing here

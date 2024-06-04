@@ -2,7 +2,7 @@
 
 Globals g;
 
-void Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting) {
+void Settings::readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting, bool updateAimbotInfo) {
     if (clearExisting) {
         settings.clear();
     }
@@ -26,9 +26,14 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
 	CHI.mode = jsonData[xorstr_("Mode")];
     CHI.potato = jsonData[xorstr_("Potato")];
 
-    g.aimbotinfo.provider = jsonData[xorstr_("Aim Assist")][0].get<int>();
-    g.aimbotinfo.smoothing = jsonData[xorstr_("Aim Assist")][1].get<int>();
-    g.aimbotinfo.maxDistance = jsonData[xorstr_("Aim Assist")][2].get<int>();
+    if (updateAimbotInfo)
+    {
+        g.aimbotinfo.provider = jsonData[xorstr_("Aim Assist")][0].get<int>();
+        g.aimbotinfo.smoothing = jsonData[xorstr_("Aim Assist")][1].get<int>();
+        g.aimbotinfo.maxDistance = jsonData[xorstr_("Aim Assist")][2].get<int>();
+        g.aimbotinfo.percentDistance = jsonData[xorstr_("Aim Assist")][3].get<float>();
+        g.aimbotinfo.hitbox = jsonData[xorstr_("Aim Assist")][4].get<int>();
+    }
 
     if (CHI.mode == xorstr_("Generic")) {
        setting.charactername = xorstr_("Generic");

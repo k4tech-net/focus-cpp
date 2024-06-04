@@ -86,7 +86,7 @@ void Control::driveMouse() {
 					totalCorrectionY = g.aimbotinfo.correctionY;
 					currentIteration++;
 
-					if (currentIteration >= smoothingIterations && (totalCorrectionX != 0 || totalCorrectionY != 0)) {
+					if (currentIteration >= smoothingIterations) {
 						smoothedCorrectionX = totalCorrectionX / smoothingIterations;
 						smoothedCorrectionY = totalCorrectionY / smoothingIterations;
 
