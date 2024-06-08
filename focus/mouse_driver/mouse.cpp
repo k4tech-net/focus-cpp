@@ -72,7 +72,7 @@ BOOL Mouse::mouse_open()
 				g_found_mouse = 1;
 			}
 			else {
-				g_found_mouse = 1;
+				g_found_mouse = 0;
 			}
 		}
 	}
@@ -99,6 +99,7 @@ void Mouse::mouse_move(char button, char x, char y, char wheel)
 	if (!callmouse(&io)) {
 		mouse_close();
 		mouse_open();
+		std::cout << "Driver Error: " << GetLastError() << std::endl;
 	}
 }
 

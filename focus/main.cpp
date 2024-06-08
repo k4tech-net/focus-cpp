@@ -21,6 +21,7 @@ static UINT                     g_ResizeWidth = 0, g_ResizeHeight = 0;
 static ID3D11RenderTargetView* g_mainRenderTargetView = nullptr;
 
 // Forward declarations of helper functions
+void RegisterRawInput(HWND hwnd);
 bool CreateDeviceD3D(HWND hWnd);
 void CleanupDeviceD3D();
 void CreateRenderTarget();
@@ -35,6 +36,8 @@ int main()
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Focus", nullptr };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Focus", WS_POPUPWINDOW, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
+
+	RegisterRawInput(hwnd);
 
 	// Initialize Direct3D
 	if (!CreateDeviceD3D(hwnd))
@@ -78,7 +81,7 @@ int main()
 	ImGui_ImplDX11_Init(g_pd3dDevice, g_pd3dDeviceContext);
 
 	#if _DEBUG
-	cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
+	//cv::namedWindow("output", cv::WINDOW_NORMAL);   // For debugging
 	#endif
 
 	cr.lastAuthTime.store(std::chrono::steady_clock::now());
@@ -238,6 +241,19 @@ extern "C" __declspec(dllexport) bool verification(const char* iv, const char* v
 }
 
 // Helper functions
+
+void RegisterRawInput(HWND hwnd) {
+	RAWINPUTDEVICE rid;
+	rid.usUsagePage = 0x01; // HID_USAGE_PAGE_GENERIC
+	rid.usUsage = 0x02; // HID_USAGE_GENERIC_MOUSE
+	rid.dwFlags = RIDEV_INPUTSINK; // Receive input even when not in focus
+	rid.hwndTarget = hwnd;
+
+	if (!RegisterRawInputDevices(&rid, 1, sizeof(rid))) {
+		std::cerr << "Failed to register raw input devices." << std::endl;
+	}
+}
+
 bool CreateDeviceD3D(HWND hWnd)
 {
 	// Setup swap chain
@@ -337,6 +353,44 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			const RECT* suggested_rect = (RECT*)lParam;
 			::SetWindowPos(hWnd, nullptr, suggested_rect->left, suggested_rect->top, suggested_rect->right - suggested_rect->left, suggested_rect->bottom - suggested_rect->top, SWP_NOZORDER | SWP_NOACTIVATE);
 		}
+		break;
+	case WM_INPUT:
+		UINT dwSize;
+		GetRawInputData((HRAWINPUT)lParam, RID_INPUT, NULL, &dwSize, sizeof(RAWINPUTHEADER));
+		LPBYTE lpb = new BYTE[dwSize];
+		if (lpb == nullptr) {
+			return 0;
+		}
+
+		if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
+			std::cerr << "GetRawInputData does not return correct size!" << std::endl;
+		}
+
+		RAWINPUT* raw = (RAWINPUT*)lpb;
+		if (raw->header.dwType == RIM_TYPEMOUSE) {
+			bool lButtonDown = (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_DOWN) != 0;
+			bool lButtonUp = (raw->data.mouse.usButtonFlags & RI_MOUSE_LEFT_BUTTON_UP) != 0;
+			bool rButtonDown = (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_DOWN) != 0;
+			bool rButtonUp = (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP) != 0;
+
+			// Handle the mouse button states
+			if (raw->data.mouse.ulExtraInformation != g.mouseinfo.marker.load(std::memory_order_relaxed)) { // Only process real inputs
+				if (lButtonDown) {
+					g.mouseinfo.l_mouse_down.store(true, std::memory_order_relaxed);
+				}
+				if (lButtonUp) {
+					g.mouseinfo.l_mouse_down.store(false, std::memory_order_relaxed);
+				}
+				if (rButtonDown) {
+					g.mouseinfo.r_mouse_down.store(true, std::memory_order_relaxed);
+				}
+				if (rButtonUp) {
+					g.mouseinfo.r_mouse_down.store(false, std::memory_order_relaxed);
+				}
+			}
+		}
+
+		delete[] lpb;
 		break;
 	}
 	return ::DefWindowProcW(hWnd, msg, wParam, lParam);

@@ -90,6 +90,23 @@ std::string Utils::wstring_to_string(const std::wstring& wstr) {
 	return str;
 }
 
+ULONG  generateUniqueMarker() {
+	std::random_device rd; // Seed for the random number generator
+	std::mt19937 gen(rd());
+	std::uniform_int_distribution<ULONG> dis(1, ULONG_MAX); // Exclude 0 to avoid conflicts with unmarked inputs
+	return dis(gen);
+}
+
+bool Utils::initilizeMarker() {
+	try {
+		g.mouseinfo.marker.store(generateUniqueMarker(), std::memory_order_relaxed);
+		return true;
+	}
+	catch (...) {
+		return false;
+	}
+}
+
 void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
 		g.startup.driver = true;
@@ -106,6 +123,15 @@ void Utils::startUpChecksRunner() {
 
 	if (dx.InitDXGI()) {
 		g.startup.dxgi = true;
+	}
+	else {
+		g.startup.passedstartup = false;
+		g.startup.hasFinished = true;
+		return;
+	}
+
+	if (initilizeMarker()) {
+		g.startup.marker = true;
 	}
 	else {
 		g.startup.passedstartup = false;

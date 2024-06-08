@@ -9,6 +9,8 @@
 #include <xorstr.hpp>
 #include <variant>
 #include <mutex>
+#include <random>
+#include <Windows.h>
 
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
@@ -71,6 +73,7 @@ struct Globals
         bool driver = false;
         bool files = false;
         bool dxgi = false;
+        bool marker = false;
         bool hasFinished = false;
     } startup;
 
@@ -121,6 +124,12 @@ struct Globals
         float percentDistance = 0.1f;
         int hitbox = 0;
     } aimbotinfo;
+
+    struct MouseInfo {
+		std::atomic<bool> l_mouse_down = false;
+		std::atomic<bool> r_mouse_down = false;
+        std::atomic<ULONG> marker = 0;
+    } mouseinfo;
 };
 
 extern Globals g;

@@ -202,6 +202,19 @@ void Menu::startupchecks_gui() {
 		ImGui::PopStyleColor();
 	}
 
+	ImGui::Separator();
+
+	if (g.startup.marker) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+		ImGui::Text(xorstr_("Marker was generated"));
+		ImGui::PopStyleColor();
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::Text(xorstr_("Marker could not be generated"));
+		ImGui::PopStyleColor();
+	}
+
     ImGui::End();
 }
 
@@ -539,6 +552,10 @@ void keybindManager() {
 				dx.detectWeaponR6(smallRegion, 25, 75);
 			}
 		}
+		else {
+			CHI.weaponOffOverride = false;
+			CHI.isPrimaryActive = true;
+		}
 
 		if (CHI.characterOptions[1]) {
 			weaponKeyHandler();
@@ -601,6 +618,10 @@ void keybindManager() {
 
 					dx.detectWeaponR6(smallRegion, 25, 75);
 				}
+			}
+			else {
+				CHI.weaponOffOverride = false;
+				CHI.isPrimaryActive = true;
 			}
 
 			std::vector<float> sens = calculateSensitivityModifierR6();
