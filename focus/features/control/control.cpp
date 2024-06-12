@@ -31,6 +31,8 @@ void Control::driveMouse() {
 	static size_t maxInstructions = 0;
 	static int cycles = 0;
 
+	static bool flipFlop = true;
+
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
 
@@ -106,10 +108,10 @@ void Control::driveMouse() {
 					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -g.aimbotinfo.maxDistance, g.aimbotinfo.maxDistance);
 					
 					ms.mouse_move(0, xMove, yMove, 0);
-					
+			
 					if (CHI.currAutofire && cycles >= 8 && g.mouseinfo.l_mouse_down) {
-						pressMouse1(true);
-						pressMouse1(false);
+						pressMouse1(flipFlop);
+						flipFlop = !flipFlop;
 					}
 
 					/*for (auto const& data : currwpn.values) {
@@ -134,8 +136,9 @@ void Control::driveMouse() {
 		
 		if (!g.mouseinfo.l_mouse_down || !g.mouseinfo.r_mouse_down) {
 
-			if (cycles > 8) {
+			if (cycles > 8 || !flipFlop) {
 				pressMouse1(false);
+				flipFlop = true;
 			}
 
 			complete = false;
