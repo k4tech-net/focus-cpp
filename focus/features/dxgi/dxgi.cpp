@@ -84,8 +84,7 @@ void DXGI::CaptureDesktopDXGI() {
         // Create OpenCV Mat
         cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
 
-        // Copy data to a new Mat (since desktopImage will be invalid once we unmap)
-        cv::Mat frameCopy = desktopImage.clone();
+        //cv::Mat frameCopy = desktopImage.clone();
 
         // Unmap and release
         gContext->Unmap(stagingTexture, 0);
@@ -95,10 +94,11 @@ void DXGI::CaptureDesktopDXGI() {
 
         // Swap buffers
         g.desktopMutex_.lock();
-        g.desktopMat = frameCopy;
+        g.desktopMat = desktopImage;
         g.desktopMutex_.unlock();
 
         //imshow("output", frameCopy); // Debug window
+        //cv::waitKey(1);
     }
 }
 

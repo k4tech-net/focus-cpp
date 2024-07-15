@@ -68,8 +68,8 @@ void Control::driveMouse() {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
 
-				float x = instruction[0] * CHI.activeWeaponSensXModifier;
-				float y = instruction[1] * CHI.activeWeaponSensYModifier;
+				float x = instruction[0];
+				float y = instruction[1];
 				float duration = instruction[2];
 
 				auto currtime = std::chrono::high_resolution_clock::now();
@@ -81,8 +81,8 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					xAccumulator += x;
-					yAccumulator += y;
+					xAccumulator += x * CHI.activeWeaponSensXModifier;
+					yAccumulator += y * CHI.activeWeaponSensYModifier;
 
 					int xMove = static_cast<int>(xAccumulator);
 					int yMove = static_cast<int>(yAccumulator);
@@ -114,9 +114,7 @@ void Control::driveMouse() {
 						flipFlop = !flipFlop;
 					}
 
-					/*for (auto const& data : currwpn.values) {
-						std::cout << "{" << x << ", " << y << ", " << duration << "}," << std::endl;
-					}*/
+					//std::cout << "X: " << xMove << " Y: " << yMove << " Cycles: " << cycles << std::endl;
 
 					cycles++;
 

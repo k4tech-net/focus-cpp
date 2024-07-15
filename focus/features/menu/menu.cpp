@@ -450,8 +450,6 @@ std::vector<float> calculateSensitivityModifierRust() {
 	float newBaseSens = CHI.sensitivity[0];
 	float newADSSens = CHI.sensitivity[1];
 
-	int activescope = 0;
-
 	float sightXEffect = 1.0f;
 	float sightYEffect = 1.0f;
 
@@ -462,17 +460,22 @@ std::vector<float> calculateSensitivityModifierRust() {
 	case 0:
 		sightXEffect = 1.0f;
 		sightYEffect = 1.0f;
-		activescope = 1;
 		break;
 	case 1:
-		sightXEffect = 2.f;
-		sightYEffect = 2.43f;
-		activescope = 2;
+		sightXEffect = 0.8f;
+		sightYEffect = 0.8f;
 		break;
 	case 2:
-		sightXEffect = 3.5f;
-		sightYEffect = 3.5f;
-		activescope = 3;
+		sightXEffect = 1.25f;
+		sightYEffect = 1.25f;
+		break;
+	case 3:
+		sightXEffect = 7.25f;
+		sightYEffect = 7.25f;
+		break;
+	case 4:
+		sightXEffect = 14.5f;
+		sightYEffect = 14.5f;
 		break;
 	}
 
@@ -482,24 +485,26 @@ std::vector<float> calculateSensitivityModifierRust() {
 		barrelYEffect = 1.0f;
 		break;
 	case 1:
-		barrelXEffect = 0.75f;
-		barrelYEffect = 0.4f;
+		barrelXEffect = 0.5f;
+		barrelYEffect = 0.5f;
 		break;
 	case 2:
-		barrelXEffect = 0.85f;
-		barrelYEffect = 1.0f;
-		break;
-	case 3:
-		barrelXEffect = 1.0f;
-		barrelYEffect = 0.85f;
+		barrelXEffect = 1.1f;
+		barrelYEffect = 1.1f;
 		break;
 	}
 
 	float totalAttachXEffect = sightXEffect * barrelXEffect;
 	float totalAttachYEffect = sightYEffect * barrelYEffect;
 
-	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect);
-	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect);
+	float standingModifier = 1.f;
+
+	if (GetAsyncKeyState(std::stoi(CHI.crouch_keybind, nullptr, 0))) {
+		standingModifier = 0.5f;
+	}
+
+	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect * standingModifier);
+	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect * standingModifier);
 
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
@@ -1019,8 +1024,18 @@ void Menu::gui()
 
 						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
+						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
+						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
+
 						if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
 							updateCharacterData(true, false, true, true, true, false);
+						}
+						ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
+						if (comboBoxGen(xorstr_("Sight"), &CHI.primaryAttachments[0], Sights, 5)) {
+							updateCharacterData(true, false, false, false, false, false);
+						}
+						if (comboBoxGen(xorstr_("Barrel"), &CHI.primaryAttachments[2], Barrels, 3)) {
+							updateCharacterData(true, false, false, false, false, false);
 						}
 
 						ImGui::Spacing();

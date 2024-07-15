@@ -82,6 +82,7 @@ struct Globals
         bool potato = false;
         std::vector<std::string> wpn_keybinds;
         std::vector<std::string> aux_keybinds;
+        std::string crouch_keybind;
         
         std::string game = "";
         std::vector<float> sensitivity = { 0, 0, 0, 0, 0 };

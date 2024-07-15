@@ -40,6 +40,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
 
        CHI.wpn_keybinds = { "" };
        CHI.aux_keybinds = { "" };
+       CHI.crouch_keybind = "";
 
         for (auto& item : jsonData.items()) {
             if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Aim Assist")) {
@@ -88,6 +89,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
 
         CHI.wpn_keybinds = jsonData[xorstr_("Weapon Keybinds")];
         CHI.aux_keybinds = jsonData[xorstr_("Aux Keybinds")];
+        CHI.crouch_keybind = "";
 
         for (auto& characterItem : jsonData.items()) {
             if (characterItem.key() != xorstr_("Mode") && characterItem.key() != xorstr_("Potato") && characterItem.key() != xorstr_("Aim Assist") && characterItem.key() != xorstr_("Weapon Keybinds") && characterItem.key() != xorstr_("Aux Keybinds")) {
@@ -153,6 +155,7 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
         if (CHI.game == xorstr_("Siege")) {
             CHI.wpn_keybinds = { "" };
             CHI.aux_keybinds = { "" };
+            CHI.crouch_keybind = "";
 
             CHI.sensitivity = jsonData[xorstr_("Sensitivity")].get<std::vector<float>>();
 
@@ -218,11 +221,12 @@ void Settings::readSettings(const std::string& filename, std::vector<Settings>& 
 
             CHI.wpn_keybinds = { "" };
             CHI.aux_keybinds = { "" };
+			CHI.crouch_keybind = jsonData[xorstr_("Crouch Keybind")].get<std::string>();
 
             CHI.sensitivity = jsonData[xorstr_("Sensitivity")].get<std::vector<float>>();
 
             for (auto& item : jsonData.items()) {
-                if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Aim Assist") && item.key() != xorstr_("Game") && item.key() != xorstr_("Sensitivity") && item.key() != xorstr_("Options")) {
+                if (item.key() != xorstr_("Mode") && item.key() != xorstr_("Potato") && item.key() != xorstr_("Aim Assist") && item.key() != xorstr_("Game") && item.key() != xorstr_("Sensitivity") && item.key() != xorstr_("Options") && item.key() != xorstr_("Crouch Keybind")) {
                     weaponData weapon;
 
                     weapon.weaponname = item.key();
