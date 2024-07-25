@@ -16,6 +16,7 @@
 #include "../mouse_driver/mouse.hpp"
 #include "../settings/settings.hpp"
 #include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
+#include "weaponmasks.hpp"
 
 #include <onnxruntime_cxx_api.h>
 
@@ -28,6 +29,8 @@ public:
 	void aimbot();
 	void detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
 	void detectWeaponRust(cv::Mat& src);
+	std::string detectWeaponTypeWithMask(const cv::Mat& weaponIcon);
+	void initializeRustDetector(cv::Mat& src);
 
 private:
 	// DXGI variables
@@ -36,4 +39,11 @@ private:
 	IDXGIOutputDuplication* gOutputDuplication = nullptr;
 	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
 	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
+
+	struct BoxPercentage {
+		float x, y, width, height;
+	};
+
+	std::vector<ProcessedMask> processedMasks;
+	std::vector<cv::Rect> weaponBoxes;
 };

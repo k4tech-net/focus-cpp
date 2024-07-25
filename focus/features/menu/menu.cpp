@@ -648,9 +648,44 @@ void keybindManager() {
 			}
 		}
 		else if (CHI.game == xorstr_("Rust")) {
+			static bool initializeRustDetector = false;
+
 			if (CHI.characterOptions[0]) {
 				if (!g.desktopMat.empty()) {
-					//dx.detectWeaponRust(g.desktopMat);
+					int screenWidth = g.desktopMat.cols;
+					int screenHeight = g.desktopMat.rows;
+
+					// Define ratios for crop region
+					float cropRatioX = 0.3475f;
+					float cropRatioY = 0.892f;
+					float cropRatioWidth = 0.295f;
+					float cropRatioHeight = 0.084f;
+
+					// Calculate the region of interest (ROI) based on ratios
+					int x = static_cast<int>(cropRatioX * screenWidth);
+					int y = static_cast<int>(cropRatioY * screenHeight);
+					int width = static_cast<int>(cropRatioWidth * screenWidth);
+					int height = static_cast<int>(cropRatioHeight * screenHeight);
+
+					// Ensure the ROI is within the bounds of the desktopMat
+					x = std::max(0, x);
+					y = std::max(0, y);
+					width = std::min(width, screenWidth - x);
+					height = std::min(height, screenHeight - y);
+
+					cv::Rect roi(x, y, width, height);
+					
+					// Extract the region of interest from the desktopMat
+					g.desktopMutex_.lock();
+					cv::Mat smallRegion = g.desktopMat(roi);
+					g.desktopMutex_.unlock();
+
+					if (!initializeRustDetector) {
+						dx.initializeRustDetector(smallRegion);
+						initializeRustDetector = true;
+					}
+
+					dx.detectWeaponRust(smallRegion);
 				}
 			}
 

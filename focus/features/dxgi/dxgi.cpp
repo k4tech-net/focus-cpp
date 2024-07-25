@@ -383,6 +383,200 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 }
 
-void DXGI::detectWeaponRust(cv::Mat& src) {
+void DXGI::initializeRustDetector(cv::Mat& src) {
+    for (const auto& weaponMask : weaponMasks) {
+        cv::Mat mask = cv::imdecode(weaponMask.mask, cv::IMREAD_GRAYSCALE);
+        if (mask.empty()) {
+            std::cerr << xorstr_("Failed to decode mask for: ") << weaponMask.name << std::endl;
+            continue;
+        }
 
+        // Resize the mask to a standard size
+        cv::resize(mask, mask, cv::Size(64, 64)); // Choose an appropriate size
+
+        // Apply edge detection
+        cv::Mat maskEdges;
+        cv::Canny(mask, maskEdges, 30, 90);
+
+        processedMasks.push_back({ weaponMask.name, maskEdges });
+    }
+
+    std::vector<BoxPercentage> weaponBoxPercentages = {
+        {0.00f, 0.0f, 0.15f, 1.f},  // Adjust these percentages
+        {0.17f, 0.0f, 0.15f, 1.f},  // to match the actual positions
+        {0.34f, 0.0f, 0.15f, 1.f},  // of the weapon boxes in your UI
+        {0.51f, 0.0f, 0.15f, 1.f},
+        {0.679f, 0.0f, 0.15f, 1.f},
+        {0.849f, 0.0f, 0.15f, 1.f}
+    };
+
+    for (const auto& box : weaponBoxPercentages) {
+        int x = static_cast<int>(src.cols * box.x);
+        int y = static_cast<int>(src.rows * box.y);
+        int width = static_cast<int>(src.cols * box.width);
+        int height = static_cast<int>(src.rows * box.height);
+        weaponBoxes.emplace_back(x, y, width, height);
+    }
+}
+
+// Helper function to create the mask
+cv::Mat createMask(int size, int bottomRightWidth, int bottomRightHeight, int topLeftWidth, int topLeftHeight) {
+    cv::Mat mask = cv::Mat::ones(size, size, CV_8UC1) * 255;
+    mask(cv::Rect(size - bottomRightWidth, size - bottomRightHeight, bottomRightWidth, bottomRightHeight)).setTo(0);
+    mask(cv::Rect(0, 0, topLeftWidth, topLeftHeight)).setTo(0);
+    return mask;
+}
+
+std::string DXGI::detectWeaponTypeWithMask(const cv::Mat& weaponIcon) {
+    static const int MASK_SIZE = 64;
+    static const int bottomRightWidth = MASK_SIZE * 0.45;
+    static const int bottomRightHeight = MASK_SIZE * 0.27;
+    static const int topLeftWidth = MASK_SIZE * 0.2;
+    static const int topLeftHeight = MASK_SIZE * 0.4;
+
+    static const cv::Mat mask = createMask(MASK_SIZE, bottomRightWidth, bottomRightHeight, topLeftWidth, topLeftHeight);
+
+    cv::Mat gray;
+    cv::cvtColor(weaponIcon, gray, cv::COLOR_BGR2GRAY);
+    cv::resize(gray, gray, cv::Size(64, 64));
+
+    // Apply Gaussian blur to reduce noise
+    //cv::GaussianBlur(gray, gray, cv::Size(3, 3), 0); 
+
+    // Apply Canny edge detection with adjusted parameters
+    cv::Mat edges;
+    cv::Canny(gray, edges, 30, 90);
+
+    // Apply the mask to the edge-detected image
+    cv::Mat_<uchar> maskedEdges;
+    edges.copyTo(maskedEdges, mask);
+
+    std::string bestMatch;
+    double bestMatchScore = 0.0;
+
+    for (const auto& processedMask : processedMasks) {
+        //cv::resize(mask, mask, weaponIcon.size());
+
+        cv::Mat result;
+        cv::matchTemplate(maskedEdges, processedMask.edges, result, cv::TM_CCORR_NORMED);
+        double maxVal;
+        cv::minMaxLoc(result, nullptr, &maxVal);
+
+        if (maxVal > bestMatchScore) {
+            bestMatchScore = maxVal;
+            bestMatch = processedMask.name;
+        }
+    }
+
+    return bestMatchScore > 0.2 ? bestMatch : xorstr_("Unknown Weapon");
+}
+
+void DXGI::detectWeaponRust(cv::Mat& src) {
+    //static auto lastSaveTime = std::chrono::steady_clock::now();
+
+    if (src.empty()) {
+        return;
+    }
+
+    int activeBoxIndex = -1;
+    cv::Mat activeWeaponIcon;
+    double maxColorScore = 0.0;
+
+    const int targetHue = 102;  // 204 / 2 for OpenCV's 0-180 scale
+    const int targetSat = 212;  // 83 * 255 / 100
+    const int targetVal = 144;
+
+    // Detect which box is active (has blue background)
+    for (int i = 0; i < weaponBoxes.size(); ++i) {
+        cv::Mat boxROI = src(weaponBoxes[i]);
+        cv::Mat hsv;
+        cv::cvtColor(boxROI, hsv, cv::COLOR_BGR2HSV);
+
+        double colorScore = 0.0;
+        double totalPixels = boxROI.total();
+        int matchingPixels = 0;
+
+        for (int y = 0; y < hsv.rows; ++y) {
+            for (int x = 0; x < hsv.cols; ++x) {
+                cv::Vec3b pixel = hsv.at<cv::Vec3b>(y, x);
+                int hue = pixel[0];
+                int sat = pixel[1];
+                int val = pixel[2];
+
+                // Calculate color similarity
+                double hueDiff = std::min(std::abs(hue - targetHue), 180 - std::abs(hue - targetHue)) / 90.0;
+                double satDiff = std::abs(sat - targetSat) / 255.0;
+                double valDiff = std::abs(val - targetVal) / 255.0;
+
+                double similarity = 1.0 - (hueDiff + satDiff + valDiff) / 3.0;
+
+                if (similarity > 0.8) { // Adjust this threshold as needed
+                    colorScore += similarity;
+                    matchingPixels++;
+                }
+            }
+        }
+
+        // Normalize the color score
+        colorScore /= totalPixels;
+
+        // Factor in the proportion of matching pixels
+        double matchingRatio = matchingPixels / totalPixels;
+        colorScore *= matchingRatio;
+
+        // Update if this is the highest color score so far
+        if (colorScore > maxColorScore) {
+            maxColorScore = colorScore;
+            activeBoxIndex = i;
+            activeWeaponIcon = boxROI.clone();
+        }
+
+        cv::Scalar boxColor = (i == activeBoxIndex) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+        cv::rectangle(src, weaponBoxes[i], boxColor, 2);
+    }
+
+    const double MIN_WEIGHTED_SCORE = 0.00001;
+
+    // If an active box is found and meets the minimum blue threshold, detect the weapon
+    if (activeBoxIndex != -1 && maxColorScore >= MIN_WEIGHTED_SCORE) {
+        std::string detectedWeapon = detectWeaponTypeWithMask(activeWeaponIcon);
+
+		CHI.weaponOffOverride = false;
+
+        if (detectedWeapon == xorstr_("Unknown Weapon")) {
+            return; // Don't set weapon if it's an unknown weapon
+		}
+
+        // Find the matching weapon in the weapondata vector
+        int weaponIndex = -1;
+        for (size_t i = 0; i < CHI.selectedCharacter.weapondata.size(); ++i) {
+            if (CHI.selectedCharacter.weapondata[i].weaponname == detectedWeapon) {
+                weaponIndex = static_cast<int>(i);
+                break;
+            }
+        }
+
+        // Set the selectedPrimary if a matching weapon is found
+        if (weaponIndex != -1) {
+            CHI.selectedPrimary = weaponIndex;
+            CHI.primaryAutofire = CHI.selectedCharacter.weapondata[weaponIndex].autofire;
+        }
+        else {
+            std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;
+        }
+
+        //std::cout << g.characterinfo.selectedPrimary;
+
+        /*auto now = std::chrono::steady_clock::now();
+        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSaveTime).count() >= 5) {
+            std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
+            std::string filename = "weapon_icon_" + std::to_string(time) + ".png";
+            cv::imwrite(filename, activeWeaponIcon);
+            std::cout << "Saved weapon icon: " << filename << std::endl;
+            lastSaveTime = now;
+        }*/
+    }
+    else {
+        CHI.weaponOffOverride = true;
+    }
 }

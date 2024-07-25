@@ -154,6 +154,7 @@
     <ClCompile Include="features\crypto\base64.cpp" />
     <ClCompile Include="features\crypto\crypto.cpp" />
     <ClCompile Include="features\dxgi\dxgi.cpp" />
+    <ClCompile Include="features\dxgi\weaponmasks.cpp" />
     <ClCompile Include="features\menu\menu.cpp" />
     <ClCompile Include="features\settings\settings.cpp" />
     <ClCompile Include="features\utils\utils.cpp" />
@@ -177,6 +178,7 @@
     <ClInclude Include="features\crypto\base64.h" />
     <ClInclude Include="features\crypto\crypto.hpp" />
     <ClInclude Include="features\dxgi\dxgi.hpp" />
+    <ClInclude Include="features\dxgi\weaponmasks.hpp" />
     <ClInclude Include="features\menu\menu.hpp" />
     <ClInclude Include="features\settings\settings.hpp" />
     <ClInclude Include="features\utils\utils.hpp" />

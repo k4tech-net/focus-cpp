@@ -60,6 +60,9 @@
     <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp">
       <Filter>YoloV8-ONNXRuntime-CPP</Filter>
     </ClCompile>
+    <ClCompile Include="features\dxgi\weaponmasks.cpp">
+      <Filter>features\dxgi</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -157,6 +160,9 @@
     </ClInclude>
     <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp">
       <Filter>YoloV8-ONNXRuntime-CPP</Filter>
+    </ClInclude>
+    <ClInclude Include="features\dxgi\weaponmasks.hpp">
+      <Filter>features\dxgi</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
