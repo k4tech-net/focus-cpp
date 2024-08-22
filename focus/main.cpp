@@ -112,7 +112,8 @@ int main()
 				startupchecks = false;
 			}
 			else {
-				g.shutdown = true;
+				g.initshutdown = true;
+				startupchecks = false;
 			}
 		}
 

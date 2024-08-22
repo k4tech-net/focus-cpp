@@ -111,11 +111,6 @@ void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
 		g.startup.driver = true;
 	}
-	else {
-		g.startup.passedstartup = false;
-		g.startup.hasFinished = true;
-		return;
-	}
 
 	if (g.editor.jsonFiles.size() > 0) {
 		g.startup.files = true;
@@ -124,22 +119,18 @@ void Utils::startUpChecksRunner() {
 	if (dx.InitDXGI()) {
 		g.startup.dxgi = true;
 	}
-	else {
-		g.startup.passedstartup = false;
-		g.startup.hasFinished = true;
-		return;
-	}
 
 	if (initilizeMarker()) {
 		g.startup.marker = true;
 	}
+
+	if (g.startup.driver && g.startup.dxgi && g.startup.marker) {
+		g.startup.passedstartup = true;
+	}
 	else {
 		g.startup.passedstartup = false;
-		g.startup.hasFinished = true;
-		return;
 	}
-	
+
 	g.startup.hasFinished = true;
-	g.startup.passedstartup = true;
 	return;
 }

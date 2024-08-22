@@ -55,11 +55,9 @@ BOOL Mouse::mouse_open()
 	NTSTATUS status = 0;
 
 	if (g_input == 0) {
-
 		std::wstring driver = findDriver();
 
 		if (driver != L"") {
-			//std::wcout << driver << std::endl;
 			std::vector parsedDriver = parseString(driver);
 
 			wchar_t buffer0[256];
@@ -70,13 +68,19 @@ BOOL Mouse::mouse_open()
 
 			if (NT_SUCCESS(status)) {
 				g_found_mouse = 1;
+				return true;
 			}
 			else {
 				g_found_mouse = 0;
+				return false;
 			}
 		}
+		else {
+			// Driver not found
+			return false;
+		}
 	}
-	return status == 0;
+	return g_input != 0;  // Return true if g_input is already initialized
 }
 
 void Mouse::mouse_close()
