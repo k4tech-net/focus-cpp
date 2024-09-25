@@ -6,20 +6,36 @@ on:
   pull_request:
     branches: [ main ]
 
+env:
+  VCPKG_COMMIT: '2024.03.25'  # Specify a fixed vcpkg commit for consistency
+
 jobs:
   build:
     runs-on: windows-latest
     
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@v3
 
     - name: Add MSBuild to PATH
-      uses: microsoft/setup-msbuild@v1.0.2
+      uses: microsoft/setup-msbuild@v1.1
+
+    - name: Cache vcpkg packages
+      uses: actions/cache@v3
+      with:
+        path: |
+          ${{ github.workspace }}/vcpkg
+          !${{ github.workspace }}/vcpkg/buildtrees
+          !${{ github.workspace }}/vcpkg/packages
+          !${{ github.workspace }}/vcpkg/downloads
+        key: ${{ runner.os }}-vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('**/vcpkg.json') }}
 
     - name: Install vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
       run: |
         git clone https://github.com/Microsoft/vcpkg.git
-        .\vcpkg\bootstrap-vcpkg.bat
+        cd vcpkg
+        git checkout ${{ env.VCPKG_COMMIT }}
+        .\bootstrap-vcpkg.bat
 
     - name: Install dependencies
       run: |
@@ -28,9 +44,15 @@ jobs:
         .\vcpkg\vcpkg install xorstr:x64-windows
         .\vcpkg\vcpkg install freetype:x64-windows
 
+    - name: Download ONNXRuntime
+      run: |
+        $onnxRuntimeVersion = "1.19.0"
+        Invoke-WebRequest -Uri "https://github.com/microsoft/onnxruntime/releases/download/v$onnxRuntimeVersion/onnxruntime-win-x64-gpu-$onnxRuntimeVersion.zip" -OutFile "onnxruntime.zip"
+        Expand-Archive -Path "onnxruntime.zip" -DestinationPath "$env:GITHUB_WORKSPACE\onnxruntime"
+
     - name: Build
       run: |
-        msbuild /m /p:Configuration=Release /p:Platform=x64 focus.vcxproj
+        msbuild /m /p:Configuration=Release /p:Platform=x64 /p:VcpkgEnabled=true /p:VcpkgManifestInstall=true /p:AdditionalIncludeDirectories="${{ github.workspace }}\onnxruntime\include;$(ProjectDir)imgui" /p:AdditionalLibraryDirectories="${{ github.workspace }}\onnxruntime\lib" focus/focus.vcxproj
 
     - name: Upload artifact
       uses: actions/upload-artifact@v3

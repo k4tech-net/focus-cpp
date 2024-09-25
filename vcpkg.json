@@ -1,0 +1,14 @@
+{
+    "name": "focus",
+    "version-string": "1.0.0",
+    "dependencies": [
+      "opencv",
+      "onnxruntime",
+      "xorstr",
+      "freetype",
+      {
+        "name": "imgui",
+        "features": ["dx11-binding", "win32-binding"]
+      }
+    ]
+  }
