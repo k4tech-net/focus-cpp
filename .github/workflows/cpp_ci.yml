@@ -19,6 +19,19 @@ jobs:
     - name: Add MSBuild to PATH
       uses: microsoft/setup-msbuild@v1.1
 
+    - name: Install vcpkg
+      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        cd vcpkg
+        git checkout ${{ env.VCPKG_COMMIT }}
+        .\bootstrap-vcpkg.bat
+        .\vcpkg integrate install
+
+    - name: Install dependencies
+      run: |
+        .\vcpkg\vcpkg install --triplet x64-windows
+
     - name: Cache vcpkg packages
       uses: actions/cache@v3
       with:
@@ -28,21 +41,6 @@ jobs:
           !${{ github.workspace }}/vcpkg/packages
           !${{ github.workspace }}/vcpkg/downloads
         key: ${{ runner.os }}-vcpkg-${{ env.VCPKG_COMMIT }}-${{ hashFiles('**/vcpkg.json') }}
-
-    - name: Install vcpkg
-      if: steps.cache-vcpkg.outputs.cache-hit != 'true'
-      run: |
-        git clone https://github.com/Microsoft/vcpkg.git
-        cd vcpkg
-        git checkout ${{ env.VCPKG_COMMIT }}
-        .\bootstrap-vcpkg.bat
-
-    - name: Install dependencies
-      run: |
-        .\vcpkg\vcpkg install opencv:x64-windows
-        .\vcpkg\vcpkg install onnxruntime:x64-windows
-        .\vcpkg\vcpkg install xorstr:x64-windows
-        .\vcpkg\vcpkg install freetype:x64-windows
 
     - name: Download ONNXRuntime
       run: |
