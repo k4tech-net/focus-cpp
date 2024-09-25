@@ -1,0 +1,39 @@
+name: C++ CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build:
+    runs-on: windows-latest
+    
+    steps:
+    - uses: actions/checkout@v2
+
+    - name: Add MSBuild to PATH
+      uses: microsoft/setup-msbuild@v1.0.2
+
+    - name: Install vcpkg
+      run: |
+        git clone https://github.com/Microsoft/vcpkg.git
+        .\vcpkg\bootstrap-vcpkg.bat
+
+    - name: Install dependencies
+      run: |
+        .\vcpkg\vcpkg install opencv:x64-windows
+        .\vcpkg\vcpkg install onnxruntime:x64-windows
+        .\vcpkg\vcpkg install xorstr:x64-windows
+        .\vcpkg\vcpkg install freetype:x64-windows
+
+    - name: Build
+      run: |
+        msbuild /m /p:Configuration=Release /p:Platform=x64 focus.vcxproj
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v2
+      with:
+        name: focus-dll
+        path: x64/Release/focus.dll
