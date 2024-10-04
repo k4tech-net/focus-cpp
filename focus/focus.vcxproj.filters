@@ -63,6 +63,12 @@
     <ClCompile Include="features\dxgi\weaponmasks.cpp">
       <Filter>features\dxgi</Filter>
     </ClCompile>
+    <ClCompile Include="imgui\plugins\implot.cpp">
+      <Filter>imgui\plugins</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\plugins\implot_items.cpp">
+      <Filter>imgui\plugins</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="mouse_driver">
@@ -163,6 +169,12 @@
     </ClInclude>
     <ClInclude Include="features\dxgi\weaponmasks.hpp">
       <Filter>features\dxgi</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\plugins\implot.h">
+      <Filter>imgui\plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\plugins\implot_internal.h">
+      <Filter>imgui\plugins</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -167,6 +167,8 @@
     <ClCompile Include="imgui\imgui_stdlib.cpp" />
     <ClCompile Include="imgui\imgui_tables.cpp" />
     <ClCompile Include="imgui\imgui_widgets.cpp" />
+    <ClCompile Include="imgui\plugins\implot.cpp" />
+    <ClCompile Include="imgui\plugins\implot_items.cpp" />
     <ClCompile Include="imgui\plugins\TextEditor.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="mouse_driver\mouse.cpp" />
@@ -192,6 +194,8 @@
     <ClInclude Include="imgui\imstb_rectpack.h" />
     <ClInclude Include="imgui\imstb_textedit.h" />
     <ClInclude Include="imgui\imstb_truetype.h" />
+    <ClInclude Include="imgui\plugins\implot.h" />
+    <ClInclude Include="imgui\plugins\implot_internal.h" />
     <ClInclude Include="imgui\plugins\TextEditor.h" />
     <ClInclude Include="includes.hpp" />
     <ClInclude Include="mouse_driver\mouse.hpp" />

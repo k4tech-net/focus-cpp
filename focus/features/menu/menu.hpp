@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../../includes.hpp"
+#include "../imgui/plugins/implot.h"
 
 #define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiViewportFlags_NoDecoration)
 #define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar)

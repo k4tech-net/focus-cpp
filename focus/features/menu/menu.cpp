@@ -702,6 +702,58 @@ void keybindManager() {
 	}
 }
 
+void DrawRecoilPattern(const std::vector<std::vector<float>>& recoilData) {
+	if (recoilData.empty()) return;
+
+	std::vector<float> x, y;
+	float maxX = 0, maxY = 0;
+	float currentX = 0, currentY = 0;
+
+	x.push_back(currentX);
+	y.push_back(currentY);
+
+	for (const auto& point : recoilData) {
+		if (point.size() >= 3) {
+			float dx = point[0];
+			float dy = point[1];
+			float timeAndDistance = point[2];
+
+			// Use time and distance to scale the direction
+			currentX += dx * timeAndDistance;
+			currentY += dy * timeAndDistance;
+
+			x.push_back(currentX);
+			y.push_back(currentY);
+
+			maxX = std::max(maxX, std::abs(currentX));
+			maxY = std::max(maxY, std::abs(currentY));
+		}
+	}
+
+	// Ensure a minimum spread for X-axis
+	float minSpread = 10.0f;
+	maxX = maxX * 1.1;
+	maxX = std::max(maxX, minSpread / 2.0f);
+
+	if (ImPlot::BeginPlot("Recoil Pattern", ImVec2(-1, -1))) {
+		ImPlot::SetupAxes("Horizontal", "Vertical", ImPlotAxisFlags_RangeFit, ImPlotAxisFlags_RangeFit | ImPlotAxisFlags_Invert);
+		ImPlot::SetupAxisLimits(ImAxis_X1, -maxX, maxX, ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, -maxY * 0.1, maxY * 1.1, ImGuiCond_Always);
+
+		// Plot the recoil pattern
+		ImPlot::PlotLine("Recoil", x.data(), y.data(), x.size());
+
+		// Plot points to show each recoil step
+		ImPlot::PlotScatter("Steps", x.data(), y.data(), x.size());
+
+		// Add labels for start and end points
+		ImPlot::PlotText("Start", x[0], y[0], ImVec2(0, -10));
+		ImPlot::PlotText("End", x.back(), y.back(), ImVec2(0, 10));
+
+		ImPlot::EndPlot();
+	}
+}
+
 void Menu::gui()
 {
 	bool inverseShutdown = !g.initshutdown;
@@ -809,6 +861,10 @@ void Menu::gui()
 	{
 		if (CHI.mode == xorstr_("Generic")) {
 			if (ImGui::BeginTabItem(xorstr_("Generic"))) {
+
+				ImGui::Columns(2);
+				ImGui::BeginChild(xorstr_("Left Column"));
+
 				if (CHI.characters.size() > 0) {
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
@@ -822,6 +878,24 @@ void Menu::gui()
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
+
+				ImGui::EndChild();
+				ImGui::NextColumn();
+				ImGui::BeginChild(xorstr_("Right Column"));
+
+				if (CHI.characters.size() > 0 && CHI.selectedCharacterIndex < CHI.characters.size()) {
+					const auto& activeWeapon = CHI.isPrimaryActive ?
+						CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary] :
+						CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary];
+
+					DrawRecoilPattern(activeWeapon.values);
+				}
+				else {
+					ImGui::Text("No weapon selected or data available.");
+				}
+
+				ImGui::EndChild();
+				ImGui::Columns(1);
 
 				ImGui::EndTabItem();
 			}
@@ -849,6 +923,10 @@ void Menu::gui()
 		}
 		else if (CHI.mode == xorstr_("Character")) {
 			if (ImGui::BeginTabItem(xorstr_("Character"))) {
+
+				ImGui::Columns(2);
+				ImGui::BeginChild(xorstr_("Left Column"));
+
 				if (CHI.characters.size() > 0) {
 					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
@@ -916,6 +994,24 @@ void Menu::gui()
 					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
 
+				ImGui::EndChild();
+				ImGui::NextColumn();
+				ImGui::BeginChild(xorstr_("Right Column"));
+
+				if (CHI.characters.size() > 0 && CHI.selectedCharacterIndex < CHI.characters.size()) {
+					const auto& activeWeapon = CHI.isPrimaryActive ?
+						CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary] :
+						CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary];
+
+					DrawRecoilPattern(activeWeapon.values);
+				}
+				else {
+					ImGui::Text("No weapon selected or data available.");
+				}
+
+				ImGui::EndChild();
+				ImGui::Columns(1);
+
 				ImGui::EndTabItem();
 			}
 
@@ -943,6 +1039,10 @@ void Menu::gui()
 		else if (CHI.mode == xorstr_("Game")) {
 			if (CHI.game == xorstr_("Siege")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
+
+					ImGui::Columns(2);
+					ImGui::BeginChild(xorstr_("Left Column"));
+
 					if (CHI.characters.size() > 0) {
 						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
 
@@ -1049,11 +1149,33 @@ void Menu::gui()
 						ImGui::Text(xorstr_("Please load a weapons file"));
 					}
 
+					ImGui::EndChild();
+					ImGui::NextColumn();
+					ImGui::BeginChild(xorstr_("Right Column"));
+
+					if (CHI.characters.size() > 0 && CHI.selectedCharacterIndex < CHI.characters.size()) {
+						const auto& activeWeapon = CHI.isPrimaryActive ?
+							CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary] :
+							CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary];
+
+						DrawRecoilPattern(activeWeapon.values);
+					}
+					else {
+						ImGui::Text("No weapon selected or data available.");
+					}
+
+					ImGui::EndChild();
+					ImGui::Columns(1);
+
 					ImGui::EndTabItem();
 				}
 			}
 			else if (CHI.game == xorstr_("Rust")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
+
+					ImGui::Columns(2);
+					ImGui::BeginChild(xorstr_("Left Column"));
+
 					if (CHI.characters.size() > 0) {
 						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
 
@@ -1098,6 +1220,24 @@ void Menu::gui()
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
 					}
+
+					ImGui::EndChild();
+					ImGui::NextColumn();
+					ImGui::BeginChild(xorstr_("Right Column"));
+
+					if (CHI.characters.size() > 0 && CHI.selectedCharacterIndex < CHI.characters.size()) {
+						const auto& activeWeapon = CHI.isPrimaryActive ?
+							CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary] :
+							CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary];
+
+						DrawRecoilPattern(activeWeapon.values);
+					}
+					else {
+						ImGui::Text("No weapon selected or data available.");
+					}
+
+					ImGui::EndChild();
+					ImGui::Columns(1);
 
 					ImGui::EndTabItem();
 				}
