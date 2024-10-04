@@ -41,7 +41,7 @@ bool DXGI::InitDXGI() {
 
 void DXGI::CaptureDesktopDXGI() {
 
-    while (!g.shutdown) {
+    while (!globals.shutdown) {
 
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
@@ -93,9 +93,9 @@ void DXGI::CaptureDesktopDXGI() {
         gOutputDuplication->ReleaseFrame();
 
         // Swap buffers
-        g.desktopMutex_.lock();
-        g.desktopMat = desktopImage;
-        g.desktopMutex_.unlock();
+        globals.desktopMutex_.lock();
+        globals.desktopMat = desktopImage;
+        globals.desktopMutex_.unlock();
 
         //imshow("output", frameCopy); // Debug window
         //cv::waitKey(1);
@@ -157,20 +157,20 @@ void DXGI::aimbot() {
 
     std::unique_ptr<YoloInferencer> inferencer;
 
-    while (!g.shutdown) {
-        if (!g.aimbotinfo.enabled) {
+    while (!globals.shutdown) {
+        if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
                 inferencer.reset();
                 aimbotInit = false;
 			}
-            g.aimbotinfo.correctionX = 0;
-            g.aimbotinfo.correctionY = 0;
+            settings.aimbotData.correctionX = 0;
+            settings.aimbotData.correctionY = 0;
             std::this_thread::sleep_for(std::chrono::milliseconds(200));
             continue;
         }
 
         if (!aimbotInit) {
-            if (g.aimbotinfo.provider == 1) {
+            if (settings.aimbotData.provider == 1) {
                 provider = xorstr_("CUDA");
             }
             else {
@@ -185,9 +185,9 @@ void DXGI::aimbot() {
             continue;
         }
 
-        g.desktopMutex_.lock();
-        cv::Mat desktopImage = g.desktopMat.clone();
-        g.desktopMutex_.unlock();
+        globals.desktopMutex_.lock();
+        cv::Mat desktopImage = globals.desktopMat.clone();
+        globals.desktopMutex_.unlock();
 
         if (desktopImage.empty()) {
             continue;
@@ -195,20 +195,20 @@ void DXGI::aimbot() {
 
 		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.05, 0.5);
 
-        std::vector<float> corrections = calculateCorrections(desktopImage, detections, g.aimbotinfo.hitbox);
+        std::vector<float> corrections = calculateCorrections(desktopImage, detections, settings.aimbotData.hitbox);
 
-        if (corrections[0] == 0 || g.aimbotinfo.percentDistance == 0) {
-            g.aimbotinfo.correctionX = corrections[0];
+        if (corrections[0] == 0 || settings.aimbotData.percentDistance == 0) {
+            settings.aimbotData.correctionX = corrections[0];
         }
         else {
-            g.aimbotinfo.correctionX = corrections[0] * g.aimbotinfo.percentDistance;
+            settings.aimbotData.correctionX = corrections[0] * settings.aimbotData.percentDistance;
         }
 
-		if (corrections[1] == 0 || g.aimbotinfo.percentDistance == 0) {
-			g.aimbotinfo.correctionY = corrections[1];
+		if (corrections[1] == 0 || settings.aimbotData.percentDistance == 0) {
+            settings.aimbotData.correctionY = corrections[1];
 		}
 		else {
-			g.aimbotinfo.correctionY = corrections[1] * g.aimbotinfo.percentDistance;
+            settings.aimbotData.correctionY = corrections[1] * settings.aimbotData.percentDistance;
 		}
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -338,8 +338,8 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
 
     int activeROI = 0;
 
-    if (((CHI.mode == xorstr_("Character") && CHI.characterOptions[4]) || 
-        (CHI.mode == xorstr_("Game") && CHI.game == xorstr_("Siege") && CHI.characterOptions[1])) &&
+    if (((settings.mode == xorstr_("Character") && settings.characters[settings.selectedCharacterIndex].options[4]) ||
+        (settings.mode == xorstr_("Game") && settings.game == xorstr_("Siege") && settings.characters[settings.selectedCharacterIndex].options[1])) &&
         primaryArea1 > minActiveAreaThreshold&& primaryArea1 > primaryArea2&& primaryArea1 > primaryArea3) {
     
         if (totalBrightness2 > minActiveAreaThreshold && totalBrightness2 > totalBrightness3) {
@@ -369,16 +369,16 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     // Print the index of the active ROI or indicate neither if both are not active
     if (activeROI == 0 || activeROI == 1) {
         //std::cout << "Neither ROI is active" << std::endl;
-        CHI.weaponOffOverride = true;
+        settings.weaponOffOverride = true;
     }
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
-        CHI.weaponOffOverride = false;
+        settings.weaponOffOverride = false;
         if (activeROI == 2) {
-            CHI.isPrimaryActive = true;
+            settings.isPrimaryActive = true;
         }
         else if (activeROI == 3) {
-            CHI.isPrimaryActive = false;
+            settings.isPrimaryActive = false;
         }
     }
 }
@@ -541,7 +541,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
     if (activeBoxIndex != -1 && maxColorScore >= MIN_WEIGHTED_SCORE) {
         std::string detectedWeapon = detectWeaponTypeWithMask(activeWeaponIcon);
 
-		CHI.weaponOffOverride = false;
+        settings.weaponOffOverride = false;
 
         if (detectedWeapon == xorstr_("Unknown Weapon")) {
             return; // Don't set weapon if it's an unknown weapon
@@ -549,8 +549,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Find the matching weapon in the weapondata vector
         int weaponIndex = -1;
-        for (size_t i = 0; i < CHI.selectedCharacter.weapondata.size(); ++i) {
-            if (CHI.selectedCharacter.weapondata[i].weaponname == detectedWeapon) {
+        for (size_t i = 0; i < settings.characters[settings.selectedCharacterIndex].weapondata.size(); ++i) {
+            if (settings.characters[settings.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
                 weaponIndex = static_cast<int>(i);
                 break;
             }
@@ -558,8 +558,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Set the selectedPrimary if a matching weapon is found
         if (weaponIndex != -1) {
-            CHI.selectedPrimary = weaponIndex;
-            CHI.primaryAutofire = CHI.selectedCharacter.weapondata[weaponIndex].autofire;
+            settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
+            settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].autofire;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;
@@ -577,6 +577,6 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         }*/
     }
     else {
-        CHI.weaponOffOverride = true;
+        settings.weaponOffOverride = true;
     }
 }

@@ -9,15 +9,11 @@
 #include "imgui_impl_win32.h"
 #include "imgui_impl_dx11.h"
 
-#include "plugins/TextEditor.h"
-
 #include "features/utils/utils.hpp"
 
-#define CHI g.characterinfo
-
-extern Globals g;
+extern Globals globals;
+extern Settings settings;
 extern DXGI dx;
 extern Settings cfg;
-extern TextEditor editor;
 extern Utils ut;
 extern Mouse ms;

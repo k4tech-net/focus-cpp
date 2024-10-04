@@ -18,8 +18,7 @@ class Utils
 public:
 	void preciseSleep(double seconds);
 	void preciseSleepUntil(const std::chrono::steady_clock::time_point& targetTime);
-	std::string readTextFromFile(const char* filePath);
-	bool saveTextToFile(const char* filePath, const std::string& content);
+	std::vector<std::string> scanCurrentDirectoryForConfigFiles();
 	std::vector<std::string> scanCurrentDirectoryForJsonFiles();
 	bool isEdited(const std::string& original, const std::string& changed);
 	std::string wstring_to_string(const std::wstring& wstr);
