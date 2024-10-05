@@ -10,7 +10,6 @@
 
 Control ctr;
 Menu mn;
-TextEditor editor;
 Crypto cr;
 
 // Data
@@ -56,6 +55,7 @@ int main()
 	// Setup Dear ImGui context
 	IMGUI_CHECKVERSION();
 	ImGui::CreateContext();
+	ImPlot::CreateContext();
 
 	ImGuiIO& io = ImGui::GetIO(); (void)io;
 	io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;     // Enable Keyboard Controls
@@ -74,7 +74,7 @@ int main()
 		style.Colors[ImGuiCol_WindowBg].w = 1.0f;
 	}
 
-	g.editor.jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
+	globals.filesystem.configFiles = ut.scanCurrentDirectoryForConfigFiles();
 
 	// Setup Platform/Renderer backends
 	ImGui_ImplWin32_Init(hwnd);
@@ -107,12 +107,12 @@ int main()
 		auto current_time = std::chrono::high_resolution_clock::now();
 		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
 
-		if (elapsed_time >= 5 && g.startup.hasFinished) {
-			if (g.startup.passedstartup) {
+		if (elapsed_time >= 5 && globals.startup.hasFinished) {
+			if (globals.startup.passedstartup) {
 				startupchecks = false;
 			}
 			else {
-				g.initshutdown = true;
+				globals.initshutdown = true;
 				startupchecks = false;
 			}
 		}
@@ -143,16 +143,16 @@ int main()
 	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
 	//#endif
 
-	while (!g.done) {
+	while (!globals.done) {
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 		{
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 			if (msg.message == WM_QUIT)
-				g.done = true;
+				globals.done = true;
 		}
-		if (g.done)
+		if (globals.done)
 			break;
 
 		// Handle window resize (we don't resize directly in the WM_SIZE handler)
@@ -203,9 +203,10 @@ int main()
 	// Cleanup
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
+	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
-	g.shutdown = true;
+	globals.shutdown = true;
 
 	#if !_DEBUG
 	watchdogThread.join();
@@ -232,7 +233,7 @@ extern "C" __declspec(dllexport) bool verification(const char* iv, const char* v
 
 	std::string decryptedVerificationKey = cr.decryptDecode(verificationKey, key, iv);
 
-	if (decryptedVerificationKey == clientVerificationKey && !g.shutdown) {
+	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown) {
 		cr.lastAuthTime.store(std::chrono::steady_clock::now());
 		return true;
 	}
@@ -375,18 +376,18 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 			bool rButtonUp = (raw->data.mouse.usButtonFlags & RI_MOUSE_RIGHT_BUTTON_UP) != 0;
 
 			// Handle the mouse button states
-			if (raw->data.mouse.ulExtraInformation != g.mouseinfo.marker.load(std::memory_order_relaxed)) { // Only process real inputs
+			if (raw->data.mouse.ulExtraInformation != globals.mouseinfo.marker.load(std::memory_order_relaxed)) { // Only process real inputs
 				if (lButtonDown) {
-					g.mouseinfo.l_mouse_down.store(true, std::memory_order_relaxed);
+					globals.mouseinfo.l_mouse_down.store(true, std::memory_order_relaxed);
 				}
 				if (lButtonUp) {
-					g.mouseinfo.l_mouse_down.store(false, std::memory_order_relaxed);
+					globals.mouseinfo.l_mouse_down.store(false, std::memory_order_relaxed);
 				}
 				if (rButtonDown) {
-					g.mouseinfo.r_mouse_down.store(true, std::memory_order_relaxed);
+					globals.mouseinfo.r_mouse_down.store(true, std::memory_order_relaxed);
 				}
 				if (rButtonUp) {
-					g.mouseinfo.r_mouse_down.store(false, std::memory_order_relaxed);
+					globals.mouseinfo.r_mouse_down.store(false, std::memory_order_relaxed);
 				}
 			}
 		}

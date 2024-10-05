@@ -39,9 +39,6 @@
     <ClCompile Include="imgui\imgui_widgets.cpp">
       <Filter>imgui</Filter>
     </ClCompile>
-    <ClCompile Include="imgui\plugins\TextEditor.cpp">
-      <Filter>imgui\plugins</Filter>
-    </ClCompile>
     <ClCompile Include="features\dxgi\dxgi.cpp">
       <Filter>features\dxgi</Filter>
     </ClCompile>
@@ -62,6 +59,12 @@
     </ClCompile>
     <ClCompile Include="features\dxgi\weaponmasks.cpp">
       <Filter>features\dxgi</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\plugins\implot.cpp">
+      <Filter>imgui\plugins</Filter>
+    </ClCompile>
+    <ClCompile Include="imgui\plugins\implot_items.cpp">
+      <Filter>imgui\plugins</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -140,9 +143,6 @@
     <ClInclude Include="imgui\imstb_truetype.h">
       <Filter>imgui</Filter>
     </ClInclude>
-    <ClInclude Include="imgui\plugins\TextEditor.h">
-      <Filter>imgui\plugins</Filter>
-    </ClInclude>
     <ClInclude Include="features\dxgi\dxgi.hpp">
       <Filter>features\dxgi</Filter>
     </ClInclude>
@@ -163,6 +163,12 @@
     </ClInclude>
     <ClInclude Include="features\dxgi\weaponmasks.hpp">
       <Filter>features\dxgi</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\plugins\implot.h">
+      <Filter>imgui\plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="imgui\plugins\implot_internal.h">
+      <Filter>imgui\plugins</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

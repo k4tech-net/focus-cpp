@@ -10,7 +10,7 @@ void pressMouse1(bool press) {
 	input.mi.mouseData = 0;
 	input.mi.dwFlags = press ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
 	input.mi.time = 0;
-	input.mi.dwExtraInfo = g.mouseinfo.marker.load(std::memory_order_relaxed);
+	input.mi.dwExtraInfo = globals.mouseinfo.marker.load(std::memory_order_relaxed);
 
 	SendInput(1, &input, sizeof(INPUT));
 }
@@ -43,28 +43,25 @@ void Control::driveMouse() {
 	static float smoothedCorrectionX = 0;
 	static float smoothedCorrectionY = 0;
 
-	while (!g.shutdown) {
+	while (!globals.shutdown) {
 		// Check if the selected weapon has changed
-		CHI.mutex_.lock();
-		if (!(currwpn == CHI.activeWeapon)) {
-			currwpn = CHI.activeWeapon;
-			CHI.mutex_.unlock();
 
-			// Print the new weapon data
-			/*for (auto const& data : currwpn.values) {
-				std::cout << "{" << data[0] << ", " << data[1] << ", " << data[2] << "}," << std::endl;
-			}*/
+		if (settings.weaponDataChanged) {
+			settings.weaponDataChanged = false;
+			
+			if (settings.isPrimaryActive) {
+				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]];
+			}
+			else {
+				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+			}
 
-			// Update maxInstructions
 			maxInstructions = currwpn.values.size();
 		}
-		else {
-			CHI.mutex_.unlock();
-		}
 
-		int smoothingIterations = g.aimbotinfo.smoothing;
+		int smoothingIterations = settings.aimbotData.smoothing;
 
-		while ((CHI.currAutofire ? g.mouseinfo.l_mouse_down && g.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) && !complete && !CHI.weaponOffOverride) {
+		while ((currwpn.autofire ? globals.mouseinfo.l_mouse_down && globals.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) && !complete && !settings.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
 
@@ -76,13 +73,15 @@ void Control::driveMouse() {
 				float int_timer = 0;
 				auto nextExecution = currtime;
 
-				while (int_timer < duration / 1000.f && (CHI.currAutofire ? g.mouseinfo.l_mouse_down && g.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON))) {
+				while (int_timer < duration / 1000.f && (currwpn.autofire ? globals.mouseinfo.l_mouse_down && globals.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON))) {
 					nextExecution += std::chrono::microseconds(static_cast<long long>(10000)); // 10 milliseconds in microseconds
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					xAccumulator += x * CHI.activeWeaponSensXModifier;
-					yAccumulator += y * CHI.activeWeaponSensYModifier;
+					std::vector<float> sens = settings.sensMultiplier;
+
+					xAccumulator += x * sens[0];
+					yAccumulator += y * sens[1];
 
 					int xMove = static_cast<int>(xAccumulator);
 					int yMove = static_cast<int>(yAccumulator);
@@ -91,8 +90,8 @@ void Control::driveMouse() {
 					yAccumulator -= yMove;
 
 					// Apply smoothing
-					totalCorrectionX = g.aimbotinfo.correctionX;
-					totalCorrectionY = g.aimbotinfo.correctionY;
+					totalCorrectionX = settings.aimbotData.correctionX;
+					totalCorrectionY = settings.aimbotData.correctionY;
 					currentIteration++;
 
 					if (currentIteration >= smoothingIterations) {
@@ -104,12 +103,12 @@ void Control::driveMouse() {
 						currentIteration = 0;
 					}
 
-					xMove += std::clamp(static_cast<int>(smoothedCorrectionX), -g.aimbotinfo.maxDistance, g.aimbotinfo.maxDistance);
-					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -g.aimbotinfo.maxDistance, g.aimbotinfo.maxDistance);
+					xMove += std::clamp(static_cast<int>(smoothedCorrectionX), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
 					
 					ms.mouse_move(0, xMove, yMove, 0);
 			
-					if (CHI.currAutofire && cycles >= 8 && g.mouseinfo.l_mouse_down) {
+					if (currwpn.autofire && cycles >= 8 && globals.mouseinfo.l_mouse_down) {
 						pressMouse1(flipFlop);
 						flipFlop = !flipFlop;
 					}
@@ -118,7 +117,7 @@ void Control::driveMouse() {
 
 					cycles++;
 
-					if (CHI.potato) {
+					if (settings.potato) {
 						std::this_thread::sleep_until(nextExecution);
 					}
 					else {
@@ -132,7 +131,7 @@ void Control::driveMouse() {
 			}
 		}
 		
-		if (!g.mouseinfo.l_mouse_down || !g.mouseinfo.r_mouse_down) {
+		if (!globals.mouseinfo.l_mouse_down || !globals.mouseinfo.r_mouse_down) {
 
 			if (cycles > 8 || !flipFlop) {
 				pressMouse1(false);
@@ -151,7 +150,7 @@ void Control::driveMouse() {
 			smoothedCorrectionY = 0;
 		}
 
-		if (CHI.potato) {
+		if (settings.potato) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 		//ut.preciseSleepFor(0.0005); // uses too much resources

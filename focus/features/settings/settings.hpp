@@ -33,22 +33,54 @@ struct weaponData {
     }
 };
 
+struct characterData {
+    std::string charactername = "";
+    std::vector<weaponData> weapondata;
+    std::vector<bool> options = { false, false, false, false, false };
+    std::vector<int> selectedweapon = { 0, 0 };
+};
+
+struct aimbotData {
+	int correctionX = 0;
+	int correctionY = 0;
+	bool enabled = false;
+    int provider = 0;
+    int smoothing = 0;
+    int maxDistance = 0;
+    float percentDistance = 0.1f;
+    int hitbox = 0;
+};
+
 class Settings 
 {
 public:
-    std::string charactername = "";
-	std::vector<weaponData> weapondata;
-    std::vector<bool> options = { false, false, false, false, false };
-    std::vector<int> defaultweapon = { 0, 0 };
+    // Global settings
+    std::string mode = "";
+    bool potato = false;
+    aimbotData aimbotData;
 
-    //// Method to check if two Settings objects are equal
-    //bool operator==(const Settings& other) const {
-    //    return charactername == other.charactername &&
-    //        weapondata == other.weapondata &&
-    //        options == other.options;
-    //}
+    // Character mode settings
+    std::vector<std::string> wpn_keybinds;
+    std::vector<std::string> aux_keybinds;
 
-    void readSettings(const std::string& filename, std::vector<Settings>& settings, bool clearExisting, bool updateAimbotInfo);
+    // Game mode settings
+    std::string game = "";
+    std::vector<float> sensitivity;
+    std::string crouch_keybind;
+
+    // Character data
+    std::vector<characterData> characters;
+
+    // Active state
+    int selectedCharacterIndex = 0;
+    bool isPrimaryActive = true;
+    bool weaponOffOverride = false;
+    bool weaponDataChanged = false;
+    std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+
+    void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
+    void saveSettings(const std::string& filename);
+    void convertJsonToTextConfig(const std::string& jsonFilename, const std::string& textFilename);
 };
 
 struct Globals
@@ -61,12 +93,12 @@ struct Globals
 
     bool done = false;
 
-    struct Editor {
-        std::vector<std::string> jsonFiles;
+    struct FileSystem {
+        std::vector<std::string> configFiles;
         std::string activeFile = "";
         bool unsavedChanges = false;
         int activeFileIndex = 0;
-    } editor;
+    } filesystem;
 
     struct Startup {
         bool passedstartup = false;
@@ -77,55 +109,6 @@ struct Globals
         bool hasFinished = false;
     } startup;
 
-    struct CharacterInfo {
-        std::string mode = "";
-        bool potato = false;
-        std::vector<std::string> wpn_keybinds;
-        std::vector<std::string> aux_keybinds;
-        std::string crouch_keybind;
-        
-        std::string game = "";
-        std::vector<float> sensitivity = { 0, 0, 0, 0, 0 };
-
-        std::vector<Settings> characters;
-        Settings selectedCharacter;
-
-        int selectedCharacterIndex = 0;
-        int selectedPrimary = 0;
-        int selectedSecondary = 0;
-
-        bool primaryAutofire = false;
-        bool secondaryAutofire = false;
-        std::vector<int> primaryAttachments = { 0, 0, 0 };
-		std::vector<int> secondaryAttachments = { 0, 0, 0 };
-        std::vector<bool> characterOptions = { false, false, false, false, false };
-
-        bool currAutofire = false;
-
-        bool isPrimaryActive = true;
-        weaponData activeWeapon; // Put this in the keybind controller
-        float activeWeaponSensXModifier = 0;
-        float activeWeaponSensYModifier = 0;
-        bool weaponOffOverride = false;
-
-        std::string jsonData = "";
-
-        std::mutex mutex_;
-    } characterinfo;
-
-    struct AimbotInfo {
-        int correctionX = 0;
-        int correctionY = 0;
-
-        bool enabled = false;
-        int provider = 0;
-
-        int smoothing = 0;
-        int maxDistance = 0;
-        float percentDistance = 0.1f;
-        int hitbox = 0;
-    } aimbotinfo;
-
     struct MouseInfo {
 		std::atomic<bool> l_mouse_down = false;
 		std::atomic<bool> r_mouse_down = false;
@@ -133,6 +116,5 @@ struct Globals
     } mouseinfo;
 };
 
-extern Globals g;
-
-#define CHI g.characterinfo
+extern Globals globals;
+extern Settings settings;

@@ -44,34 +44,26 @@ void Utils::preciseSleepUntil(const std::chrono::steady_clock::time_point& targe
 	}
 }
 
-std::string Utils::readTextFromFile(const char* filePath) {
-	std::ifstream file(filePath);
-	std::string content((std::istreambuf_iterator<char>(file)), std::istreambuf_iterator<char>());
-
-	return content;
-}
-
-bool Utils::saveTextToFile(const char* filePath, const std::string& content) {
-	std::ofstream file(filePath);
-	if (!file.is_open()) {
-		return false;
+std::vector<std::string> Utils::scanCurrentDirectoryForConfigFiles() {
+	std::vector<std::string> configFiles;
+	std::filesystem::path currentPath = std::filesystem::current_path();
+	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
+		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".txt")) {
+			configFiles.push_back(entry.path().filename().string());
+		}
 	}
-
-	file << content;
-	file.close();
-
-	return true;
+	return configFiles;
 }
 
 std::vector<std::string> Utils::scanCurrentDirectoryForJsonFiles() {
-	std::vector<std::string> jsonFiles;
+	std::vector<std::string> configFiles;
 	std::filesystem::path currentPath = std::filesystem::current_path();
 	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
 		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".json")) {
-			jsonFiles.push_back(entry.path().filename().string());
+			configFiles.push_back(entry.path().filename().string());
 		}
 	}
-	return jsonFiles;
+	return configFiles;
 }
 
 bool Utils::isEdited(const std::string& original, const std::string& changed) {
@@ -99,7 +91,7 @@ ULONG  generateUniqueMarker() {
 
 bool Utils::initilizeMarker() {
 	try {
-		g.mouseinfo.marker.store(generateUniqueMarker(), std::memory_order_relaxed);
+		globals.mouseinfo.marker.store(generateUniqueMarker(), std::memory_order_relaxed);
 		return true;
 	}
 	catch (...) {
@@ -109,28 +101,28 @@ bool Utils::initilizeMarker() {
 
 void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
-		g.startup.driver = true;
+		globals.startup.driver = true;
 	}
 
-	if (g.editor.jsonFiles.size() > 0) {
-		g.startup.files = true;
+	if (globals.filesystem.configFiles.size() > 0) {
+		globals.startup.files = true;
 	}
 
 	if (dx.InitDXGI()) {
-		g.startup.dxgi = true;
+		globals.startup.dxgi = true;
 	}
 
 	if (initilizeMarker()) {
-		g.startup.marker = true;
+		globals.startup.marker = true;
 	}
 
-	if (g.startup.driver && g.startup.dxgi && g.startup.marker) {
-		g.startup.passedstartup = true;
+	if (globals.startup.driver && globals.startup.dxgi && globals.startup.marker) {
+		globals.startup.passedstartup = true;
 	}
 	else {
-		g.startup.passedstartup = false;
+		globals.startup.passedstartup = false;
 	}
 
-	g.startup.hasFinished = true;
+	globals.startup.hasFinished = true;
 	return;
 }

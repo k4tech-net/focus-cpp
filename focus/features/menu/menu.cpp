@@ -10,7 +10,7 @@ bool Menu::comboBoxGen(const char* label, int* current_item, const char* const i
 	return ImGui::Combo(std::string(xorstr_("##COMBOGEN__") + std::string(label)).c_str(), current_item, items, items_count);
 }
 
-bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vector<Settings>& items) {
+bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vector<characterData>& items) {
 	ImGui::Spacing();
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
 	ImGui::Text(label);
@@ -31,7 +31,7 @@ bool Menu::comboBoxChar(const char* label, int& characterIndex, const std::vecto
     return false;
 }
 
-bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<Settings>& items, bool& currautofire) {
+bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex, const std::vector<characterData>& items) {
 	//ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 6);
 	//ImGui::Text(label);
 	ImGui::SetCursorPosY(ImGui::GetCursorPosY() - 2);
@@ -40,7 +40,6 @@ bool Menu::comboBoxWep(const char* label, int& characterIndex, int& weaponIndex,
             const bool isSelected = (weaponIndex == i);
             if (ImGui::Selectable(items[characterIndex].weapondata[i].weaponname.c_str(), isSelected)) {
                 weaponIndex = i; 
-                currautofire = items[characterIndex].weapondata[i].autofire;
 
                 ImGui::SetItemDefaultFocus();
                 ImGui::EndCombo();
@@ -84,81 +83,260 @@ bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::v
     return changed;
 }
 
-void Menu::popup(bool trigger, int type) {
+void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& selectedGame) {
+	if (trigger) {
+		ImGui::OpenPopup("NewConfigPopup");
+	}
+
+	if (ImGui::BeginPopup("NewConfigPopup")) {
+		ImGui::InputText("Config Name", newConfigName, 256);
+
+		const char* modes[] = { "Generic", "Character", "Game" };
+		ImGui::Combo("Mode", &selectedMode, modes, IM_ARRAYSIZE(modes));
+
+		if (selectedMode == 2) {  // If "Game" mode is selected
+			const char* games[] = { "Siege", "Rust" };
+			ImGui::Combo("Game", &selectedGame, games, IM_ARRAYSIZE(games));
+		}
+
+		if (ImGui::Button("Create")) {
+			std::string newFileName = std::string(newConfigName) + ".txt";
+			Settings newSettings;
+			newSettings.mode = modes[selectedMode];
+			newSettings.potato = false;
+			newSettings.aimbotData = { 0, 0, false, 0, 50, 10, 0.5f, 0 }; // Default aimbot settings
+
+			// Pre-fill with example values based on mode and game
+			if (newSettings.mode == "Generic") {
+				characterData genericChar;
+				weaponData exampleWeapon;
+				exampleWeapon.weaponname = "Example Weapon";
+				exampleWeapon.autofire = true;
+				exampleWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
+				genericChar.weapondata.push_back(exampleWeapon);
+				genericChar.selectedweapon = { 0, 0 };
+				newSettings.characters.push_back(genericChar);
+			}
+			else if (newSettings.mode == "Character") {
+				newSettings.wpn_keybinds = { "0x31", "0x32" }; // Example keybinds (1 and 2 keys)
+				newSettings.aux_keybinds = { "0x58" }; // Example aux keybind (X key)
+
+				characterData exampleChar;
+				exampleChar.charactername = "Example Character";
+				exampleChar.options = { true, false, true, false, false };
+
+				weaponData primaryWeapon;
+				primaryWeapon.weaponname = "Primary Weapon";
+				primaryWeapon.autofire = true;
+				primaryWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
+				exampleChar.weapondata.push_back(primaryWeapon);
+
+				weaponData secondaryWeapon;
+				secondaryWeapon.weaponname = "Secondary Weapon";
+				secondaryWeapon.autofire = false;
+				secondaryWeapon.values = { {0.05f, 0.05f, 1.0f}, {0.1f, 0.1f, 1.0f} };
+				exampleChar.weapondata.push_back(secondaryWeapon);
+
+				exampleChar.selectedweapon = { 0, 1 }; // Primary and secondary weapon indices
+				newSettings.characters.push_back(exampleChar);
+			}
+			else if (newSettings.mode == "Game") {
+				newSettings.game = selectedGame == 0 ? "Siege" : "Rust";
+
+				if (newSettings.game == "Siege") {
+					characterData exampleChar;
+					exampleChar.charactername = "Example Operator";
+					exampleChar.options = { true, false };
+
+					weaponData primaryWeapon;
+					primaryWeapon.weaponname = "Primary Weapon";
+					primaryWeapon.autofire = true;
+					primaryWeapon.attachments = { 0, 0, 0 };
+					primaryWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
+					exampleChar.weapondata.push_back(primaryWeapon);
+
+					weaponData secondaryWeapon;
+					secondaryWeapon.weaponname = "Secondary Weapon";
+					secondaryWeapon.autofire = false;
+					secondaryWeapon.attachments = { 0, 0, 0 };
+					secondaryWeapon.values = { {0.05f, 0.05f, 1.0f}, {0.1f, 0.1f, 1.0f} };
+					exampleChar.weapondata.push_back(secondaryWeapon);
+
+					exampleChar.selectedweapon = { 0, 1 };
+					newSettings.characters.push_back(exampleChar);
+					newSettings.sensitivity = { 50.0f, 50.0f, 100.0f, 100.0f, 100.0f, 0.02f };
+				}
+				else if (newSettings.game == "Rust") {
+					characterData rustChar;
+					rustChar.options = { true };
+
+					weaponData exampleWeapon;
+					exampleWeapon.weaponname = "Example Weapon";
+					exampleWeapon.autofire = true;
+					exampleWeapon.attachments = { 0, 0, 0 };
+					exampleWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
+					rustChar.weapondata.push_back(exampleWeapon);
+
+					rustChar.selectedweapon = { 0, 0 };
+					newSettings.characters.push_back(rustChar);
+					newSettings.sensitivity = { 0.5f, 1.0f };
+					newSettings.crouch_keybind = "0x11";  // Default to Ctrl key
+				}
+			}
+
+			newSettings.saveSettings(newFileName);
+			globals.filesystem.configFiles.push_back(newFileName);
+
+			memset(newConfigName, 0, sizeof(newConfigName));
+			selectedMode = 0;
+			selectedGame = 0;
+
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel")) {
+			memset(newConfigName, 0, sizeof(newConfigName));
+			selectedMode = 0;
+			selectedGame = 0;
+
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void renameConfigPopup(bool& trigger, static char renameBuffer[256]) {
+	if (trigger) {
+		ImGui::OpenPopup("RenamePopup");
+	}
+
+	if (ImGui::BeginPopupModal("RenamePopup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+		ImGui::Text("Rename config:");
+		ImGui::Text("%s", globals.filesystem.configFiles[globals.filesystem.activeFileIndex].c_str());
+		ImGui::InputText("New Name", renameBuffer, IM_ARRAYSIZE(renameBuffer));
+		ImGui::Separator();
+
+		if (ImGui::Button("Rename", ImVec2(120, 0))) {
+			std::string oldName = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+			std::string newName = std::string(renameBuffer) + ".txt";
+			if (rename(oldName.c_str(), newName.c_str()) == 0) {
+				globals.filesystem.configFiles[globals.filesystem.activeFileIndex] = newName;
+				if (globals.filesystem.activeFile == oldName) {
+					globals.filesystem.activeFile = newName;
+				}
+			}
+			else {
+				ImGui::OpenPopup("RnameErrorPopup");
+			}
+			memset(renameBuffer, 0, sizeof(renameBuffer));
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("Cancel", ImVec2(120, 0))) {
+			memset(renameBuffer, 0, sizeof(renameBuffer));
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::EndPopup();
+	}
+}
+
+void Menu::popup(bool& trigger, int type) {
 
 	const char* chartype;
 
-	if (type == 0) {
-		chartype = xorstr_("Open");
-	}
-	else if (type == 1) {
-		chartype = xorstr_("InitShutdown");
+	switch (type) {
+		case 0:
+			chartype = xorstr_("Load");
+			break;
+		case 1:
+			chartype = xorstr_("Save");
+			break;
+		case 2:
+			chartype = xorstr_("Initiate Shutdown");
+			break;
+		case 3:
+			chartype = xorstr_("Delete");
+			break;
 	}
 
-    if (trigger) {
+	if (trigger) {
 		ImGui::OpenPopup(chartype);
-    }
-
-    if (ImGui::BeginPopupModal(chartype)) {
-        ImGui::Text(xorstr_("You have unsaved changes. Are you sure you want to complete this action?"));
-        ImGui::Separator();
-
-        if (ImGui::Button(xorstr_("Cancel"), ImVec2(120, 0))) {
-            ImGui::CloseCurrentPopup();
-            g.initshutdown = false;
-            trigger = false;
-        }
-        ImGui::SameLine();
-
-        if (type == 0) {
-            if (ImGui::Button(xorstr_("Open Anyway"), ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-                editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str()));
-                g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
-                g.characterinfo.jsonData = ut.readTextFromFile(g.editor.jsonFiles[g.editor.activeFileIndex].c_str());
-                trigger = false;
-            }
-        }
-        else if (type == 1) {
-            if (ImGui::Button(xorstr_("Close Anyway"), ImVec2(120, 0))) {
-                ImGui::CloseCurrentPopup();
-                g.done = true;
-                trigger = false;
-            }
-        }
-
-        ImGui::EndPopup();
-    }
-}
-
-void Menu::updateCharacterData(bool updatecharacter, bool updatewpns, bool updateautofire, bool updateattachments, bool updateoptions, bool updateAimbotInfo) {
-	cfg.readSettings(g.editor.activeFile.c_str(), CHI.characters, true, updateAimbotInfo);
-
-	if (updatecharacter) {
-		CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 	}
-	if (updatewpns) {
-		CHI.selectedPrimary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[0];
-		CHI.selectedSecondary = CHI.characters[CHI.selectedCharacterIndex].defaultweapon[1];
-	}
-	if (updateautofire) {
-		CHI.primaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].autofire;
-		CHI.secondaryAutofire = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].autofire;
-	}
-	if (updateattachments) {
-		CHI.primaryAttachments = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedPrimary].attachments;
-		CHI.secondaryAttachments = CHI.characters[CHI.selectedCharacterIndex].weapondata[CHI.selectedSecondary].attachments;
-	}
-	if (updateoptions) {
-		CHI.characterOptions = CHI.characters[CHI.selectedCharacterIndex].options;
+
+	if (ImGui::BeginPopupModal(chartype)) {
+		if (type == 0) {
+			ImGui::Text("You have unsaved changes in the current config.");
+			ImGui::Text("Loading a new config will discard these changes.");
+		}
+		else if (type == 1) {
+			ImGui::Text("You are about to save over a different config file.");
+			ImGui::Text("Current active config: %s", globals.filesystem.activeFile.c_str());
+			ImGui::Text("Selected config to save over: %s", globals.filesystem.configFiles[globals.filesystem.activeFileIndex].c_str());
+		}
+		else if (type == 2) {
+			ImGui::Text("You are about to initiate a shutdown with pending changes.");
+			ImGui::Text("Doing so will discard these changes.");
+		}
+		else if (type == 3) {
+			ImGui::Text("You are about to delete a config file.");
+			ImGui::Text("Selected config to delete: %s", globals.filesystem.configFiles[globals.filesystem.activeFileIndex].c_str());
+			ImGui::Text("This action cannot be undone.");
+		}
+
+		ImGui::Separator();
+		ImGui::Text("Are you sure you want to proceed?");
+
+		if (ImGui::Button("Yes", ImVec2(120, 0))) {
+			if (type == 0) {
+				globals.filesystem.activeFile = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+				settings.selectedCharacterIndex = 0;
+				settings.weaponOffOverride = false;
+				settings.readSettings(globals.filesystem.activeFile, true, true);
+				globals.filesystem.unsavedChanges = false;
+			}
+			else if (type == 1) {
+				settings.saveSettings(globals.filesystem.configFiles[globals.filesystem.activeFileIndex]);
+				globals.filesystem.unsavedChanges = false;
+				globals.filesystem.activeFile = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+			}
+			else if (type == 2) {
+				globals.done = true;
+			}
+			else if (type == 3) {
+				std::string fileToDelete = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+				remove(fileToDelete.c_str());
+				globals.filesystem.configFiles.erase(globals.filesystem.configFiles.begin() + globals.filesystem.activeFileIndex);
+				if (globals.filesystem.activeFile == fileToDelete) {
+					globals.filesystem.activeFile = "";
+				}
+
+				if (globals.filesystem.configFiles.empty()) {
+					globals.filesystem.activeFileIndex = -1;
+				}
+				else if (globals.filesystem.activeFileIndex >= globals.filesystem.configFiles.size()) {
+					globals.filesystem.activeFileIndex = globals.filesystem.configFiles.size() - 1;
+				}
+			}
+
+			trigger = false;
+			ImGui::CloseCurrentPopup();
+		}
+		ImGui::SameLine();
+		if (ImGui::Button("No", ImVec2(120, 0))) {
+			globals.initshutdown = false;
+			trigger = false;
+			ImGui::CloseCurrentPopup();
+		}
+
+		ImGui::EndPopup();
 	}
 }
 
 void Menu::startupchecks_gui() {
-    ImGui::SetNextWindowSize(ImVec2(350, 200), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(350, 200), ImVec2(FLT_MAX, FLT_MAX));
     ImGui::Begin(xorstr_("Startup Checks"), NULL, STARTUPFLAGS);
 
-    if (g.startup.driver) {
+    if (globals.startup.driver) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
         ImGui::Text(xorstr_("Driver is running"));
         std::string str = ut.wstring_to_string(ms.findDriver());
@@ -173,11 +351,11 @@ void Menu::startupchecks_gui() {
 
     ImGui::Separator();
 
-    if (g.startup.files) {
+    if (globals.startup.files) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
         ImGui::Text(xorstr_("Settings files found"));
-        for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
-            ImGui::Text(g.editor.jsonFiles[i].c_str());
+        for (int i = 0; i < globals.filesystem.configFiles.size(); i++) {
+            ImGui::Text(globals.filesystem.configFiles[i].c_str());
         }
         ImGui::PopStyleColor();
     }
@@ -190,7 +368,7 @@ void Menu::startupchecks_gui() {
 
 	ImGui::Separator();
 
-	if (g.startup.dxgi) {
+	if (globals.startup.dxgi) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 		ImGui::Text(xorstr_("DXGI was initialised"));
 		ImGui::PopStyleColor();
@@ -204,7 +382,7 @@ void Menu::startupchecks_gui() {
 
 	ImGui::Separator();
 
-	if (g.startup.marker) {
+	if (globals.startup.marker) {
 		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 		ImGui::Text(xorstr_("Marker was generated"));
 		ImGui::PopStyleColor();
@@ -222,10 +400,10 @@ void weaponKeyHandler() {
 	static bool weaponPressedOld = false;
 	bool weaponPressed = false;
 
-	for (const auto& keybind : CHI.wpn_keybinds) {
+	for (const auto& keybind : settings.wpn_keybinds) {
 		if (GetAsyncKeyState(std::stoi(keybind, nullptr, 0))) {
 			if (!weaponPressedOld) {
-				CHI.isPrimaryActive = !CHI.isPrimaryActive;
+				settings.isPrimaryActive = !settings.isPrimaryActive;
 				weaponPressedOld = true;
 			}
 
@@ -242,9 +420,9 @@ void weaponKeyHandler() {
 LRESULT CALLBACK LowLevelMouseProc(int nCode, WPARAM wParam, LPARAM lParam) {
 	if (nCode == HC_ACTION) {
 		PMSLLHOOKSTRUCT pHookStruct = (PMSLLHOOKSTRUCT)lParam;
-		if (wParam == WM_MOUSEWHEEL && CHI.mode == xorstr_("Character")) {
-			if (CHI.characterOptions[2]) {
-				CHI.isPrimaryActive = !CHI.isPrimaryActive;
+		if (wParam == WM_MOUSEWHEEL && settings.mode == xorstr_("Character")) {
+			if (settings.characters[settings.selectedCharacterIndex].options[2]) {
+				settings.isPrimaryActive = !settings.isPrimaryActive;
 			}
 		}
 	}
@@ -261,7 +439,7 @@ void Menu::mouseScrollHandler()
 
 	// Message loop
 	MSG msg;
-	while (!g.shutdown) {
+	while (!globals.shutdown) {
 		// Check for messages with a timeout of 0
 		DWORD result = MsgWaitForMultipleObjects(0, NULL, FALSE, 0, QS_ALLINPUT);
 		if (result == WAIT_OBJECT_0) {
@@ -287,10 +465,10 @@ void auxKeyHandler() {
 	static bool weaponPressedOld = false;
 	bool weaponPressed = false;
 
-	for (const auto& keybind : CHI.aux_keybinds) {
+	for (const auto& keybind : settings.aux_keybinds) {
 		if (GetAsyncKeyState(std::stoi(keybind, nullptr, 0))) {
 			if (!weaponPressedOld) {
-				CHI.weaponOffOverride = !CHI.weaponOffOverride;
+				settings.weaponOffOverride = !settings.weaponOffOverride;
 				weaponPressedOld = true;
 			}
 
@@ -308,12 +486,12 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float oldRelativeSens = 50;
 	float oldMultiplier = 0.02f;
 
-	float newBaseXSens = CHI.sensitivity[0];
-	float newBaseYSens = CHI.sensitivity[1];
-	float new1xSens = CHI.sensitivity[2];
-	float new25xSens = CHI.sensitivity[3];
-	float new35xSens = CHI.sensitivity[4];
-	float newMultiplier = CHI.sensitivity[5];
+	float newBaseXSens = settings.sensitivity[0];
+	float newBaseYSens = settings.sensitivity[1];
+	float new1xSens = settings.sensitivity[2];
+	float new25xSens = settings.sensitivity[3];
+	float new35xSens = settings.sensitivity[4];
+	float newMultiplier = settings.sensitivity[5];
 
 	int activescope = 0;
 
@@ -325,8 +503,18 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float barrelXEffect = 1.0f;
 	float barrelYEffect = 1.0f;
 
-	if (CHI.isPrimaryActive) {
-		switch (CHI.primaryAttachments[0]) {
+	if (settings.selectedCharacterIndex < settings.characters.size() &&
+		!settings.characters[settings.selectedCharacterIndex].weapondata.empty()) {
+		int weaponIndex = settings.isPrimaryActive ?
+			settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
+			settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+
+		weaponIndex = std::min(weaponIndex, static_cast<int>(settings.characters[settings.selectedCharacterIndex].weapondata.size()) - 1);
+
+		const auto& weapon = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex];
+
+		if (weapon.attachments.size() >= 3) {
+			switch (weapon.attachments[0]) {
 			case 0:
 				sightXEffect = 1.0f;
 				sightYEffect = 1.0f;
@@ -342,18 +530,18 @@ std::vector<float> calculateSensitivityModifierR6() {
 				sightYEffect = 3.5f;
 				activescope = 3;
 				break;
-		}
+			}
 
-		switch (CHI.primaryAttachments[1]) {
+			switch (weapon.attachments[1]) {
 			case 0:
 				gripEffect = 1.0f;
 				break;
 			case 1:
 				gripEffect = 0.8f;
 				break;
-		}
+			}
 
-		switch (CHI.primaryAttachments[2]) {
+			switch (weapon.attachments[2]) {
 			case 0:
 				barrelXEffect = 1.0f;
 				barrelYEffect = 1.0f;
@@ -370,53 +558,7 @@ std::vector<float> calculateSensitivityModifierR6() {
 				barrelXEffect = 1.0f;
 				barrelYEffect = 0.85f;
 				break;
-		}
-	}
-	else {
-		switch (CHI.secondaryAttachments[0]) {
-			case 0:
-				sightXEffect = 1.0f;
-				sightYEffect = 1.0f;
-				activescope = 1;
-				break;
-			case 1:
-				sightXEffect = 2.f;
-				sightYEffect = 2.43f;
-				activescope = 2;
-				break;
-			case 2:
-				sightXEffect = 3.5f;
-				sightYEffect = 3.5f;
-				activescope = 3;
-				break;
-		}
-
-		switch (CHI.secondaryAttachments[1]) {
-			case 0:
-				gripEffect = 1.0f;
-				break;
-			case 1:
-				gripEffect = 0.8f;
-				break;
-		}
-
-		switch (CHI.secondaryAttachments[2]) {
-			case 0:
-				barrelXEffect = 1.0f;
-				barrelYEffect = 1.0f;
-				break;
-			case 1:
-				barrelXEffect = 0.75f;
-				barrelYEffect = 0.4f;
-				break;
-			case 2:
-				barrelXEffect = 0.85f;
-				barrelYEffect = 1.0f;
-				break;
-			case 3:
-				barrelXEffect = 1.0f;
-				barrelYEffect = 0.85f;
-				break;
+			}
 		}
 	}
 
@@ -424,17 +566,17 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float totalAttachYEffect = sightYEffect * gripEffect * barrelYEffect;
 
 	float scopeModifier = 0.f;
-	
+
 	switch (activescope) {
-		case 1:
-			scopeModifier = new1xSens;
-			break;
-		case 2:
-			scopeModifier = new25xSens;
-			break;
-		case 3:
-			scopeModifier = new35xSens;
-			break;
+	case 1:
+		scopeModifier = new1xSens;
+		break;
+	case 2:
+		scopeModifier = new25xSens;
+		break;
+	case 3:
+		scopeModifier = new35xSens;
+		break;
 	}
 
 	float newSensXModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier) * totalAttachXEffect);
@@ -447,8 +589,8 @@ std::vector<float> calculateSensitivityModifierRust() {
 	float oldBaseSens = 0.509f;
 	float oldADSSens = 1;
 
-	float newBaseSens = CHI.sensitivity[0];
-	float newADSSens = CHI.sensitivity[1];
+	float newBaseSens = settings.sensitivity[0];
+	float newADSSens = settings.sensitivity[1];
 
 	float sightXEffect = 1.0f;
 	float sightYEffect = 1.0f;
@@ -456,42 +598,52 @@ std::vector<float> calculateSensitivityModifierRust() {
 	float barrelXEffect = 1.0f;
 	float barrelYEffect = 1.0f;
 
-	switch (CHI.primaryAttachments[0]) {
-	case 0:
-		sightXEffect = 1.0f;
-		sightYEffect = 1.0f;
-		break;
-	case 1:
-		sightXEffect = 0.8f;
-		sightYEffect = 0.8f;
-		break;
-	case 2:
-		sightXEffect = 1.25f;
-		sightYEffect = 1.25f;
-		break;
-	case 3:
-		sightXEffect = 7.25f;
-		sightYEffect = 7.25f;
-		break;
-	case 4:
-		sightXEffect = 14.5f;
-		sightYEffect = 14.5f;
-		break;
-	}
+	if (settings.selectedCharacterIndex < settings.characters.size() &&
+		!settings.characters[settings.selectedCharacterIndex].weapondata.empty()) {
+		int weaponIndex = settings.characters[settings.selectedCharacterIndex].selectedweapon[0];
+		weaponIndex = std::min(weaponIndex, static_cast<int>(settings.characters[settings.selectedCharacterIndex].weapondata.size()) - 1);
 
-	switch (CHI.primaryAttachments[2]) {
-	case 0:
-		barrelXEffect = 1.0f;
-		barrelYEffect = 1.0f;
-		break;
-	case 1:
-		barrelXEffect = 0.5f;
-		barrelYEffect = 0.5f;
-		break;
-	case 2:
-		barrelXEffect = 1.1f;
-		barrelYEffect = 1.1f;
-		break;
+		const auto& weapon = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex];
+
+		if (weapon.attachments.size() >= 3) {
+			switch (weapon.attachments[0]) {
+			case 0:
+				sightXEffect = 1.0f;
+				sightYEffect = 1.0f;
+				break;
+			case 1:
+				sightXEffect = 0.8f;
+				sightYEffect = 0.8f;
+				break;
+			case 2:
+				sightXEffect = 1.25f;
+				sightYEffect = 1.25f;
+				break;
+			case 3:
+				sightXEffect = 7.25f;
+				sightYEffect = 7.25f;
+				break;
+			case 4:
+				sightXEffect = 14.5f;
+				sightYEffect = 14.5f;
+				break;
+			}
+
+			switch (weapon.attachments[2]) {
+			case 0:
+				barrelXEffect = 1.0f;
+				barrelYEffect = 1.0f;
+				break;
+			case 1:
+				barrelXEffect = 0.5f;
+				barrelYEffect = 0.5f;
+				break;
+			case 2:
+				barrelXEffect = 1.1f;
+				barrelYEffect = 1.1f;
+				break;
+			}
+		}
 	}
 
 	float totalAttachXEffect = sightXEffect * barrelXEffect;
@@ -499,7 +651,7 @@ std::vector<float> calculateSensitivityModifierRust() {
 
 	float standingModifier = 1.f;
 
-	if (GetAsyncKeyState(std::stoi(CHI.crouch_keybind, nullptr, 0))) {
+	if (GetAsyncKeyState(std::stoi(settings.crouch_keybind, nullptr, 0))) {
 		standingModifier = 0.5f;
 	}
 
@@ -512,22 +664,17 @@ std::vector<float> calculateSensitivityModifierRust() {
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
-	if (CHI.mode == xorstr_("Generic")) {
-		CHI.isPrimaryActive = true;
-		CHI.mutex_.lock();
-		CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
-		CHI.mutex_.unlock();
-		CHI.currAutofire = CHI.primaryAutofire;
-		CHI.activeWeaponSensXModifier = 1.f;
-		CHI.activeWeaponSensYModifier = 1.f;
+	if (settings.mode == xorstr_("Generic")) {
+		settings.isPrimaryActive = true;
+		settings.sensMultiplier = { 1.f, 1.f };
 	}
-	else if (CHI.mode == xorstr_("Character")) {
+	else if (settings.mode == xorstr_("Character")) {
 
-		if (CHI.characterOptions[0]) {
+		if (settings.characters[settings.selectedCharacterIndex].options[0]) {
 
-			if (!g.desktopMat.empty()) {
-				int screenWidth = g.desktopMat.cols;
-				int screenHeight = g.desktopMat.rows;
+			if (!globals.desktopMat.empty()) {
+				int screenWidth = globals.desktopMat.cols;
+				int screenHeight = globals.desktopMat.rows;
 
 				// Define ratios for crop region
 				float cropRatioX = 0.8f; // 20% from left
@@ -550,51 +697,37 @@ void keybindManager() {
 				cv::Rect roi(x, y, width, height);
 
 				// Extract the region of interest from the desktopMat
-				g.desktopMutex_.lock();
-				cv::Mat smallRegion = g.desktopMat(roi);
-				g.desktopMutex_.unlock();
+				globals.desktopMutex_.lock();
+				cv::Mat smallRegion = globals.desktopMat(roi);
+				globals.desktopMutex_.unlock();
 
 				dx.detectWeaponR6(smallRegion, 25, 75);
 			}
 		}
 		else {
-			CHI.weaponOffOverride = false;
-			CHI.isPrimaryActive = true;
+			settings.weaponOffOverride = false;
+			settings.isPrimaryActive = true;
 		}
 
-		if (CHI.characterOptions[1]) {
+		if (settings.characters[settings.selectedCharacterIndex].options[1]) {
 			weaponKeyHandler();
 		}
 
 		// Scrolling options is handled in its thread
 
-		if (CHI.characterOptions[3]) {
+		if (settings.characters[settings.selectedCharacterIndex].options[3]) {
 			auxKeyHandler();
 		}
 
-		CHI.activeWeaponSensXModifier = 1.f;
-		CHI.activeWeaponSensYModifier = 1.f;
-
-		if (CHI.isPrimaryActive) {
-			CHI.mutex_.lock();
-			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
-			CHI.mutex_.unlock();
-			CHI.currAutofire = CHI.primaryAutofire;
-		}
-		else {
-			CHI.mutex_.lock();
-			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
-			CHI.mutex_.unlock();
-			CHI.currAutofire = CHI.secondaryAutofire;
-		}
+		settings.sensMultiplier = { 1.f, 1.f };
 	}
-	else if (CHI.mode == xorstr_("Game")) {
-		if (CHI.game == xorstr_("Siege")) {
-			if (CHI.characterOptions[0]) {
+	else if (settings.mode == xorstr_("Game")) {
+		if (settings.game == xorstr_("Siege")) {
+			if (settings.characters[settings.selectedCharacterIndex].options[0]) {
 
-				if (!g.desktopMat.empty()) {
-					int screenWidth = g.desktopMat.cols;
-					int screenHeight = g.desktopMat.rows;
+				if (!globals.desktopMat.empty()) {
+					int screenWidth = globals.desktopMat.cols;
+					int screenHeight = globals.desktopMat.rows;
 
 					// Define ratios for crop region
 					float cropRatioX = 0.8f; // 20% from left
@@ -617,43 +750,27 @@ void keybindManager() {
 					cv::Rect roi(x, y, width, height);
 
 					// Extract the region of interest from the desktopMat
-					g.desktopMutex_.lock();
-					cv::Mat smallRegion = g.desktopMat(roi);
-					g.desktopMutex_.unlock();
+					globals.desktopMutex_.lock();
+					cv::Mat smallRegion = globals.desktopMat(roi);
+					globals.desktopMutex_.unlock();
 
 					dx.detectWeaponR6(smallRegion, 25, 75);
 				}
 			}
 			else {
-				CHI.weaponOffOverride = false;
-				CHI.isPrimaryActive = true;
+				settings.weaponOffOverride = false;
+				settings.isPrimaryActive = true;
 			}
 
-			std::vector<float> sens = calculateSensitivityModifierR6();
-
-			CHI.activeWeaponSensXModifier = sens[0];
-			CHI.activeWeaponSensYModifier = sens[1];
-
-			if (CHI.isPrimaryActive) {
-				CHI.mutex_.lock();
-				CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
-				CHI.mutex_.unlock();
-				CHI.currAutofire = CHI.primaryAutofire;
-			}
-			else {
-				CHI.mutex_.lock();
-				CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedSecondary];
-				CHI.mutex_.unlock();
-				CHI.currAutofire = CHI.secondaryAutofire;
-			}
+			settings.sensMultiplier = calculateSensitivityModifierR6();
 		}
-		else if (CHI.game == xorstr_("Rust")) {
+		else if (settings.game == xorstr_("Rust")) {
 			static bool initializeRustDetector = false;
 
-			if (CHI.characterOptions[0]) {
-				if (!g.desktopMat.empty()) {
-					int screenWidth = g.desktopMat.cols;
-					int screenHeight = g.desktopMat.rows;
+			if (settings.characters[settings.selectedCharacterIndex].options[0]) {
+				if (!globals.desktopMat.empty()) {
+					int screenWidth = globals.desktopMat.cols;
+					int screenHeight = globals.desktopMat.rows;
 
 					// Define ratios for crop region
 					float cropRatioX = 0.3475f;
@@ -676,9 +793,9 @@ void keybindManager() {
 					cv::Rect roi(x, y, width, height);
 					
 					// Extract the region of interest from the desktopMat
-					g.desktopMutex_.lock();
-					cv::Mat smallRegion = g.desktopMat(roi);
-					g.desktopMutex_.unlock();
+					globals.desktopMutex_.lock();
+					cv::Mat smallRegion = globals.desktopMat(roi);
+					globals.desktopMutex_.unlock();
 
 					if (!initializeRustDetector) {
 						dx.initializeRustDetector(smallRegion);
@@ -689,182 +806,169 @@ void keybindManager() {
 				}
 			}
 
-			std::vector<float> sens = calculateSensitivityModifierRust();
-			CHI.activeWeaponSensXModifier = sens[0];
-			CHI.activeWeaponSensYModifier = sens[1];
+			settings.sensMultiplier = calculateSensitivityModifierRust();
 
-			CHI.isPrimaryActive = true;
-			CHI.mutex_.lock();
-			CHI.activeWeapon = CHI.selectedCharacter.weapondata[CHI.selectedPrimary];
-			CHI.mutex_.unlock();
-			CHI.currAutofire = CHI.primaryAutofire;
+			settings.isPrimaryActive = true;
 		}
+	}
+}
+
+void DrawRecoilPattern(const std::vector<std::vector<float>>& recoilData) {
+	if (recoilData.empty()) return;
+
+	std::vector<float> sens = settings.sensMultiplier;
+
+	std::vector<float> x, y;
+	float maxX = 0, maxY = 0;
+	float currentX = 0, currentY = 0;
+
+	x.push_back(currentX);
+	y.push_back(currentY);
+
+	for (const auto& point : recoilData) {
+		if (point.size() >= 3) {
+			float dx = point[0] * sens[0];
+			float dy = point[1] * sens[1];
+			float timeAndDistance = point[2];
+
+			// Use time and distance to scale the direction
+			currentX += dx * timeAndDistance;
+			currentY += dy * timeAndDistance;
+
+			x.push_back(currentX);
+			y.push_back(currentY);
+
+			maxX = std::max(maxX, std::abs(currentX));
+			maxY = std::max(maxY, std::abs(currentY));
+		}
+	}
+
+	// Ensure a minimum spread for X-axis
+	float minSpread = 7000.0f;
+	maxX = maxX * 1.1;
+	maxX = std::max(maxX, minSpread / 2.0f);
+
+	// Ensure a minimum spread for Y-axis
+	maxY = maxY * 1.1;
+	maxY = std::max(maxY, minSpread / 2.0f);
+
+	if (ImPlot::BeginPlot("Recoil Pattern", ImVec2(-1, -1))) {
+		ImPlot::SetupAxes("Horizontal", "Vertical", ImPlotAxisFlags_RangeFit, ImPlotAxisFlags_RangeFit | ImPlotAxisFlags_Invert);
+		ImPlot::SetupAxisLimits(ImAxis_X1, -maxX, maxX, ImGuiCond_Always);
+		ImPlot::SetupAxisLimits(ImAxis_Y1, -maxY * 0.1, maxY * 1.1, ImGuiCond_Always);
+
+		// Plot the recoil pattern
+		ImPlot::PlotLine("Recoil", x.data(), y.data(), x.size());
+
+		// Plot points to show each recoil step
+		ImPlot::PlotScatter("Steps", x.data(), y.data(), x.size());
+
+		// Add labels for start and end points
+		ImPlot::PlotText("Start", x[0], y[0], ImVec2(0, -10));
+		ImPlot::PlotText("End", x.back(), y.back(), ImVec2(0, 10));
+
+		ImPlot::EndPlot();
 	}
 }
 
 void Menu::gui()
 {
-	bool inverseShutdown = !g.initshutdown;
+	bool inverseShutdown = !globals.initshutdown;
 
-	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(850, 650), ImGuiCond_FirstUseEver);
 	#if !_DEBUG
 	ImGui::Begin(xorstr_("Focus"), &inverseShutdown, WINDOWFLAGS);
 	#else
 	ImGui::Begin(xorstr_("Focus DEBUG"), &inverseShutdown, WINDOWFLAGS);
 	#endif
 
-	auto cpos = editor.GetCursorPosition();
-	bool ro = editor.IsReadOnly();
-
-	bool openmodal = false;
 	bool initshutdownpopup = false;
 
-	g.editor.unsavedChanges = ut.isEdited(CHI.jsonData, editor.GetText());
+	static char newConfigName[256] = "";
+	static int selectedMode = 0;
+	static int selectedGame = 0;
+	bool NewConfigPopup = false;
+
+	static char renameBuffer[256] = "";
+	bool RenameConfigPopup = false;
+
+	bool loadConfigPopup = false;
+	bool saveConfigPopup = false;
+	bool deleteConfigPopup = false;
+
+	//g.filesystem.unsavedChanges = ut.isEdited(g.characterinfo.jsonData, editor.GetText());
 
 	keybindManager();
 
-	if (ImGui::BeginMenuBar())
-	{
-		if (ImGui::BeginMenu(xorstr_("File")))
-		{
-			if (ImGui::MenuItem(xorstr_("Save"), xorstr_("Ctrl-S"), nullptr, !ro))
-			{
-				auto textToSave = editor.GetText();
-				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
-				}
-
-				updateCharacterData(true, true, true, true, true, true);
-			}
-			if (ImGui::MenuItem(xorstr_("Refresh"), xorstr_("Ctrl-R")))
-			{
-				g.editor.jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
-			}
-			if (ImGui::BeginMenu(xorstr_("Open"))) {
-				for (int i = 0; i < g.editor.jsonFiles.size(); i++) {
-					if (ImGui::MenuItem(g.editor.jsonFiles[i].c_str())) {
-						g.editor.activeFileIndex = i;
-						if (!g.editor.unsavedChanges) {
-							editor.SetText(ut.readTextFromFile(g.editor.jsonFiles[i].c_str()));
-							g.editor.activeFile = g.editor.jsonFiles[g.editor.activeFileIndex];
-							CHI.jsonData = ut.readTextFromFile(g.editor.jsonFiles[i].c_str());
-							CHI.selectedCharacterIndex = 0;
-							CHI.weaponOffOverride = false;
-							updateCharacterData(true, true, true, true, true, true);
-						}
-						else {
-							openmodal = true;
-						}
-					}
-				}
-				ImGui::EndMenu();
-			}
-
-			ImGui::EndMenu();
-		}
-		if (ImGui::BeginMenu(xorstr_("Edit")))
-		{
-			if (ImGui::MenuItem(xorstr_("Read-only mode"), nullptr, &ro))
-				editor.SetReadOnly(ro);
-			ImGui::Separator();
-
-			if (ImGui::MenuItem(xorstr_("Undo"), xorstr_("ALT-Backspace"), nullptr, !ro && editor.CanUndo()))
-				editor.Undo();
-			if (ImGui::MenuItem(xorstr_("Redo"), xorstr_("Ctrl-Y"), nullptr, !ro && editor.CanRedo()))
-				editor.Redo();
-
-			ImGui::Separator();
-
-			if (ImGui::MenuItem(xorstr_("Copy"), xorstr_("Ctrl-C"), nullptr, editor.HasSelection()))
-				editor.Copy();
-			if (ImGui::MenuItem(xorstr_("Cut"), xorstr_("Ctrl-X"), nullptr, !ro && editor.HasSelection()))
-				editor.Cut();
-			if (ImGui::MenuItem(xorstr_("Delete"), xorstr_("Del"), nullptr, !ro && editor.HasSelection()))
-				editor.Delete();
-			if (ImGui::MenuItem(xorstr_("Paste"), xorstr_("Ctrl-V"), nullptr, !ro && ImGui::GetClipboardText() != nullptr))
-				editor.Paste();
-
-			ImGui::Separator();
-
-			if (ImGui::MenuItem(xorstr_("Select all"), nullptr, nullptr))
-				editor.SetSelection(TextEditor::Coordinates(), TextEditor::Coordinates(editor.GetTotalLines(), 0));
-
-			ImGui::EndMenu();
-		}
-
-		if (ImGui::BeginMenu(xorstr_("View")))
-		{
-			if (ImGui::MenuItem(xorstr_("Dark palette")))
-				editor.SetPalette(TextEditor::GetDarkPalette());
-			if (ImGui::MenuItem(xorstr_("Light palette")))
-				editor.SetPalette(TextEditor::GetLightPalette());
-			if (ImGui::MenuItem(xorstr_("Retro blue palette")))
-				editor.SetPalette(TextEditor::GetRetroBluePalette());
-			ImGui::EndMenu();
-		}
-		ImGui::EndMenuBar();
-	}
-
 	if (ImGui::BeginTabBar(xorstr_("##TabBar")))
 	{
-		if (CHI.mode == xorstr_("Generic")) {
+		if (settings.mode == xorstr_("Generic")) {
 			if (ImGui::BeginTabItem(xorstr_("Generic"))) {
-				if (CHI.characters.size() > 0) {
-					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-					if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-						updateCharacterData(true, false, true, true, true, false);
+				ImGui::Columns(2);
+				ImGui::BeginChild(xorstr_("Left Column"));
+
+				if (settings.characters.size() > 0) {
+
+					if (comboBoxWep(xorstr_("Weapon"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
+						settings.weaponDataChanged = true;
 					}
 
-					ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
-					ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+					if (ImGui::Checkbox(xorstr_("AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
+					}
+
+					if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 				}
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
 
-				ImGui::EndTabItem();
-			}
+				ImGui::EndChild();
+				ImGui::NextColumn();
+				ImGui::BeginChild(xorstr_("Right Column"));
 
-			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+				if (settings.characters.size() > 0 && settings.selectedCharacterIndex < settings.characters.size()) {
+					const auto& activeWeapon = settings.isPrimaryActive ?
+						settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]] :
+						settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
 
-				if (!g.aimbotinfo.enabled) {
-					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
-					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+					DrawRecoilPattern(activeWeapon.values);
+				}
+				else {
+					ImGui::Text("No weapon selected or data available.");
 				}
 
-				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
-
-				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
-					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
-
-					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
-				}
+				ImGui::EndChild();
+				ImGui::Columns(1);
 
 				ImGui::EndTabItem();
 			}
 		}
-		else if (CHI.mode == xorstr_("Character")) {
+		else if (settings.mode == xorstr_("Character")) {
 			if (ImGui::BeginTabItem(xorstr_("Character"))) {
-				if (CHI.characters.size() > 0) {
-					CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
 
-					if (comboBoxChar(xorstr_("Character"), CHI.selectedCharacterIndex, CHI.characters)) {
-						updateCharacterData(true, true, true, true, true, false);
+				ImGui::Columns(2);
+				ImGui::BeginChild(xorstr_("Left Column"));
+
+				if (settings.characters.size() > 0) {
+
+					if (comboBoxChar(xorstr_("Character"), settings.selectedCharacterIndex, settings.characters)) {
+						settings.weaponDataChanged = true;
 					}
 
 					ImGui::Spacing();
 					ImGui::Spacing();
 
-					if (CHI.weaponOffOverride) {
+					if (settings.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 						ImGui::SeparatorText(xorstr_("Primary"));
 						ImGui::PopStyleColor();
 					}
-					else if (CHI.isPrimaryActive) {
+					else if (settings.isPrimaryActive) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 						ImGui::SeparatorText(xorstr_("Primary"));
 						ImGui::PopStyleColor();
@@ -873,20 +977,25 @@ void Menu::gui()
 						ImGui::SeparatorText(xorstr_("Primary"));
 					}
 
-					if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-						updateCharacterData(true, false, true, true, false, false);
+					if (comboBoxWep(xorstr_("Primary"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
 					}
-					ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
+					
+					if (ImGui::Checkbox(xorstr_("Primary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
+					}
 
 					ImGui::Spacing();
 					ImGui::Spacing();
 
-					if (CHI.weaponOffOverride) {
+					if (settings.weaponOffOverride) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 						ImGui::SeparatorText(xorstr_("Secondary"));
 						ImGui::PopStyleColor();
 					}
-					else if (!CHI.isPrimaryActive) {
+					else if (!settings.isPrimaryActive) {
 						ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 						ImGui::SeparatorText(xorstr_("Secondary"));
 						ImGui::PopStyleColor();
@@ -895,10 +1004,15 @@ void Menu::gui()
 						ImGui::SeparatorText(xorstr_("Secondary"));
 					}
 
-					if (comboBoxWep(xorstr_("Secondary"), CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
-						updateCharacterData(true, false, true, true, false, false);
+					if (comboBoxWep(xorstr_("Secondary"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[1], settings.characters)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
 					}
-					ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
+
+					if (ImGui::Checkbox(xorstr_("Secondary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].autofire)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
+					}
 
 					ImGui::Spacing();
 					ImGui::Spacing();
@@ -906,61 +1020,63 @@ void Menu::gui()
 
 					std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Manual Weapon Detection"), xorstr_("Scroll Detection"), xorstr_("Aux Disable"), xorstr_("Gadget Detection Override") };
 
-					if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-						updateCharacterData(true, false, false, true, false, false);
+					if (multiCombo(xorstr_("Options"), MultiOptions, settings.characters[settings.selectedCharacterIndex].options)) {
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
 					}
 
-					ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+					if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 				}
 				else {
 					ImGui::Text(xorstr_("Please load a weapons file"));
 				}
 
-				ImGui::EndTabItem();
-			}
+				ImGui::EndChild();
+				ImGui::NextColumn();
+				ImGui::BeginChild(xorstr_("Right Column"));
 
-			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
+				if (settings.characters.size() > 0 && settings.selectedCharacterIndex < settings.characters.size()) {
+					const auto& activeWeapon = settings.isPrimaryActive ?
+						settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]] :
+						settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
 
-				if (!g.aimbotinfo.enabled) {
-					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
-					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+					DrawRecoilPattern(activeWeapon.values);
+				}
+				else {
+					ImGui::Text("No weapon selected or data available.");
 				}
 
-				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
-
-				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
-					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
-
-					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
-				}
+				ImGui::EndChild();
+				ImGui::Columns(1);
 
 				ImGui::EndTabItem();
 			}
 		}
-		else if (CHI.mode == xorstr_("Game")) {
-			if (CHI.game == xorstr_("Siege")) {
+		else if (settings.mode == xorstr_("Game")) {
+			if (settings.game == xorstr_("Siege")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
-					if (CHI.characters.size() > 0) {
-						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
 
-						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+					ImGui::Columns(2);
+					ImGui::BeginChild(xorstr_("Left Column"));
 
-						if (comboBoxChar(xorstr_("Character"), CHI.selectedCharacterIndex, CHI.characters)) {
-							updateCharacterData(true, true, true, true, true, false);
+					if (settings.characters.size() > 0) {
+						ImGui::Text(xorstr_("Game: %s"), settings.game.c_str());
+
+						if (comboBoxChar(xorstr_("Character"), settings.selectedCharacterIndex, settings.characters)) {
+							settings.weaponDataChanged = true;
 						}
 
 						ImGui::Spacing();
 						ImGui::Spacing();
 
-						if (CHI.weaponOffOverride) {
+						if (settings.weaponOffOverride) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 							ImGui::SeparatorText(xorstr_("Primary"));
 							ImGui::PopStyleColor();
 						}
-						else if (CHI.isPrimaryActive) {
+						else if (settings.isPrimaryActive) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 							ImGui::SeparatorText(xorstr_("Primary"));
 							ImGui::PopStyleColor();
@@ -973,29 +1089,36 @@ void Menu::gui()
 						const char* Grips[] = { xorstr_("Horizontal/Angled/None"), xorstr_("Vertical") };
 						const char* Barrels[] = { xorstr_("Supressor/Extended/None"), xorstr_("Muzzle Break (Semi-Auto Only)"), xorstr_("Compensator"), xorstr_("Flash Hider") };
 
-						if (comboBoxWep(xorstr_("Primary"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-							updateCharacterData(true, false, true, true, false, false);
+						if (comboBoxWep(xorstr_("Primary"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						ImGui::Checkbox(xorstr_("Primary AutoFire"), &CHI.primaryAutofire);
-						if (comboBoxGen(xorstr_("Primary Sight"), &CHI.primaryAttachments[0], Sights, 3)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (ImGui::Checkbox(xorstr_("Primary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						if (comboBoxGen(xorstr_("Primary Grip"), &CHI.primaryAttachments[1], Grips, 2)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 3)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						if (comboBoxGen(xorstr_("Primary Barrel"), &CHI.primaryAttachments[2], Barrels, 4)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (comboBoxGen(xorstr_("Primary Grip"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[1], Grips, 2)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (comboBoxGen(xorstr_("Primary Barrel"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[2], Barrels, 4)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
 
 						ImGui::Spacing();
 						ImGui::Spacing();
 
-						if (CHI.weaponOffOverride) {
+						if (settings.weaponOffOverride) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.1f, 0.1f, 0.1f, 1.0f));
 							ImGui::SeparatorText(xorstr_("Secondary"));
 							ImGui::PopStyleColor();
 						}
-						else if (!CHI.isPrimaryActive) {
+						else if (!settings.isPrimaryActive) {
 							ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
 							ImGui::SeparatorText(xorstr_("Secondary"));
 							ImGui::PopStyleColor();
@@ -1004,19 +1127,25 @@ void Menu::gui()
 							ImGui::SeparatorText(xorstr_("Secondary"));
 						}
 
-						if (comboBoxWep(xorstr_("Secondary"), CHI.selectedCharacterIndex, CHI.selectedSecondary, CHI.characters, CHI.secondaryAutofire)) {
-							updateCharacterData(true, false, true, true, false, false);
-
+						if (comboBoxWep(xorstr_("Secondary"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[1], settings.characters)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						ImGui::Checkbox(xorstr_("Secondary AutoFire"), &CHI.secondaryAutofire);
-						if (comboBoxGen(xorstr_("Secondary Sight"), &CHI.secondaryAttachments[0], Sights, 3)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (ImGui::Checkbox(xorstr_("Secondary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].autofire)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						if (comboBoxGen(xorstr_("Secondary Grip"), &CHI.secondaryAttachments[1], Grips, 2)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						if (comboBoxGen(xorstr_("Secondary Barrel"), &CHI.secondaryAttachments[2], Barrels, 4)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (comboBoxGen(xorstr_("Secondary Grip"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].attachments[1], Grips, 2)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (comboBoxGen(xorstr_("Secondary Barrel"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
 
 						ImGui::Spacing();
@@ -1025,52 +1154,92 @@ void Menu::gui()
 
 						std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Gadget Detection Override") };
 
-						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (multiCombo(xorstr_("Options"), MultiOptions, settings.characters[settings.selectedCharacterIndex].options)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
 
-						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+						if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+							globals.filesystem.unsavedChanges = true;
+						}
 
 						ImGui::Spacing();
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
 
-						ImGui::SliderFloat(xorstr_("X Base Sensitivity"), &CHI.sensitivity[0], 0.0f, 100.0f, xorstr_("%.0f"));
-						ImGui::SliderFloat(xorstr_("Y Base Sensitivity"), &CHI.sensitivity[1], 0.0f, 100.0f, xorstr_("%.0f"));
-						ImGui::SliderFloat(xorstr_("1x Sensitivity"), &CHI.sensitivity[2], 0.0f, 200.0f, xorstr_("%.0f"));
-						ImGui::SliderFloat(xorstr_("2.5x Sensitivity"), &CHI.sensitivity[3], 0.0f, 200.0f, xorstr_("%.0f"));
-						ImGui::SliderFloat(xorstr_("3.5x Sensitivity"), &CHI.sensitivity[4], 0.0f, 200.0f, xorstr_("%.0f"));
-						ImGui::SliderFloat(xorstr_("Sensitivity Multiplier"), &CHI.sensitivity[5], 0.0f, 1.0f, xorstr_("%.3f"));
+						if (ImGui::SliderFloat(xorstr_("X Base Sensitivity"), &settings.sensitivity[0], 0.0f, 100.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("Y Base Sensitivity"), &settings.sensitivity[1], 0.0f, 100.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("1x Sensitivity"), &settings.sensitivity[2], 0.0f, 200.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("2.5x Sensitivity"), &settings.sensitivity[3], 0.0f, 200.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("3.5x Sensitivity"), &settings.sensitivity[4], 0.0f, 200.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("Sensitivity Multiplier"), &settings.sensitivity[5], 0.0f, 1.0f, xorstr_("%.3f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
 
-						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
-						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);
+						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
+						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
 					}
 
+					ImGui::EndChild();
+					ImGui::NextColumn();
+					ImGui::BeginChild(xorstr_("Right Column"));
+
+					if (settings.characters.size() > 0 && settings.selectedCharacterIndex < settings.characters.size()) {
+						const auto& activeWeapon = settings.isPrimaryActive ?
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]] :
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+
+						DrawRecoilPattern(activeWeapon.values);
+					}
+					else {
+						ImGui::Text("No weapon selected or data available.");
+					}
+
+					ImGui::EndChild();
+					ImGui::Columns(1);
+
 					ImGui::EndTabItem();
 				}
 			}
-			else if (CHI.game == xorstr_("Rust")) {
+			else if (settings.game == xorstr_("Rust")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
-					if (CHI.characters.size() > 0) {
-						ImGui::Text(xorstr_("Game: %s"), CHI.game.c_str());
 
-						CHI.selectedCharacter = CHI.characters[CHI.selectedCharacterIndex];
+					ImGui::Columns(2);
+					ImGui::BeginChild(xorstr_("Left Column"));
+
+					if (settings.characters.size() > 0) {
+						ImGui::Text(xorstr_("Game: %s"), settings.game.c_str());
 
 						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
 						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
 
-						if (comboBoxWep(xorstr_("Weapon"), CHI.selectedCharacterIndex, CHI.selectedPrimary, CHI.characters, CHI.primaryAutofire)) {
-							updateCharacterData(true, false, true, true, true, false);
+						if (comboBoxWep(xorstr_("Weapon"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
+							settings.weaponDataChanged = true;
 						}
-						ImGui::Checkbox(xorstr_("AutoFire"), &CHI.primaryAutofire);
-						if (comboBoxGen(xorstr_("Sight"), &CHI.primaryAttachments[0], Sights, 5)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (ImGui::Checkbox(xorstr_("AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
-						if (comboBoxGen(xorstr_("Barrel"), &CHI.primaryAttachments[2], Barrels, 3)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (comboBoxGen(xorstr_("Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 5)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (comboBoxGen(xorstr_("Barrel"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[2], Barrels, 3)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
 
 						ImGui::Spacing();
@@ -1079,25 +1248,50 @@ void Menu::gui()
 
 						std::vector<const char*> MultiOptions = { xorstr_("Rust Auto Weapon Detection") };
 
-						if (multiCombo(xorstr_("Options"), MultiOptions, CHI.characterOptions)) {
-							updateCharacterData(true, false, false, false, false, false);
+						if (multiCombo(xorstr_("Options"), MultiOptions, settings.characters[settings.selectedCharacterIndex].options)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
 						}
 
-						ImGui::Checkbox(xorstr_("Potato Mode"), &CHI.potato);
+						if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+							globals.filesystem.unsavedChanges = true;
+						}
 
 						ImGui::Spacing();
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
 
-						ImGui::SliderFloat(xorstr_("Sensitivity"), &CHI.sensitivity[0], 0.0f, 10.0f, xorstr_("%.3f"));
-						ImGui::SliderFloat(xorstr_("Aiming Sensitivity"), &CHI.sensitivity[1], 0.0f, 10.0f, xorstr_("%.3f"));
+						if (ImGui::SliderFloat(xorstr_("Sensitivity"), &settings.sensitivity[0], 0.0f, 10.0f, xorstr_("%.3f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::SliderFloat(xorstr_("Aiming Sensitivity"), &settings.sensitivity[1], 0.0f, 10.0f, xorstr_("%.3f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
 
-						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), CHI.activeWeaponSensXModifier);
-						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), CHI.activeWeaponSensYModifier);
+						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
+						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
 					}
+
+					ImGui::EndChild();
+					ImGui::NextColumn();
+					ImGui::BeginChild(xorstr_("Right Column"));
+
+					if (settings.characters.size() > 0 && settings.selectedCharacterIndex < settings.characters.size()) {
+						const auto& activeWeapon = settings.isPrimaryActive ?
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]] :
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+
+						DrawRecoilPattern(activeWeapon.values);
+					}
+					else {
+						ImGui::Text("No weapon selected or data available.");
+					}
+
+					ImGui::EndChild();
+					ImGui::Columns(1);
 
 					ImGui::EndTabItem();
 				}
@@ -1105,72 +1299,661 @@ void Menu::gui()
 			else {
 				ImGui::Text(xorstr_("Please load a valid game config"));
 			}
+		}
 
+		if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege") || settings.game == xorstr_("Rust") || settings.mode == xorstr_("Generic")) {
 			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
 
-				if (!g.aimbotinfo.enabled) {
+				if (!settings.aimbotData.enabled) {
 					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
-					ImGui::Combo(xorstr_("Provider"), &g.aimbotinfo.provider, providers.data(), (int)providers.size());
+					if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.provider, providers.data(), (int)providers.size())) {
+						globals.filesystem.unsavedChanges = true;
+					}
 				}
 
-				ImGui::Checkbox(xorstr_("AI Aim Assist"), &g.aimbotinfo.enabled);
+				if (ImGui::Checkbox(xorstr_("AI Aim Assist"), &settings.aimbotData.enabled)) {
+					globals.filesystem.unsavedChanges = true;
+				}
 
-				if (g.aimbotinfo.enabled) {
-					ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &g.aimbotinfo.smoothing, 1, 200);
-					ImGui::SliderInt(xorstr_("Max Distance per Tick"), &g.aimbotinfo.maxDistance, 1, 100);
-					ImGui::SliderFloat(xorstr_("% of Total Distance"), &g.aimbotinfo.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"));
+				if (settings.aimbotData.enabled) {
+					if (ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &settings.aimbotData.smoothing, 1, 200)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					if (ImGui::SliderFloat(xorstr_("% of Total Distance"), &settings.aimbotData.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
 					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-					ImGui::Combo(xorstr_("Hitbox"), &g.aimbotinfo.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size());
+					if (ImGui::Combo(xorstr_("Hitbox"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
+						globals.filesystem.unsavedChanges = true;
+					}
 				}
 
 				ImGui::EndTabItem();
 			}
-		}
 
-		if (ImGui::BeginTabItem(xorstr_("Edit"))) {
-
-			ImGui::Text(xorstr_("%6d/%-6d %6d lines  | %s | %s | %s | %s | %s"), cpos.mLine + 1, cpos.mColumn + 1, editor.GetTotalLines(),
-				editor.IsOverwrite() ? xorstr_("Ovr") : xorstr_("Ins"),
-				editor.CanUndo() ? xorstr_("*") : xorstr_(" "),
-				g.editor.unsavedChanges ? xorstr_("*") : xorstr_(" "),
-				editor.GetLanguageDefinition().mName.c_str(), g.editor.activeFile.c_str());
-
-			ImGui::Spacing();
-			ImGui::Spacing();
-
-			editor.Render(xorstr_("TextEditor"));
-
-			ImGuiIO& io = ImGui::GetIO();
-			if (io.KeyCtrl && ImGui::IsKeyPressed(ImGuiKey_S))
+			if (ImGui::BeginTabItem(xorstr_("Config Editor")))
 			{
-				auto textToSave = editor.GetText();
-				if (ut.saveTextToFile(g.editor.activeFile.c_str(), textToSave)) {
-					CHI.jsonData = ut.readTextFromFile(g.editor.activeFile.c_str());
+				static bool editingPattern = false;
+				static std::vector<std::vector<float>> tempPattern;
+
+				ImGui::Columns(2, "ConfigEditorColumns", false);
+
+				// Left column: All controls and editors
+				ImGui::BeginChild("ControlsAndEditors");
+
+				if (!editingPattern)
+				{
+					if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege"))
+					{
+						ImGui::SeparatorText("Characters");
+
+						// Character list
+						ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+						ImGui::BeginChild("CharacterList", ImVec2(0, 100), true);
+
+						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+						for (int i = 0; i < settings.characters.size(); i++)
+						{
+							const bool is_selected = (settings.selectedCharacterIndex == i);
+							if (ImGui::Selectable(settings.characters[i].charactername.c_str(), is_selected))
+							{
+								settings.selectedCharacterIndex = i;
+								settings.isPrimaryActive = true;
+								settings.weaponDataChanged = true;
+							}
+
+							if (is_selected)
+							{
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+						ImGui::PopStyleVar(); // ItemSpacing
+
+						ImGui::EndChild();
+						ImGui::PopStyleColor(); // Border color
+						ImGui::PopStyleVar(); // ChildBorderSize
+
+						if (ImGui::Button("Add Character"))
+						{
+							settings.characters.push_back(characterData());
+							settings.characters.back().charactername = xorstr_("New Character");
+							// Initialize the new character with default weapons
+							settings.characters.back().weapondata.push_back(weaponData());
+							settings.characters.back().weapondata.push_back(weaponData());
+							settings.characters.back().weapondata[0].weaponname = xorstr_("Primary Weapon");
+							settings.characters.back().weapondata[1].weaponname = xorstr_("Secondary Weapon");
+							settings.characters.back().selectedweapon = { 0, 1 };
+							// Add default recoil pattern
+							std::vector<std::vector<float>> defaultPattern = {
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f}
+							};
+							settings.characters.back().weapondata[0].values = defaultPattern;
+							settings.characters.back().weapondata[1].values = defaultPattern;
+							// Auto-select the new character
+							settings.selectedCharacterIndex = settings.characters.size() - 1;
+							settings.isPrimaryActive = true;
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						ImGui::SameLine();
+
+						if (ImGui::Button("Remove Character") && settings.selectedCharacterIndex < settings.characters.size())
+						{
+							if (settings.characters.size() > 1) // Ensure there's always at least one character
+							{
+								settings.characters.erase(settings.characters.begin() + settings.selectedCharacterIndex);
+								settings.selectedCharacterIndex = std::max(0, static_cast<int>(settings.characters.size()) - 1);
+								settings.weaponDataChanged = true;
+								globals.filesystem.unsavedChanges = true;
+							}
+							else
+							{
+								// Optionally, show a message to the user
+								ImGui::OpenPopup("Cannot Remove Character");
+							}
+						}
+
+						if (ImGui::BeginPopupModal("Cannot Remove Character", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+						{
+							ImGui::Text("Cannot remove the last character.");
+							if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+							ImGui::EndPopup();
+						}
+
+						if (settings.selectedCharacterIndex < settings.characters.size())
+						{
+							char characterNameBuffer[256];
+							strncpy(characterNameBuffer, settings.characters[settings.selectedCharacterIndex].charactername.c_str(), sizeof(characterNameBuffer));
+							characterNameBuffer[sizeof(characterNameBuffer) - 1] = '\0';
+
+							if (ImGui::InputText("Character Name", characterNameBuffer, sizeof(characterNameBuffer)))
+							{
+								settings.characters[settings.selectedCharacterIndex].charactername = characterNameBuffer;
+								globals.filesystem.unsavedChanges = true;
+							}
+						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+					}
+
+					ImGui::SeparatorText("Weapons");
+
+					// Weapon list
+					ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+					ImGui::BeginChild("WeaponList", ImVec2(0, 100), true);
+
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+					std::vector<weaponData>* currentWeaponData = nullptr;
+					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+					{
+						if (!settings.characters.empty())
+						{
+							currentWeaponData = &settings.characters[0].weapondata;
+						}
+					}
+					else if (settings.selectedCharacterIndex < settings.characters.size())
+					{
+						currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
+					}
+
+					if (currentWeaponData)
+					{
+						for (int i = 0; i < currentWeaponData->size(); i++)
+						{
+							const bool is_selected = (settings.isPrimaryActive ?
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] == i :
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[1] == i);
+
+							if (ImGui::Selectable((*currentWeaponData)[i].weaponname.c_str(), is_selected))
+							{
+								if (settings.isPrimaryActive)
+									settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = i;
+								else
+									settings.characters[settings.selectedCharacterIndex].selectedweapon[1] = i;
+
+								settings.weaponDataChanged = true;
+								globals.filesystem.unsavedChanges = true;
+							}
+
+							if (is_selected)
+							{
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+					}
+					ImGui::PopStyleVar(); // ItemSpacing
+
+					ImGui::EndChild();
+					ImGui::PopStyleColor(); // Border color
+					ImGui::PopStyleVar(); // ChildBorderSize
+
+					if (ImGui::Button("Add Weapon"))
+					{
+						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+						{
+							if (settings.characters.empty())
+							{
+								settings.characters.push_back(characterData());
+							}
+							settings.characters[0].weapondata.push_back(weaponData());
+							settings.characters[0].weapondata.back().weaponname = xorstr_("New Weapon");
+							// Add default recoil pattern
+							std::vector<std::vector<float>> defaultPattern = {
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f}
+							};
+							settings.characters[0].weapondata.back().values = defaultPattern;
+							// Auto-select the new weapon
+							settings.characters[0].selectedweapon[settings.isPrimaryActive ? 0 : 1] = settings.characters[0].weapondata.size() - 1;
+						}
+						else if (settings.selectedCharacterIndex < settings.characters.size())
+						{
+							settings.characters[settings.selectedCharacterIndex].weapondata.push_back(weaponData());
+							settings.characters[settings.selectedCharacterIndex].weapondata.back().weaponname = xorstr_("New Weapon");
+							// Add default recoil pattern
+							std::vector<std::vector<float>> defaultPattern = {
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f},
+								{0.0f, 5.0f, 1000.0f}
+							};
+							settings.characters[settings.selectedCharacterIndex].weapondata.back().values = defaultPattern;
+							// Auto-select the new weapon
+							settings.characters[settings.selectedCharacterIndex].selectedweapon[settings.isPrimaryActive ? 0 : 1] = settings.characters[settings.selectedCharacterIndex].weapondata.size() - 1;
+						}
+						settings.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges = true;
+					}
+
+					ImGui::SameLine();
+
+					if (ImGui::Button("Remove Weapon"))
+					{
+						std::vector<weaponData>* currentWeaponData = nullptr;
+						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+						{
+							if (!settings.characters.empty())
+							{
+								currentWeaponData = &settings.characters[0].weapondata;
+							}
+						}
+						else if (settings.selectedCharacterIndex < settings.characters.size())
+						{
+							currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
+						}
+
+						if (currentWeaponData && currentWeaponData->size() > 1) // Ensure there's always at least one weapon
+						{
+							int& selectedWeaponIndex = settings.isPrimaryActive ?
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+
+							currentWeaponData->erase(currentWeaponData->begin() + selectedWeaponIndex);
+							selectedWeaponIndex = std::max(0, static_cast<int>(currentWeaponData->size()) - 1);
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+						else
+						{
+							// Optionally, show a message to the user
+							ImGui::OpenPopup("Cannot Remove Weapon");
+						}
+					}
+
+					if (ImGui::BeginPopupModal("Cannot Remove Weapon", NULL, ImGuiWindowFlags_AlwaysAutoResize))
+					{
+						ImGui::Text("Cannot remove the last weapon.");
+						if (ImGui::Button("OK", ImVec2(120, 0))) { ImGui::CloseCurrentPopup(); }
+						ImGui::EndPopup();
+					}
+
+					if (currentWeaponData && !currentWeaponData->empty())
+					{
+						int& selectedWeaponIndex = settings.isPrimaryActive ?
+							settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
+							settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+
+						selectedWeaponIndex = std::min(selectedWeaponIndex, static_cast<int>(currentWeaponData->size()) - 1);
+
+						auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
+
+						char weaponNameBuffer[256];
+						strncpy(weaponNameBuffer, weapon.weaponname.c_str(), sizeof(weaponNameBuffer));
+						weaponNameBuffer[sizeof(weaponNameBuffer) - 1] = '\0';
+
+						if (ImGui::InputText("Weapon Name", weaponNameBuffer, sizeof(weaponNameBuffer)))
+						{
+							weapon.weaponname = weaponNameBuffer;
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText("Weapon Data");
+
+						if (ImGui::Checkbox("Auto Fire", &weapon.autofire))
+						{
+							globals.filesystem.unsavedChanges = true;
+							settings.weaponDataChanged = true;
+						}
+
+						if (settings.game == xorstr_("Siege"))
+						{
+							ImGui::Text("Attachments");
+
+							const char* Sights[] = { "1x", "2.5x", "3.5x" };
+							const char* Grips[] = { "Horizontal/Angled/None", "Vertical" };
+							const char* Barrels[] = { "Suppressor/Extended/None", "Muzzle Break (Semi-Auto Only)", "Compensator", "Flash Hider" };
+
+							// Ensure the attachment vector has the correct size
+							if (weapon.attachments.size() < 3)
+								weapon.attachments.resize(3, 0);
+
+							if (ImGui::Combo("Sight", &weapon.attachments[0], Sights, IM_ARRAYSIZE(Sights)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							if (ImGui::Combo("Grip", &weapon.attachments[1], Grips, IM_ARRAYSIZE(Grips)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							if (ImGui::Combo("Barrel", &weapon.attachments[2], Barrels, IM_ARRAYSIZE(Barrels)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+						}
+						else if (settings.game == xorstr_("Rust"))
+						{
+							ImGui::Text("Attachments");
+
+							const char* Sights[] = { "None", "Handmade", "Holosight", "8x Scope", "16x Scope" };
+							const char* Barrels[] = { "None/Suppressor", "Muzzle Break", "Muzzle Boost" };
+
+							// Ensure the attachment vector has the correct size
+							if (weapon.attachments.size() < 3)
+								weapon.attachments.resize(3, 0);
+
+							if (ImGui::Combo("Sight", &weapon.attachments[0], Sights, IM_ARRAYSIZE(Sights)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							if (ImGui::Combo("Barrel", &weapon.attachments[2], Barrels, IM_ARRAYSIZE(Barrels)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+						}
+					}
 				}
 
-				updateCharacterData(true, true, true, true, true, true);
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::SeparatorText("Recoil Pattern Management");
+
+				if (ImGui::Checkbox("Edit Recoil Pattern", &editingPattern))
+				{
+					std::vector<weaponData>* currentWeaponData = nullptr;
+					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+					{
+						if (!settings.characters.empty())
+						{
+							currentWeaponData = &settings.characters[0].weapondata;
+						}
+					}
+					else if (settings.selectedCharacterIndex < settings.characters.size())
+					{
+						currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
+					}
+
+					if (currentWeaponData && !currentWeaponData->empty())
+					{
+						int selectedWeaponIndex = settings.isPrimaryActive ?
+							settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
+							settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+
+						selectedWeaponIndex = std::min(selectedWeaponIndex, static_cast<int>(currentWeaponData->size()) - 1);
+
+						auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
+						if (editingPattern)
+						{
+							tempPattern = weapon.values;
+						}
+						else
+						{
+							weapon.values = tempPattern;
+							globals.filesystem.unsavedChanges = true;
+							settings.weaponDataChanged = true;
+						}
+					}
+				}
+
+				if (editingPattern)
+				{
+					if (ImGui::Button("Add Point"))
+					{
+						tempPattern.push_back({ 0.0f, 0.0f, 1.0f });
+					}
+
+					ImGui::BeginChild("PatternEditor", ImVec2(0, 0), true);
+					for (size_t i = 0; i < tempPattern.size(); i++)
+					{
+						ImGui::PushID(static_cast<int>(i));
+						if (ImGui::InputFloat3("", tempPattern[i].data()))
+						{
+							globals.filesystem.unsavedChanges = true;
+						}
+						ImGui::SameLine();
+						if (ImGui::Button("Remove"))
+						{
+							tempPattern.erase(tempPattern.begin() + i);
+							i--;
+							globals.filesystem.unsavedChanges = true;
+						}
+						ImGui::PopID();
+					}
+					ImGui::EndChild();
+				}
+
+				ImGui::EndChild();
+
+				ImGui::NextColumn();
+
+				// Right column: Recoil pattern display
+				ImGui::BeginChild("RecoilPatternDisplay");
+
+				std::vector<weaponData>* currentWeaponData = nullptr;
+				if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+				{
+					if (!settings.characters.empty())
+					{
+						currentWeaponData = &settings.characters[0].weapondata;
+					}
+				}
+				else if (settings.selectedCharacterIndex < settings.characters.size())
+				{
+					currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
+				}
+
+				if (currentWeaponData && !currentWeaponData->empty())
+				{
+					int selectedWeaponIndex = settings.isPrimaryActive ?
+						settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
+						settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+
+					selectedWeaponIndex = std::min(selectedWeaponIndex, static_cast<int>(currentWeaponData->size()) - 1);
+
+					auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
+					DrawRecoilPattern(editingPattern ? tempPattern : weapon.values);
+				}
+				else
+				{
+					ImGui::Text("No weapon selected or data available.");
+				}
+
+				ImGui::EndChild();
+
+				ImGui::Columns(1);
+
+				ImGui::EndTabItem();
+}
+
+		}
+
+		if (ImGui::BeginTabItem("Config")) {
+			ImGui::Columns(2, "ConfigColumns", false);
+
+			// Left column: Config list and file operations
+			ImGui::BeginChild("ConfigList", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+
+			if (ImGui::Button("Refresh List")) {
+				globals.filesystem.configFiles = ut.scanCurrentDirectoryForConfigFiles();
 			}
 
+			ImGui::SameLine();
+
+			if (ImGui::Button("New Config")) {
+				NewConfigPopup = true;
+			}
+
+			ImGui::Separator();
+
+			// Styled config list
+			ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+			ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+			ImGui::BeginChild("ConfigList", ImVec2(0, 0), true);
+
+			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+			for (int i = 0; i < globals.filesystem.configFiles.size(); i++) {
+				const bool is_selected = (globals.filesystem.activeFileIndex == i);
+				if (ImGui::Selectable(globals.filesystem.configFiles[i].c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+					globals.filesystem.activeFileIndex = i;
+					if (ImGui::IsMouseDoubleClicked(0)) {
+						// Double-click to load
+						if (globals.filesystem.unsavedChanges) {
+							loadConfigPopup = true;
+						}
+						else {
+							globals.filesystem.activeFile = globals.filesystem.configFiles[i];
+							settings.selectedCharacterIndex = 0;
+							settings.weaponOffOverride = false;
+							settings.readSettings(globals.filesystem.activeFile, true, true);
+							globals.filesystem.unsavedChanges = false;
+						}
+					}
+				}
+
+				// Highlight the selected item
+				if (is_selected) {
+					ImGui::SetItemDefaultFocus();
+				}
+			}
+			ImGui::PopStyleVar(); // ItemSpacing
+
+			ImGui::EndChild();
+			ImGui::PopStyleColor(); // Border color
+			ImGui::PopStyleVar(); // ChildRounding, ChildBorderSize
+
+			ImGui::EndChild();
+
+			if (ImGui::Button("Load")) {
+				if (globals.filesystem.activeFileIndex < globals.filesystem.configFiles.size()) {
+					if (globals.filesystem.unsavedChanges) {
+						loadConfigPopup = true;
+					}
+					else {
+						globals.filesystem.activeFile = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+						settings.selectedCharacterIndex = 0;
+						settings.weaponOffOverride = false;
+						settings.readSettings(globals.filesystem.activeFile, true, true);
+						globals.filesystem.unsavedChanges = false;
+					}
+				}
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Save")) {
+				if (globals.filesystem.activeFileIndex >= 0 && globals.filesystem.activeFileIndex < globals.filesystem.configFiles.size()) {
+					std::string selectedFile = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
+					if (selectedFile == globals.filesystem.activeFile) {
+						// Saving to the same file, proceed normally
+						settings.saveSettings(globals.filesystem.activeFile);
+						globals.filesystem.unsavedChanges = false;
+					}
+					else {
+						// Trying to save over a different config, open confirmation popup
+						saveConfigPopup = true;
+					}
+				}
+				else if (!globals.filesystem.activeFile.empty()) {
+					// No file selected, but we have an active file, save normally
+					settings.saveSettings(globals.filesystem.activeFile);
+					globals.filesystem.unsavedChanges = false;
+				}
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Delete")) {
+				if (globals.filesystem.activeFileIndex >= 0 && globals.filesystem.activeFileIndex < globals.filesystem.configFiles.size()) {
+					deleteConfigPopup = true;
+				}
+			}
+
+			ImGui::SameLine();
+
+			if (ImGui::Button("Rename")) {
+				if (globals.filesystem.activeFileIndex >= 0 && globals.filesystem.activeFileIndex < globals.filesystem.configFiles.size()) {
+					RenameConfigPopup = true;
+				}
+			}
+
+			ImGui::NextColumn();
+
+			// Right column: Config details and conversion
+			ImGui::BeginChild("ConfigDetails", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+
+			ImGui::Text("Current Config: %s", globals.filesystem.activeFile.c_str());
+			ImGui::Separator();
+
+			ImGui::Text("Config Details:");
+			ImGui::Text("Mode: %s", settings.mode.c_str());
+			ImGui::Text("Game: %s", settings.game.c_str());
+			ImGui::Text("Characters: %d", settings.characters.size());
+			ImGui::Text("Potato Mode: %s", settings.potato ? "Enabled" : "Disabled");
+
+			ImGui::Separator();
+			static int convertedCount = 0;
+
+			if (ImGui::Button("Convert JSON Configs")) {
+				std::vector<std::string> jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
+
+				for (const auto& jsonFile : jsonFiles) {
+					std::string textFilename = jsonFile.substr(0, jsonFile.find_last_of('.')) + ".txt";
+					try {
+						settings.convertJsonToTextConfig(jsonFile, textFilename);
+						convertedCount++;
+					}
+					catch (const std::exception& e) {
+						std::cerr << "Error converting " << jsonFile << ": " << e.what() << std::endl;
+					}
+				}
+
+				ImGui::OpenPopup("ConversionResultPopup");
+				globals.filesystem.configFiles = ut.scanCurrentDirectoryForConfigFiles();
+			}
+
+			if (ImGui::BeginPopupModal("ConversionResultPopup", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+				ImGui::Text("Conversion complete!");
+				ImGui::Text("%d files were converted successfully.", convertedCount);
+				if (ImGui::Button("OK", ImVec2(120, 0))) {
+					ImGui::CloseCurrentPopup();
+					convertedCount = 0;
+				}
+				ImGui::EndPopup();
+			}
+
+			ImGui::EndChild();
+
+			ImGui::Columns(1);
 			ImGui::EndTabItem();
 		}
 
 		ImGui::EndTabBar();
 	}
 
-	g.initshutdown = !inverseShutdown;
+	globals.initshutdown = !inverseShutdown;
 
-	if (g.initshutdown) {
-		if (!g.editor.unsavedChanges) {
-			g.done = true;
+	if (globals.initshutdown) {
+		if (!globals.filesystem.unsavedChanges) {
+			globals.done = true;
 		}
 		else {
 			initshutdownpopup = true;
 		}
 	}
 
-	popup(openmodal, 0);
-	popup(initshutdownpopup, 1);
+	popup(loadConfigPopup, 0);
+	popup(saveConfigPopup, 1);
+	popup(initshutdownpopup, 2);
+	popup(deleteConfigPopup, 3);
+
+	newConfigPopup(NewConfigPopup, newConfigName, selectedMode, selectedGame);
+	renameConfigPopup(RenameConfigPopup, renameBuffer);
 
 	ImGui::End();
 }
