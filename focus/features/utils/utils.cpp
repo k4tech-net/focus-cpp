@@ -48,7 +48,7 @@ std::vector<std::string> Utils::scanCurrentDirectoryForConfigFiles() {
 	std::vector<std::string> configFiles;
 	std::filesystem::path currentPath = std::filesystem::current_path();
 	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
-		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".txt")) {
+		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".focus")) {
 			configFiles.push_back(entry.path().filename().string());
 		}
 	}

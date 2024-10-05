@@ -100,7 +100,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 		}
 
 		if (ImGui::Button("Create")) {
-			std::string newFileName = std::string(newConfigName) + ".txt";
+			std::string newFileName = std::string(newConfigName) + ".focus";
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
 			newSettings.potato = false;
@@ -218,7 +218,7 @@ void renameConfigPopup(bool& trigger, static char renameBuffer[256]) {
 
 		if (ImGui::Button("Rename", ImVec2(120, 0))) {
 			std::string oldName = globals.filesystem.configFiles[globals.filesystem.activeFileIndex];
-			std::string newName = std::string(renameBuffer) + ".txt";
+			std::string newName = std::string(renameBuffer) + ".focus";
 			if (rename(oldName.c_str(), newName.c_str()) == 0) {
 				globals.filesystem.configFiles[globals.filesystem.activeFileIndex] = newName;
 				if (globals.filesystem.activeFile == oldName) {
@@ -1903,7 +1903,7 @@ void Menu::gui()
 				std::vector<std::string> jsonFiles = ut.scanCurrentDirectoryForJsonFiles();
 
 				for (const auto& jsonFile : jsonFiles) {
-					std::string textFilename = jsonFile.substr(0, jsonFile.find_last_of('.')) + ".txt";
+					std::string textFilename = jsonFile.substr(0, jsonFile.find_last_of('.')) + ".focus";
 					try {
 						settings.convertJsonToTextConfig(jsonFile, textFilename);
 						convertedCount++;
