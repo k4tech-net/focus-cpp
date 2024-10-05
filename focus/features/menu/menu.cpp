@@ -89,7 +89,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 	}
 
 	if (ImGui::BeginPopup("NewConfigPopup")) {
-		ImGui::InputText("Config Name", newConfigName, IM_ARRAYSIZE(newConfigName));
+		ImGui::InputText("Config Name", newConfigName, 256);
 
 		const char* modes[] = { "Generic", "Character", "Game" };
 		ImGui::Combo("Mode", &selectedMode, modes, IM_ARRAYSIZE(modes));
@@ -333,7 +333,7 @@ void Menu::popup(bool& trigger, int type) {
 }
 
 void Menu::startupchecks_gui() {
-    //ImGui::SetNextWindowSize(ImVec2(350, -1), ImGuiWindowFlags_AlwaysAutoResize);
+	ImGui::SetNextWindowSizeConstraints(ImVec2(350, 200), ImVec2(FLT_MAX, FLT_MAX));
     ImGui::Begin(xorstr_("Startup Checks"), NULL, STARTUPFLAGS);
 
     if (globals.startup.driver) {
@@ -875,7 +875,7 @@ void Menu::gui()
 {
 	bool inverseShutdown = !globals.initshutdown;
 
-	ImGui::SetNextWindowSize(ImVec2(800, 600), ImGuiCond_FirstUseEver);
+	ImGui::SetNextWindowSize(ImVec2(850, 650), ImGuiCond_FirstUseEver);
 	#if !_DEBUG
 	ImGui::Begin(xorstr_("Focus"), &inverseShutdown, WINDOWFLAGS);
 	#else
@@ -1343,12 +1343,41 @@ void Menu::gui()
 				ImGui::Columns(2, "ConfigEditorColumns", false);
 
 				// Left column: All controls and editors
-				ImGui::BeginChild("ControlsAndEditors", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+				ImGui::BeginChild("ControlsAndEditors");
 
 				if (!editingPattern)
 				{
 					if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege"))
 					{
+						ImGui::SeparatorText("Characters");
+
+						// Character list
+						ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+						ImGui::BeginChild("CharacterList", ImVec2(0, 100), true);
+
+						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+						for (int i = 0; i < settings.characters.size(); i++)
+						{
+							const bool is_selected = (settings.selectedCharacterIndex == i);
+							if (ImGui::Selectable(settings.characters[i].charactername.c_str(), is_selected))
+							{
+								settings.selectedCharacterIndex = i;
+								settings.isPrimaryActive = true;
+								settings.weaponDataChanged = true;
+							}
+
+							if (is_selected)
+							{
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+						ImGui::PopStyleVar(); // ItemSpacing
+
+						ImGui::EndChild();
+						ImGui::PopStyleColor(); // Border color
+						ImGui::PopStyleVar(); // ChildBorderSize
+
 						if (ImGui::Button("Add Character"))
 						{
 							settings.characters.push_back(characterData());
@@ -1399,35 +1428,6 @@ void Menu::gui()
 							ImGui::EndPopup();
 						}
 
-						ImGui::Separator();
-
-						// Character list
-						ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
-						ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-						ImGui::BeginChild("CharacterList", ImVec2(0, 100), true);
-
-						ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
-						for (int i = 0; i < settings.characters.size(); i++)
-						{
-							const bool is_selected = (settings.selectedCharacterIndex == i);
-							if (ImGui::Selectable(settings.characters[i].charactername.c_str(), is_selected))
-							{
-								settings.selectedCharacterIndex = i;
-								settings.isPrimaryActive = true;
-								settings.weaponDataChanged = true;
-							}
-
-							if (is_selected)
-							{
-								ImGui::SetItemDefaultFocus();
-							}
-						}
-						ImGui::PopStyleVar(); // ItemSpacing
-
-						ImGui::EndChild();
-						ImGui::PopStyleColor(); // Border color
-						ImGui::PopStyleVar(); // ChildBorderSize
-
 						if (settings.selectedCharacterIndex < settings.characters.size())
 						{
 							char characterNameBuffer[256];
@@ -1441,8 +1441,61 @@ void Menu::gui()
 							}
 						}
 
-						ImGui::Separator();
+						ImGui::Spacing();
+						ImGui::Spacing();
 					}
+
+					ImGui::SeparatorText("Weapons");
+
+					// Weapon list
+					ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
+					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
+					ImGui::BeginChild("WeaponList", ImVec2(0, 100), true);
+
+					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
+					std::vector<weaponData>* currentWeaponData = nullptr;
+					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+					{
+						if (!settings.characters.empty())
+						{
+							currentWeaponData = &settings.characters[0].weapondata;
+						}
+					}
+					else if (settings.selectedCharacterIndex < settings.characters.size())
+					{
+						currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
+					}
+
+					if (currentWeaponData)
+					{
+						for (int i = 0; i < currentWeaponData->size(); i++)
+						{
+							const bool is_selected = (settings.isPrimaryActive ?
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] == i :
+								settings.characters[settings.selectedCharacterIndex].selectedweapon[1] == i);
+
+							if (ImGui::Selectable((*currentWeaponData)[i].weaponname.c_str(), is_selected))
+							{
+								if (settings.isPrimaryActive)
+									settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = i;
+								else
+									settings.characters[settings.selectedCharacterIndex].selectedweapon[1] = i;
+
+								settings.weaponDataChanged = true;
+								globals.filesystem.unsavedChanges = true;
+							}
+
+							if (is_selected)
+							{
+								ImGui::SetItemDefaultFocus();
+							}
+						}
+					}
+					ImGui::PopStyleVar(); // ItemSpacing
+
+					ImGui::EndChild();
+					ImGui::PopStyleColor(); // Border color
+					ImGui::PopStyleVar(); // ChildBorderSize
 
 					if (ImGui::Button("Add Weapon"))
 					{
@@ -1524,56 +1577,6 @@ void Menu::gui()
 						ImGui::EndPopup();
 					}
 
-					// Weapon list
-					ImGui::PushStyleVar(ImGuiStyleVar_ChildBorderSize, 1.0f);
-					ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(0.5f, 0.5f, 0.5f, 1.0f));
-					ImGui::BeginChild("WeaponList", ImVec2(0, 100), true);
-
-					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
-					std::vector<weaponData>* currentWeaponData = nullptr;
-					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
-					{
-						if (!settings.characters.empty())
-						{
-							currentWeaponData = &settings.characters[0].weapondata;
-						}
-					}
-					else if (settings.selectedCharacterIndex < settings.characters.size())
-					{
-						currentWeaponData = &settings.characters[settings.selectedCharacterIndex].weapondata;
-					}
-
-					if (currentWeaponData)
-					{
-						for (int i = 0; i < currentWeaponData->size(); i++)
-						{
-							const bool is_selected = (settings.isPrimaryActive ?
-								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] == i :
-								settings.characters[settings.selectedCharacterIndex].selectedweapon[1] == i);
-
-							if (ImGui::Selectable((*currentWeaponData)[i].weaponname.c_str(), is_selected))
-							{
-								if (settings.isPrimaryActive)
-									settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = i;
-								else
-									settings.characters[settings.selectedCharacterIndex].selectedweapon[1] = i;
-
-								settings.weaponDataChanged = true;
-								globals.filesystem.unsavedChanges = true;
-							}
-
-							if (is_selected)
-							{
-								ImGui::SetItemDefaultFocus();
-							}
-						}
-					}
-					ImGui::PopStyleVar(); // ItemSpacing
-
-					ImGui::EndChild();
-					ImGui::PopStyleColor(); // Border color
-					ImGui::PopStyleVar(); // ChildBorderSize
-
 					if (currentWeaponData && !currentWeaponData->empty())
 					{
 						int& selectedWeaponIndex = settings.isPrimaryActive ?
@@ -1593,6 +1596,10 @@ void Menu::gui()
 							weapon.weaponname = weaponNameBuffer;
 							globals.filesystem.unsavedChanges = true;
 						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText("Weapon Data");
 
 						if (ImGui::Checkbox("Auto Fire", &weapon.autofire))
 						{
@@ -1653,7 +1660,9 @@ void Menu::gui()
 					}
 				}
 
-				ImGui::Separator();
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::SeparatorText("Recoil Pattern Management");
 
 				if (ImGui::Checkbox("Edit Recoil Pattern", &editingPattern))
 				{
@@ -1724,7 +1733,7 @@ void Menu::gui()
 				ImGui::NextColumn();
 
 				// Right column: Recoil pattern display
-				ImGui::BeginChild("RecoilPatternDisplay", ImVec2(0, -ImGui::GetFrameHeightWithSpacing()));
+				ImGui::BeginChild("RecoilPatternDisplay");
 
 				std::vector<weaponData>* currentWeaponData = nullptr;
 				if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
