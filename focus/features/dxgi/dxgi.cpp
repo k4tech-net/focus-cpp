@@ -376,9 +376,11 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
         settings.weaponOffOverride = false;
         if (activeROI == 2) {
             settings.isPrimaryActive = true;
+            settings.weaponDataChanged = true;
         }
         else if (activeROI == 3) {
             settings.isPrimaryActive = false;
+            settings.weaponDataChanged = true;
         }
     }
 }

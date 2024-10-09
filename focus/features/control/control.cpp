@@ -106,7 +106,7 @@ void Control::driveMouse() {
 					xMove += std::clamp(static_cast<int>(smoothedCorrectionX), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
 					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
 					
-					ms.mouse_move(0, xMove, yMove, 0);
+					ms.moveR(xMove, yMove);
 			
 					if (currwpn.autofire && cycles >= 8 && globals.mouseinfo.l_mouse_down) {
 						pressMouse1(flipFlop);
