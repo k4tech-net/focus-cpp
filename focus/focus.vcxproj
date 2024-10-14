@@ -150,6 +150,8 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="driver\keyboard.cpp" />
+    <ClCompile Include="driver\mouse.cpp" />
     <ClCompile Include="features\control\control.cpp" />
     <ClCompile Include="features\crypto\base64.cpp" />
     <ClCompile Include="features\crypto\crypto.cpp" />
@@ -170,11 +172,12 @@
     <ClCompile Include="imgui\plugins\implot.cpp" />
     <ClCompile Include="imgui\plugins\implot_items.cpp" />
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="mouse_driver\mouse.cpp" />
     <ClCompile Include="WinMain.cpp" />
     <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="driver\keyboard.hpp" />
+    <ClInclude Include="driver\mouse.hpp" />
     <ClInclude Include="features\control\control.hpp" />
     <ClInclude Include="features\crypto\base64.h" />
     <ClInclude Include="features\crypto\crypto.hpp" />
@@ -196,7 +199,6 @@
     <ClInclude Include="imgui\plugins\implot.h" />
     <ClInclude Include="imgui\plugins\implot_internal.h" />
     <ClInclude Include="includes.hpp" />
-    <ClInclude Include="mouse_driver\mouse.hpp" />
     <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

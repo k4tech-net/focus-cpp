@@ -336,20 +336,35 @@ void Menu::startupchecks_gui() {
 	ImGui::SetNextWindowSizeConstraints(ImVec2(350, 200), ImVec2(FLT_MAX, FLT_MAX));
     ImGui::Begin(xorstr_("Startup Checks"), NULL, STARTUPFLAGS);
 
-    if (globals.startup.driver) {
+    if (globals.startup.mouse_driver) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-        ImGui::Text(xorstr_("Driver is running"));
+        ImGui::Text(xorstr_("Mouse driver is running"));
         std::string str = ut.wstring_to_string(ms.findDriver());
         ImGui::Text(str.c_str());
         ImGui::PopStyleColor();
     }
     else {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
-        ImGui::Text(xorstr_("Driver is not running"));
+        ImGui::Text(xorstr_("Mouse driver is not running"));
         ImGui::PopStyleColor();
     }
 
     ImGui::Separator();
+
+	if (globals.startup.keyboard_driver) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+		ImGui::Text(xorstr_("Keyboard driver is running"));
+		std::string str = ut.wstring_to_string(kb.findDriver());
+		ImGui::Text(str.c_str());
+		ImGui::PopStyleColor();
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::Text(xorstr_("Keyboard driver is not running"));
+		ImGui::PopStyleColor();
+	}
+
+	ImGui::Separator();
 
     if (globals.startup.files) {
         ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));

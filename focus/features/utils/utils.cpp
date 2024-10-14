@@ -1,6 +1,7 @@
 #include "utils.hpp"
 
 Mouse ms;
+Keyboard kb;
 DXGI dx;
 
 void Utils::preciseSleep(double seconds) {
@@ -101,7 +102,11 @@ bool Utils::initilizeMarker() {
 
 void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
-		globals.startup.driver = true;
+		globals.startup.mouse_driver = true;
+	}
+
+	if (kb.keyboard_open()) {
+		globals.startup.keyboard_driver = true;
 	}
 
 	if (globals.filesystem.configFiles.size() > 0) {
@@ -116,7 +121,7 @@ void Utils::startUpChecksRunner() {
 		globals.startup.marker = true;
 	}
 
-	if (globals.startup.driver && globals.startup.dxgi && globals.startup.marker) {
+	if (globals.startup.mouse_driver && globals.startup.keyboard_driver && globals.startup.dxgi && globals.startup.marker) {
 		globals.startup.passedstartup = true;
 	}
 	else {

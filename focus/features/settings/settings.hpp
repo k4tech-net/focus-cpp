@@ -102,7 +102,8 @@ struct Globals
 
     struct Startup {
         bool passedstartup = false;
-        bool driver = false;
+        bool mouse_driver = false;
+        bool keyboard_driver = false;
         bool files = false;
         bool dxgi = false;
         bool marker = false;

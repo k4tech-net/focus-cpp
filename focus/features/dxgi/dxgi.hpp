@@ -13,7 +13,8 @@
 #include "Windows.h"
 #include <iostream>
 
-#include "../mouse_driver/mouse.hpp"
+#include "../driver/mouse.hpp"
+#include "../driver/keyboard.hpp"
 #include "../settings/settings.hpp"
 #include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
 #include "weaponmasks.hpp"

@@ -17,3 +17,4 @@ extern DXGI dx;
 extern Settings cfg;
 extern Utils ut;
 extern Mouse ms;
+extern Keyboard kb;

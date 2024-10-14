@@ -2,9 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClCompile Include="main.cpp" />
-    <ClCompile Include="mouse_driver\mouse.cpp">
-      <Filter>mouse_driver</Filter>
-    </ClCompile>
     <ClCompile Include="features\menu\menu.cpp">
       <Filter>features\menu</Filter>
     </ClCompile>
@@ -66,11 +63,14 @@
     <ClCompile Include="imgui\plugins\implot_items.cpp">
       <Filter>imgui\plugins</Filter>
     </ClCompile>
+    <ClCompile Include="driver\keyboard.cpp">
+      <Filter>driver</Filter>
+    </ClCompile>
+    <ClCompile Include="driver\mouse.cpp">
+      <Filter>driver</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="mouse_driver">
-      <UniqueIdentifier>{ac4e747f-e5ff-4d53-8323-027ae64f57e5}</UniqueIdentifier>
-    </Filter>
     <Filter Include="features">
       <UniqueIdentifier>{48f645ae-d404-4a6f-a253-cc5642bc2a81}</UniqueIdentifier>
     </Filter>
@@ -101,11 +101,11 @@
     <Filter Include="YoloV8-ONNXRuntime-CPP">
       <UniqueIdentifier>{f2f4c344-1df6-4a70-a9ba-21474d368f5a}</UniqueIdentifier>
     </Filter>
+    <Filter Include="driver">
+      <UniqueIdentifier>{ac4e747f-e5ff-4d53-8323-027ae64f57e5}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="mouse_driver\mouse.hpp">
-      <Filter>mouse_driver</Filter>
-    </ClInclude>
     <ClInclude Include="features\menu\menu.hpp">
       <Filter>features\menu</Filter>
     </ClInclude>
@@ -169,6 +169,12 @@
     </ClInclude>
     <ClInclude Include="imgui\plugins\implot_internal.h">
       <Filter>imgui\plugins</Filter>
+    </ClInclude>
+    <ClInclude Include="driver\keyboard.hpp">
+      <Filter>driver</Filter>
+    </ClInclude>
+    <ClInclude Include="driver\mouse.hpp">
+      <Filter>driver</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
