@@ -67,6 +67,7 @@ public:
     std::string game = "";
     std::vector<float> sensitivity;
     std::string crouch_keybind;
+    int aspect_ratio = 0;
 
     // Character data
     std::vector<characterData> characters;

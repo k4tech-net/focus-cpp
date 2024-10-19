@@ -6,4 +6,5 @@ class Control
 {
 public:
 	void driveMouse();
+	void driveKeyboard();
 };

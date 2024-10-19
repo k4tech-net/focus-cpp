@@ -156,3 +156,24 @@ void Control::driveMouse() {
 		//ut.preciseSleepFor(0.0005); // uses too much resources
 	}
 }
+
+void Control::driveKeyboard() {
+	static int lean = 0;
+
+	while (!globals.shutdown) {
+		if (GetAsyncKeyState(VK_CAPITAL)) {
+			if (GetAsyncKeyState(0x41) && lean != 1) {
+				kb.keyboard_press(KeyboardKey::q);
+				lean = 1;
+			}
+			else if (GetAsyncKeyState(0x44) && lean != 2) {
+				kb.keyboard_press(KeyboardKey::e);
+				lean = 2;
+			}
+			std::this_thread::sleep_for(std::chrono::microseconds(50));
+			kb.keyboard_release();
+		}
+
+		std::this_thread::sleep_for(std::chrono::microseconds(50));
+	}
+}

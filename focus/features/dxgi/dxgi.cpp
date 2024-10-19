@@ -1,6 +1,7 @@
 #include "dxgi.hpp"
 
 //Engine en;
+Utils utils;
 
 bool DXGI::InitDXGI() {
     // Create device and context
@@ -145,6 +146,45 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
     float correctionY = closestDetectionCenter.y - imageCenterY;
 
     return { correctionX, correctionY };
+}
+
+cv::Mat DXGI::normalizeIconSize(const cv::Mat& icon) {
+    cv::Mat resized;
+    cv::resize(icon, resized, cv::Size(64, 64), 0, 0, cv::INTER_AREA);
+    return resized;
+}
+
+cv::Mat DXGI::preprocessIcon(const cv::Mat& icon) {
+    cv::Mat gray;
+    cv::cvtColor(icon, gray, cv::COLOR_BGR2GRAY);
+
+    // Remove potential defuser icon area first
+    int defuserSize = gray.rows / 2.5;  // Assume defuser icon is about 1/4 of the icon height
+    cv::rectangle(gray, cv::Rect(gray.cols - defuserSize, gray.rows - defuserSize, defuserSize, defuserSize), cv::Scalar(0), cv::FILLED);
+
+    // Then apply adaptive thresholding to handle brightness variations
+    cv::Mat binary;
+    cv::adaptiveThreshold(gray, binary, 255, cv::ADAPTIVE_THRESH_MEAN_C, cv::THRESH_BINARY, 11, 2);
+
+    return binary;
+}
+
+std::string DXGI::hashIcon(const cv::Mat& icon) {
+    cv::Mat preprocessed = preprocessIcon(icon);
+
+    std::string hash;
+    hash.reserve(64);  // We'll generate a 64-bit hash string
+
+    for (int y = 0; y < preprocessed.rows; y += 8) {
+        for (int x = 0; x < preprocessed.cols; x += 8) {
+            // Calculate the average of an 8x8 block
+            cv::Rect block(x, y, 8, 8);
+            double avgIntensity = cv::mean(preprocessed(block))[0];
+            hash += (avgIntensity > 127) ? '1' : '0';
+        }
+    }
+
+    return hash;
 }
 
 void DXGI::aimbot() {
@@ -385,8 +425,51 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 }
 
+void DXGI::detectOperatorR6(cv::Mat& src) {
+    cv::Mat normalizedIcon = normalizeIconSize(src);
+    std::string hash = hashIcon(normalizedIcon);
+
+    std::string detectedOperator;
+    bool operatorFound = false;
+
+    // Compare the hash with pre-computed hashes for known operators
+    auto it = operatorHashes.find(hash);
+    if (it != operatorHashes.end()) {
+        detectedOperator = it->second;
+        operatorFound = true;
+    }
+    else {
+        // No exact match, find the closest match
+        int minHammingDistance = 64;  // Maximum possible Hamming distance for a 64-bit hash
+        for (const auto& pair : operatorHashes) {
+            int distance = 0;
+            for (size_t i = 0; i < 64; ++i) {
+                if (hash[i] != pair.first[i]) {
+                    ++distance;
+                }
+            }
+            if (distance < minHammingDistance) {
+                minHammingDistance = distance;
+                detectedOperator = pair.second;
+            }
+        }
+
+        if (minHammingDistance <= 5) {  // Adjust this threshold as needed
+            operatorFound = true;
+        }
+    }
+
+    if (operatorFound) {
+        int characterIndex = utils.findCharacterIndex(detectedOperator);
+        if (characterIndex != -1) {
+            settings.selectedCharacterIndex = characterIndex;
+            settings.weaponDataChanged = true;
+        }
+    }
+}
+
 void DXGI::initializeRustDetector(cv::Mat& src) {
-    for (const auto& weaponMask : weaponMasks) {
+    for (const auto& weaponMask : rustMasks) {
         cv::Mat mask = cv::imdecode(weaponMask.mask, cv::IMREAD_GRAYSCALE);
         if (mask.empty()) {
             std::cerr << xorstr_("Failed to decode mask for: ") << weaponMask.name << std::endl;

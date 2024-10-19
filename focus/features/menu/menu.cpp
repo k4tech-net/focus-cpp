@@ -777,6 +777,70 @@ void keybindManager() {
 				settings.isPrimaryActive = true;
 			}
 
+			if (settings.characters[settings.selectedCharacterIndex].options[2]) {
+				int screenWidth = globals.desktopMat.cols;
+				int screenHeight = globals.desktopMat.rows;
+
+				float cropRatioX = 0.f;
+				float cropRatioY = 0.0f;
+				float cropRatioWidth = 0.f;
+				float cropRatioHeight = 0.052f;
+
+
+				// Define ratios for crop region
+				switch (settings.aspect_ratio) {
+					case 0:
+						cropRatioX = 0.3926f;
+						cropRatioWidth = 0.0252f;
+						break;
+					case 1:
+						cropRatioX = 0.358f;
+						cropRatioWidth = 0.0325f;
+						break;
+					case 2:
+						cropRatioX = 0.3473f;
+						cropRatioWidth = 0.0357f;
+						break;
+					case 3:
+						cropRatioX = 0.3727f;
+						cropRatioWidth = 0.03f;
+						break;
+					case 4:
+						cropRatioX = 0.381f;
+						cropRatioWidth = 0.028f;
+						break;
+					case 5:
+						cropRatioX = 0.3857f;
+						cropRatioWidth = 0.0263f;
+						break;
+					case 6:
+						cropRatioX = 0.4f;
+						cropRatioWidth = 0.023f;
+						break;
+				}
+
+				// Calculate the region of interest (ROI) based on ratios
+				int x = static_cast<int>(cropRatioX * screenWidth);
+				int y = static_cast<int>(cropRatioY * screenHeight);
+				int width = static_cast<int>(cropRatioWidth * screenWidth);
+				int height = static_cast<int>(cropRatioHeight * screenHeight);
+
+				// Ensure the ROI is within the bounds of the desktopMat
+				x = std::max(0, x);
+				y = std::max(0, y);
+				width = std::min(width, screenWidth - x);
+				height = std::min(height, screenHeight - y);
+
+				cv::Rect roi(x, y, width, height);
+
+				// Extract the region of interest from the desktopMat
+				globals.desktopMutex_.lock();
+				cv::Mat smallRegion = globals.desktopMat(roi);
+				globals.desktopMutex_.unlock();
+
+				dx.detectOperatorR6(smallRegion);
+			}
+
 			settings.sensMultiplier = calculateSensitivityModifierR6();
 		}
 		else if (settings.game == xorstr_("Rust")) {
@@ -1167,7 +1231,7 @@ void Menu::gui()
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Options"));
 
-						std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Gadget Detection Override") };
+						std::vector<const char*> MultiOptions = { xorstr_("R6 Auto Weapon Detection"), xorstr_("Gadget Detection Override"), xorstr_("R6 Operator Detection") };
 
 						if (multiCombo(xorstr_("Options"), MultiOptions, settings.characters[settings.selectedCharacterIndex].options)) {
 							settings.weaponDataChanged = true;
@@ -1175,6 +1239,12 @@ void Menu::gui()
 						}
 
 						if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						const char* Aspect_Ratios[] = { xorstr_("16:9"), xorstr_("4:3"), xorstr_("5:4"), xorstr_("3:2"), xorstr_("16:10"), xorstr_("5:3"), xorstr_("19:10") };
+
+						if (comboBoxGen(xorstr_("Aspect Ratio"), &settings.aspect_ratio, Aspect_Ratios, 7)) {
 							globals.filesystem.unsavedChanges = true;
 						}
 

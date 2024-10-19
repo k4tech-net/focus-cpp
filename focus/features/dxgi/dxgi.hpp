@@ -17,6 +17,7 @@
 #include "../driver/keyboard.hpp"
 #include "../settings/settings.hpp"
 #include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
+#include "../utils/utils.hpp"
 #include "weaponmasks.hpp"
 
 #include <onnxruntime_cxx_api.h>
@@ -29,6 +30,7 @@ public:
 	void CleanupDXGI();
 	void aimbot();
 	void detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
+	void detectOperatorR6(cv::Mat& src);
 	void detectWeaponRust(cv::Mat& src);
 	std::string detectWeaponTypeWithMask(const cv::Mat& weaponIcon);
 	void initializeRustDetector(cv::Mat& src);
@@ -40,6 +42,10 @@ private:
 	IDXGIOutputDuplication* gOutputDuplication = nullptr;
 	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
 	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
+
+	std::string hashIcon(const cv::Mat& icon);
+	cv::Mat normalizeIconSize(const cv::Mat& icon);
+	cv::Mat preprocessIcon(const cv::Mat& icon);
 
 	struct BoxPercentage {
 		float x, y, width, height;

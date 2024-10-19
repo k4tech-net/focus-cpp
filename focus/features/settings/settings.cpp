@@ -151,6 +151,10 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             crouch_keybind = value;
             std::cout << "CrouchKeybind set to: " << value << std::endl;
         }
+        else if (key == xorstr_("AspectRatio")) {
+			aspect_ratio = std::stoi(value);
+			std::cout << "AspectRatio set to: " << aspect_ratio << std::endl;
+		}
     }
 
     // Add the last weapon and character
@@ -253,6 +257,8 @@ void Settings::saveSettings(const std::string& filename) {
                 file << sens << ",";
             }
             file << "\n";
+
+            file << xorstr_("AspectRatio=") << aspect_ratio << "\n";
 
             for (const auto& character : characters) {
                 file << xorstr_("Character=") << character.charactername << "\n";
@@ -403,6 +409,8 @@ void Settings::convertJsonToTextConfig(const std::string& jsonFilename, const st
                 textFile << sens << ",";
             }
             textFile << "\n";
+
+            textFile << xorstr_("AspectRatio=") << aspect_ratio << "\n";
 
             for (auto& [characterName, characterData] : jsonData.items()) {
                 if (characterName != "Mode" && characterName != "Potato" && characterName != "Aim Assist"

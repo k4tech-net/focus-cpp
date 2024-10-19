@@ -24,6 +24,7 @@ public:
 	bool isEdited(const std::string& original, const std::string& changed);
 	std::string wstring_to_string(const std::wstring& wstr);
 	bool initilizeMarker();
+	int findCharacterIndex(const std::string& characterName);
 
 	void startUpChecksRunner();
 };

@@ -16,4 +16,5 @@ struct ProcessedMask {
     cv::Mat edges;
 };
 
-extern std::vector<WeaponMask> weaponMasks;
+extern std::vector<WeaponMask> rustMasks;
+extern std::unordered_map<std::string, std::string> operatorHashes;

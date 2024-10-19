@@ -131,3 +131,12 @@ void Utils::startUpChecksRunner() {
 	globals.startup.hasFinished = true;
 	return;
 }
+
+int Utils::findCharacterIndex(const std::string& characterName) {
+	for (size_t i = 0; i < settings.characters.size(); ++i) {
+		if (settings.characters[i].charactername == characterName) {
+			return static_cast<int>(i);
+		}
+	}
+	return -1; // Character not found
+}
