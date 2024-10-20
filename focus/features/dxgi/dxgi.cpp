@@ -426,6 +426,11 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
 }
 
 void DXGI::detectOperatorR6(cv::Mat& src) {
+
+    if (src.empty()) {
+        return;
+    }
+
     cv::Mat normalizedIcon = normalizeIconSize(src);
     std::string hash = hashIcon(normalizedIcon);
 

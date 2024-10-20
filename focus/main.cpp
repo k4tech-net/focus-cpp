@@ -131,6 +131,8 @@ int main()
 		}
 
 		g_pSwapChain->Present(1, 0); // Present with vsync
+
+		std::this_thread::sleep_for(std::chrono::microseconds(20));
 	}
 
 	startUpCheckThread.join();
@@ -197,6 +199,8 @@ int main()
 		}
 
 		g_pSwapChain->Present(1, 0); // Present with vsync
+
+		std::this_thread::sleep_for(std::chrono::microseconds(20));
 	}
 
 	std::cout << xorstr_("Shutting Down") << std::endl;
