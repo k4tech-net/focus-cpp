@@ -43,7 +43,7 @@ private:
 	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
 	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
 
-	std::string hashIcon(const cv::Mat& icon);
+	IconHash hashIcon(const cv::Mat& icon);
 	cv::Mat normalizeIconSize(const cv::Mat& icon);
 	cv::Mat preprocessIcon(const cv::Mat& icon);
 

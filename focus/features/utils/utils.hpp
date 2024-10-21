@@ -11,7 +11,7 @@
 #include "../driver/mouse.hpp"
 #include "../driver/keyboard.hpp"
 #include "../settings/settings.hpp"
-
+#include "../dxgi/weaponmasks.hpp"
 #include "../dxgi/dxgi.hpp"
 
 class Utils
@@ -25,6 +25,7 @@ public:
 	std::string wstring_to_string(const std::wstring& wstr);
 	bool initilizeMarker();
 	int findCharacterIndex(const std::string& characterName);
+	int hammingDistance(const IconHash& hash1, const IconHash& hash2);
 
 	void startUpChecksRunner();
 };

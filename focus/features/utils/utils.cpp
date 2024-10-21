@@ -140,3 +140,7 @@ int Utils::findCharacterIndex(const std::string& characterName) {
 	}
 	return -1; // Character not found
 }
+
+int Utils::hammingDistance(const IconHash& hash1, const IconHash& hash2) {
+	return (hash1 ^ hash2).count();
+}

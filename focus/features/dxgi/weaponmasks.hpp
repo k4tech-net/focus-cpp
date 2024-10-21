@@ -4,6 +4,7 @@
 #include <vector>
 #include <string>
 #include <xorstr.hpp>
+#include <bitset>
 
 struct WeaponMask {
     std::string name;
@@ -16,5 +17,9 @@ struct ProcessedMask {
     cv::Mat edges;
 };
 
+static const int HASH_SIZE = 512;
+using IconHash = std::bitset<HASH_SIZE>;
+
+extern IconHash;
 extern std::vector<WeaponMask> rustMasks;
-extern std::unordered_map<std::string, std::string> operatorHashes;
+extern std::unordered_map<IconHash, std::string> operatorHashes;

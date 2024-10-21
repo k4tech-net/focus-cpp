@@ -790,8 +790,8 @@ void keybindManager() {
 				// Define ratios for crop region
 				switch (settings.aspect_ratio) {
 					case 0:
-						cropRatioX = 0.3926f;
-						cropRatioWidth = 0.0252f;
+						cropRatioX = 0.3928f;
+						cropRatioWidth = 0.0253f;
 						break;
 					case 1:
 						cropRatioX = 0.358f;

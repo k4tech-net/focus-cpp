@@ -169,18 +169,23 @@ cv::Mat DXGI::preprocessIcon(const cv::Mat& icon) {
     return binary;
 }
 
-std::string DXGI::hashIcon(const cv::Mat& icon) {
+IconHash DXGI::hashIcon(const cv::Mat& icon) {
     cv::Mat preprocessed = preprocessIcon(icon);
+    IconHash hash;
 
-    std::string hash;
-    hash.reserve(64);  // We'll generate a 64-bit hash string
-
-    for (int y = 0; y < preprocessed.rows; y += 8) {
-        for (int x = 0; x < preprocessed.cols; x += 8) {
-            // Calculate the average of an 8x8 block
-            cv::Rect block(x, y, 8, 8);
+    int idx = 0;
+    for (int y = 0; y < preprocessed.rows; y += 4) {
+        for (int x = 0; x < preprocessed.cols; x += 4) {
+            cv::Rect block(x, y, 4, 4);
             double avgIntensity = cv::mean(preprocessed(block))[0];
-            hash += (avgIntensity > 127) ? '1' : '0';
+            hash[idx++] = (avgIntensity > 127);
+
+            // Calculate horizontal gradient
+            if (x < preprocessed.cols - 4) {
+                cv::Rect nextBlock(x + 4, y, 4, 4);
+                double nextAvgIntensity = cv::mean(preprocessed(nextBlock))[0];
+                hash[idx++] = (nextAvgIntensity > avgIntensity);
+            }
         }
     }
 
@@ -432,7 +437,7 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
     }
 
     cv::Mat normalizedIcon = normalizeIconSize(src);
-    std::string hash = hashIcon(normalizedIcon);
+    IconHash hash = hashIcon(normalizedIcon);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -445,21 +450,16 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
     }
     else {
         // No exact match, find the closest match
-        int minHammingDistance = 64;  // Maximum possible Hamming distance for a 64-bit hash
+        int minHammingDistance = HASH_SIZE;  // Maximum possible Hamming distance for a 64-bit hash
         for (const auto& pair : operatorHashes) {
-            int distance = 0;
-            for (size_t i = 0; i < 64; ++i) {
-                if (hash[i] != pair.first[i]) {
-                    ++distance;
-                }
-            }
+            int distance = utils.hammingDistance(hash, pair.first);
             if (distance < minHammingDistance) {
                 minHammingDistance = distance;
                 detectedOperator = pair.second;
             }
         }
 
-        if (minHammingDistance <= 5) {  // Adjust this threshold as needed
+        if (minHammingDistance <= HASH_SIZE / 8) {  // Adjust this threshold as needed
             operatorFound = true;
         }
     }
