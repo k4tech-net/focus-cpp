@@ -24,6 +24,26 @@ void pressMouse1(bool press) {
 //	}
 //}
 
+void controlledMouseMove(int totalX, int totalY) {
+	const int MAX_MOVE = 250;
+	const std::chrono::milliseconds DELAY(1);
+
+	int remainingX = totalX;
+	int remainingY = totalY;
+
+	while (remainingX != 0 || remainingY != 0) {
+		int moveX = std::clamp(remainingX, -MAX_MOVE, MAX_MOVE);
+		int moveY = std::clamp(remainingY, -MAX_MOVE, MAX_MOVE);
+
+		ms.moveR(moveX, moveY);
+
+		remainingX -= moveX;
+		remainingY -= moveY;
+
+		std::this_thread::sleep_for(DELAY);
+	}
+}
+
 void Control::driveMouse() {
 
 	static bool complete = false;
@@ -148,6 +168,35 @@ void Control::driveMouse() {
 			currentIteration = 0;
 			smoothedCorrectionX = 0;
 			smoothedCorrectionY = 0;
+
+			//if (GetAsyncKeyState(VK_RSHIFT)) {
+			//	std::this_thread::sleep_for(std::chrono::seconds(2));
+
+			//	float oldFov = 90.0f;
+			//	float newFov = settings.fov;
+
+			//	float fovDifference = newFov - oldFov;
+			//	float quadratic_coef = 0.0001787f;
+			//	float linear_coef = -0.0107192f;
+			//	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
+			//		(linear_coef * fovDifference);
+
+			//	std::cout << "fovCompensation: " << fovModifier << std::endl;
+
+			//	controlledMouseMove(8732 * fovModifier, 0);
+
+			//	std::cout << 8732 * fovModifier << std::endl;
+
+			//	// Siege
+			//	// 82 = 7274
+			//	// 60 = 7119
+			//	// 90 = 7357
+
+			//	// Rust
+			//	// 90 = 8732
+			//	// 70 = 11228
+			//	// 80 = 9824
+			//}
 		}
 
 		if (settings.potato) {

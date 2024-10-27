@@ -500,6 +500,7 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float oldBaseSens = 10;
 	float oldRelativeSens = 50;
 	float oldMultiplier = 0.02f;
+	float oldFov = 82.0f;
 
 	float newBaseXSens = settings.sensitivity[0];
 	float newBaseYSens = settings.sensitivity[1];
@@ -507,6 +508,8 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float new25xSens = settings.sensitivity[3];
 	float new35xSens = settings.sensitivity[4];
 	float newMultiplier = settings.sensitivity[5];
+
+	float newFov = settings.fov;
 
 	int activescope = 0;
 
@@ -518,8 +521,15 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float barrelXEffect = 1.0f;
 	float barrelYEffect = 1.0f;
 
+	float fovDifference = newFov - oldFov;
+	float quadratic_coef = 0.0000153f;  // Solved with trig :gangster:
+	float linear_coef = 0.0013043f;
+	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
+		(linear_coef * fovDifference);
+
 	if (settings.selectedCharacterIndex < settings.characters.size() &&
 		!settings.characters[settings.selectedCharacterIndex].weapondata.empty()) {
+
 		int weaponIndex = settings.isPrimaryActive ?
 			settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
 			settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
@@ -594,8 +604,8 @@ std::vector<float> calculateSensitivityModifierR6() {
 		break;
 	}
 
-	float newSensXModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier) * totalAttachXEffect);
-	float newSensYModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier) * totalAttachYEffect);
+	float newSensXModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier) * totalAttachXEffect) * fovModifier;
+	float newSensYModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier) * totalAttachYEffect) * fovModifier;
 
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
@@ -603,15 +613,23 @@ std::vector<float> calculateSensitivityModifierR6() {
 std::vector<float> calculateSensitivityModifierRust() {
 	float oldBaseSens = 0.509f;
 	float oldADSSens = 1;
+	float oldFov = 90.f;
 
 	float newBaseSens = settings.sensitivity[0];
 	float newADSSens = settings.sensitivity[1];
+	float newFov = settings.fov;
 
 	float sightXEffect = 1.0f;
 	float sightYEffect = 1.0f;
 
 	float barrelXEffect = 1.0f;
 	float barrelYEffect = 1.0f;
+
+	float fovDifference = newFov - oldFov;
+	float quadratic_coef = 0.0001787f;
+	float linear_coef = -0.0107192f;
+	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
+		(linear_coef * fovDifference);
 
 	if (settings.selectedCharacterIndex < settings.characters.size() &&
 		!settings.characters[settings.selectedCharacterIndex].weapondata.empty()) {
@@ -670,8 +688,8 @@ std::vector<float> calculateSensitivityModifierRust() {
 		standingModifier = 0.5f;
 	}
 
-	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect * standingModifier);
-	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect * standingModifier);
+	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect * standingModifier) * fovModifier;
+	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect * standingModifier) * fovModifier;
 
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
@@ -1249,6 +1267,11 @@ void Menu::gui()
 						}
 
 						ImGui::Spacing();
+
+						if (ImGui::SliderFloat(xorstr_("FOV"), &settings.fov, 60.0f, 90.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
 
@@ -1343,6 +1366,11 @@ void Menu::gui()
 						}
 
 						ImGui::Spacing();
+
+						if (ImGui::SliderFloat(xorstr_("FOV"), &settings.fov, 70.0f, 90.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
 

@@ -2,6 +2,7 @@
 
 #include <Windows.h>
 #include <math.h>
+#include <numbers>
 #include <stdio.h>
 #include <xorstr.hpp>
 

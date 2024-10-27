@@ -68,6 +68,7 @@ public:
     std::vector<float> sensitivity;
     std::string crouch_keybind;
     int aspect_ratio = 0;
+    float fov = 0;
 
     // Character data
     std::vector<characterData> characters;

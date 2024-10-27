@@ -155,6 +155,10 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
 			aspect_ratio = std::stoi(value);
 			std::cout << "AspectRatio set to: " << aspect_ratio << std::endl;
 		}
+        else if (key == xorstr_("Fov")) {
+            fov = std::stoi(value);
+            std::cout << "Fov set to: " << fov << std::endl;
+        }
     }
 
     // Add the last weapon and character
@@ -259,6 +263,7 @@ void Settings::saveSettings(const std::string& filename) {
             file << "\n";
 
             file << xorstr_("AspectRatio=") << aspect_ratio << "\n";
+            file << xorstr_("Fov=") << fov << "\n";
 
             for (const auto& character : characters) {
                 file << xorstr_("Character=") << character.charactername << "\n";
@@ -290,6 +295,9 @@ void Settings::saveSettings(const std::string& filename) {
                 file << sens << ",";
             }
             file << "\n";
+
+            file << xorstr_("Fov=") << fov << "\n";
+
             file << xorstr_("CrouchKeybind=") << crouch_keybind << "\n";
             file << xorstr_("Options=");
             for (const auto& option : characters[0].options) {
