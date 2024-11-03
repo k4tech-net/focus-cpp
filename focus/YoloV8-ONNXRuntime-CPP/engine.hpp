@@ -5,6 +5,7 @@
 #include <unordered_map>
 #include <vector>
 #include <regex>
+#include <xorstr.hpp>
 
 struct Detection {
     cv::Rect box;
@@ -75,10 +76,10 @@ private:
                 result.push_back(value);
             }
             catch (const std::invalid_argument& e) {
-                throw std::invalid_argument("Bad argument (cannot cast): value=" + str);
+                throw std::invalid_argument(xorstr_("Bad argument (cannot cast): value=") + str);
             }
             catch (const std::out_of_range& e) {
-                throw std::out_of_range("Value out of range: " + str);
+                throw std::out_of_range(xorstr_("Value out of range: ") + str);
             }
         }
 

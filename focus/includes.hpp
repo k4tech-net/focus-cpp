@@ -12,6 +12,7 @@
 
 #include "features/utils/utils.hpp"
 
+extern Constants constants;
 extern Globals globals;
 extern Settings settings;
 extern DXGI dx;

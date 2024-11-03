@@ -104,7 +104,7 @@ BOOL Keyboard::sendKeyboardInput(KeyboardKey b0, KeyboardKey b1, KeyboardKey b2,
     if (!callKeyboard(&io)) {
         keyboard_close();
         keyboard_open();
-        std::cout << "Driver Error: " << GetLastError() << std::endl;
+        std::cout << xorstr_("Driver Error: ") << GetLastError() << std::endl;
         return FALSE;
     }
     return TRUE;
@@ -113,7 +113,7 @@ BOOL Keyboard::sendKeyboardInput(KeyboardKey b0, KeyboardKey b1, KeyboardKey b2,
 BOOL Keyboard::keyboard_multi_press(const std::vector<KeyboardKey>& keys)
 {
     if (keys.size() > 6) {
-        std::cout << "Error: Can't press more than 6 keys simultaneously" << std::endl;
+        std::cout << xorstr_("Error: Can't press more than 6 keys simultaneously") << std::endl;
         return FALSE;
     }
 

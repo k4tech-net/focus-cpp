@@ -69,6 +69,7 @@ public:
     std::string crouch_keybind;
     int aspect_ratio = 0;
     float fov = 0;
+    float fovSensitivityModifier = 1.f;
 
     // Character data
     std::vector<characterData> characters;
@@ -119,5 +120,11 @@ struct Globals
     } mouseinfo;
 };
 
+struct Constants {
+    static constexpr int SIEGE360DIST = 7274; //82 FOV
+    static constexpr int RUST360DIST = 8732; //90 FOV
+};
+
+extern Constants constants;
 extern Globals globals;
 extern Settings settings;

@@ -12,6 +12,7 @@
 #include <fstream>
 #include "Windows.h"
 #include <iostream>
+#include <numbers>
 
 #include "../driver/mouse.hpp"
 #include "../driver/keyboard.hpp"

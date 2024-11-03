@@ -169,23 +169,23 @@ void Control::driveMouse() {
 			smoothedCorrectionX = 0;
 			smoothedCorrectionY = 0;
 
-			if (GetAsyncKeyState(VK_RSHIFT)) {
-				std::this_thread::sleep_for(std::chrono::seconds(2));
+			//if (GetAsyncKeyState(VK_RSHIFT)) {
+				//std::this_thread::sleep_for(std::chrono::seconds(2));
 
-				float oldFov = 82.0f;
-				float newFov = settings.fov;
+				//float oldFov = 82.0f;
+				//float newFov = settings.fov;
 
-				float fovDifference = newFov - oldFov;
-				float quadratic_coef = 0.0000153f;  // Solved with trig :gangster:
-				float linear_coef = 0.0013043f;
-				float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
-					(linear_coef * fovDifference);
+				//float fovDifference = newFov - oldFov;
+				//float quadratic_coef = 0.0000153f;  // Solved with trig :gangster:
+				//float linear_coef = 0.0013043f;
+				//float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
+				//	(linear_coef * fovDifference);
 
-				std::cout << "fovCompensation: " << fovModifier << std::endl;
+				//std::cout << "fovCompensation: " << fovModifier << std::endl;
 
-				controlledMouseMove(7274 * fovModifier, 0);
+				//controlledMouseMove(7274 * fovModifier, 0);
 
-				std::cout << 7274 * fovModifier << std::endl;
+				//std::cout << 7274 * fovModifier << std::endl;
 
 				// Siege
 				// 82 = 7274
@@ -196,7 +196,7 @@ void Control::driveMouse() {
 				// 90 = 8732
 				// 70 = 11228
 				// 80 = 9824
-			}
+			//}
 		}
 
 		if (settings.potato) {

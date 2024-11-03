@@ -174,10 +174,12 @@ int main()
 
 		mn.gui();
 
-		//if (!g.desktopMat.empty()) {
-		//	g.desktopMutex_.lock();
-		//	cv::imshow("output", g.desktopMat); // Debug window
-		//	g.desktopMutex_.unlock();
+		//if (GetAsyncKeyState(VK_RSHIFT)) {
+		//	if (!globals.desktopMat.empty()) {
+		//		globals.desktopMutex_.lock();
+		//		cv::imshow("output", globals.desktopMat); // Debug window
+		//		globals.desktopMutex_.unlock();
+		//	}
 		//}
 
 		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
@@ -258,7 +260,7 @@ void RegisterRawInput(HWND hwnd) {
 	rid.hwndTarget = hwnd;
 
 	if (!RegisterRawInputDevices(&rid, 1, sizeof(rid))) {
-		std::cerr << "Failed to register raw input devices." << std::endl;
+		std::cerr << xorstr_("Failed to register raw input devices.") << std::endl;
 	}
 }
 
@@ -371,7 +373,7 @@ LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam)
 		}
 
 		if (GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER)) != dwSize) {
-			std::cerr << "GetRawInputData does not return correct size!" << std::endl;
+			std::cerr << xorstr_("GetRawInputData does not return correct size!") << std::endl;
 		}
 
 		RAWINPUT* raw = (RAWINPUT*)lpb;

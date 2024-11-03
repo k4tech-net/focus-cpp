@@ -5,7 +5,7 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
     
     // Set session options
     Ort::SessionOptions sessionOptions;
-    if (strcmp(provider, "CUDA") == 0) {
+    if (strcmp(provider, xorstr_("CUDA")) == 0) {
         OrtCUDAProviderOptions cudaOption;
         sessionOptions.AppendExecutionProvider_CUDA(cudaOption);
     }
@@ -64,7 +64,7 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
     }
 
     // Find the input size of the model
-    auto imgsz_item = metadata.find("imgsz");
+    auto imgsz_item = metadata.find(xorstr_("imgsz"));
     if (imgsz_item != metadata.end()) {
         // parse it and convert to int iterable
         std::vector<int> imgsz = convertStringVectorToInts(parseVectorString(imgsz_item->second));
@@ -73,11 +73,11 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         }
     }
     else {
-        std::cerr << "Warning: Cannot get imgsz value from metadata" << std::endl;
+        std::cerr << xorstr_("Warning: Cannot get imgsz value from metadata") << std::endl;
     }
 
     // For yolo this is normally 32 but get it anyway
-    auto stride_item = metadata.find("stride");
+    auto stride_item = metadata.find(xorstr_("stride"));
     if (stride_item != metadata.end()) {
         // parse it and convert to int iterable
         int stride = std::stoi(stride_item->second);
@@ -86,11 +86,11 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         }
     }
     else {
-        std::cerr << "Warning: Cannot get stride value from metadata" << std::endl;
+        std::cerr << xorstr_("Warning: Cannot get stride value from metadata") << std::endl;
     }
 
     // For the names of the classes
-    auto names_item = metadata.find("names");
+    auto names_item = metadata.find(xorstr_("names"));
     if (names_item != metadata.end()) {
         // parse it and convert to int iterable
         std::unordered_map<int, std::string> names = parseNames(names_item->second);
@@ -100,11 +100,11 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         }
     }
     else {
-        std::cerr << "Warning: Cannot get names value from metadata" << std::endl;
+        std::cerr << xorstr_("Warning: Cannot get names value from metadata") << std::endl;
     }
 
     // Determine the task (We want detect)
-    auto task_item = metadata.find("task");
+    auto task_item = metadata.find(xorstr_("task"));
 	if (task_item != metadata.end()) {
         std::string task = std::string(task_item->second);
 
@@ -113,7 +113,7 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         }
 	}
 	else {
-		std::cerr << "Warning: Cannot get task value from metadata" << std::endl;
+		std::cerr << xorstr_("Warning: Cannot get task value from metadata") << std::endl;
 	}
 
 	// Aquire number of classes
@@ -121,7 +121,7 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
 		nc_ = names_.size();
 	}
     else {
-        std::cerr << "Warning: Cannot get nc value from metadata (probably names wasn't set)" << std::endl;
+        std::cerr << xorstr_("Warning: Cannot get nc value from metadata (probably names wasn't set)") << std::endl;
     }
 
     // Setup the desired input shape

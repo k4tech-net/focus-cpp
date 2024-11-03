@@ -56,17 +56,6 @@ std::vector<std::string> Utils::scanCurrentDirectoryForConfigFiles() {
 	return configFiles;
 }
 
-std::vector<std::string> Utils::scanCurrentDirectoryForJsonFiles() {
-	std::vector<std::string> configFiles;
-	std::filesystem::path currentPath = std::filesystem::current_path();
-	for (const auto& entry : std::filesystem::directory_iterator(currentPath)) {
-		if (entry.is_regular_file() && entry.path().extension() == xorstr_(".json")) {
-			configFiles.push_back(entry.path().filename().string());
-		}
-	}
-	return configFiles;
-}
-
 bool Utils::isEdited(const std::string& original, const std::string& changed) {
 	if (original == changed) {
 		return false;

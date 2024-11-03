@@ -103,7 +103,7 @@ void Mouse::mouse_move(char button, char x, char y, char wheel)
 	if (!callmouse(&io)) {
 		mouse_close();
 		mouse_open();
-		std::cout << "Driver Error: " << GetLastError() << std::endl;
+		std::cout << xorstr_("Driver Error: ") << GetLastError() << std::endl;
 	}
 }
 

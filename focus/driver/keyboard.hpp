@@ -7,6 +7,8 @@
 #include <winternl.h>
 #pragma comment(lib, "ntdll.lib")
 
+#include <xorstr.hpp>
+
 typedef int BOOL;
 
 enum class KeyboardKey : unsigned char

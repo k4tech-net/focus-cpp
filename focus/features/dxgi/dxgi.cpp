@@ -115,7 +115,7 @@ void DXGI::CleanupDXGI() {
     }
 }
 
-std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass) {
+std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass, float fov) {
     int imageCenterX = image.cols / 2;
     int imageCenterY = image.rows / 2;
 
@@ -142,10 +142,45 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
         return { 0.0f, 0.0f };
     }
 
-    float correctionX = closestDetectionCenter.x - imageCenterX;
-    float correctionY = closestDetectionCenter.y - imageCenterY;
+    // Calculate pixel offsets from center
+    float pixelOffsetX = closestDetectionCenter.x - imageCenterX;
+    float pixelOffsetY = closestDetectionCenter.y - imageCenterY;
 
-    return { correctionX, correctionY };
+    // Convert FOV from degrees to radians
+    float fovRad = fov * std::numbers::pi / 180.0f;
+
+    // Calculate the number of pixels per degree
+    // This uses half the screen width since FOV is horizontal
+    float pixelsPerDegree = (float)image.cols / fov;
+
+    // Convert pixel offsets to angles (in degrees)
+    float angleX = pixelOffsetX / pixelsPerDegree;
+    float angleY = pixelOffsetY / pixelsPerDegree;
+
+    // Calculate vertical FOV based on aspect ratio
+    float aspectRatio = (float)image.cols / image.rows;
+    float verticalFov = 2.0f * atan(tan(fovRad / 2.0f) / aspectRatio) * 180.0f / std::numbers::pi;
+
+    // Scale Y angle based on vertical FOV
+    angleY = angleY * (fov / verticalFov);
+
+	float mouseX = 0.0f;
+	float mouseY = 0.0f;
+
+    // Convert angles to mouse input where 7274 = 360 degrees
+    if (settings.mode == xorstr_("Game") && settings.game == xorstr_("Rust")) {
+        mouseX = (angleX / 360.0f) * constants.RUST360DIST;
+        mouseY = (angleY / 360.0f) * constants.RUST360DIST;
+    }
+    else {
+        mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
+        mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+    }
+
+    mouseX *= settings.fovSensitivityModifier;
+    mouseY *= settings.fovSensitivityModifier;
+
+    return { mouseX, mouseY };
 }
 
 cv::Mat DXGI::normalizeIconSize(const cv::Mat& icon) {
@@ -240,7 +275,7 @@ void DXGI::aimbot() {
 
 		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.05, 0.5);
 
-        std::vector<float> corrections = calculateCorrections(desktopImage, detections, settings.aimbotData.hitbox);
+        std::vector<float> corrections = calculateCorrections(desktopImage, detections, settings.aimbotData.hitbox, settings.fov);
 
         if (corrections[0] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionX = corrections[0];
@@ -430,6 +465,27 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 }
 
+void debugHammingDistances(const IconHash& hash) {
+    std::vector<std::pair<std::string, float>> distances;
+
+    for (const auto& pair : operatorHashes) {
+        int distance = utils.hammingDistance(hash, pair.first);
+        float percentage = static_cast<float>(distance) / HASH_SIZE * 100.0f;
+        distances.push_back({ pair.second, percentage });
+    }
+
+    // Sort by distance
+    std::sort(distances.begin(), distances.end(),
+        [](const auto& a, const auto& b) { return a.second < b.second; });
+
+    // Print top 5 closest matches
+    std::cout << xorstr_("Top 5 closest matches:\n");
+    for (size_t i = 0; i < std::min(size_t(5), distances.size()); ++i) {
+        std::cout << distances[i].first << xorstr_(": ")
+            << distances[i].second << xorstr_("% different\n");
+    }
+}
+
 void DXGI::detectOperatorR6(cv::Mat& src) {
 
     if (src.empty()) {
@@ -438,6 +494,8 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
 
     cv::Mat normalizedIcon = normalizeIconSize(src);
     IconHash hash = hashIcon(normalizedIcon);
+
+	//debugHammingDistances(hash);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -451,15 +509,20 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
     else {
         // No exact match, find the closest match
         int minHammingDistance = HASH_SIZE;  // Maximum possible Hamming distance for a 64-bit hash
+        float bestMatchPercentage = 100.0f;
+
         for (const auto& pair : operatorHashes) {
             int distance = utils.hammingDistance(hash, pair.first);
+            float percentDiff = static_cast<float>(distance) / HASH_SIZE * 100.0f;
+
             if (distance < minHammingDistance) {
                 minHammingDistance = distance;
+                bestMatchPercentage = percentDiff;
                 detectedOperator = pair.second;
             }
         }
 
-        if (minHammingDistance <= HASH_SIZE / 8) {  // Adjust this threshold as needed
+        if (bestMatchPercentage <= 5.0f) {  // Adjust between 1-5% based on testing
             operatorFound = true;
         }
     }
