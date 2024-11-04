@@ -767,10 +767,37 @@ void keybindManager() {
 					int screenHeight = globals.desktopMat.rows;
 
 					// Define ratios for crop region
-					float cropRatioX = 0.8f; // 20% from left
-					float cropRatioY = 0.82f; // 20% from top
-					float cropRatioWidth = 0.18f; // 18% of total width
-					float cropRatioHeight = 0.14f; // 14% of total height
+					float cropRatioX = 0.0f;
+					float cropRatioY = 0.82f;
+					float cropRatioWidth = 0.008f;
+					float cropRatioHeight = 0.14f;
+
+					switch (settings.aspect_ratio) {
+						case 0:
+							cropRatioX = 0.8535f;
+							break;
+						case 1:
+							cropRatioX = 0.805f;
+							break;
+						case 2:
+							cropRatioX = 0.793f;
+							break;
+						case 3:
+							cropRatioX = 0.8275f;
+							break;
+						case 4:
+							cropRatioX = 0.838f;
+							break;
+						case 5:
+							cropRatioX = 0.844f;
+							break;
+						case 6:
+							cropRatioX = 0.831f;
+							break;
+						case 7:
+							cropRatioX = 0.765f;
+							break;
+					}
 
 					// Calculate the region of interest (ROI) based on ratios
 					int x = static_cast<int>(cropRatioX * screenWidth);
@@ -808,7 +835,6 @@ void keybindManager() {
 				float cropRatioWidth = 0.f;
 				float cropRatioHeight = 0.052f;
 
-
 				// Define ratios for crop region
 				switch (settings.aspect_ratio) {
 					case 0:
@@ -838,6 +864,10 @@ void keybindManager() {
 					case 6:
 						cropRatioX = 0.4f;
 						cropRatioWidth = 0.023f;
+						break;
+					case 7:
+						cropRatioX = 0.4196f;
+						cropRatioWidth = 0.0191f;
 						break;
 				}
 
@@ -1264,9 +1294,9 @@ void Menu::gui()
 							globals.filesystem.unsavedChanges = true;
 						}
 
-						const char* Aspect_Ratios[] = { xorstr_("16:9"), xorstr_("4:3"), xorstr_("5:4"), xorstr_("3:2"), xorstr_("16:10"), xorstr_("5:3"), xorstr_("19:10") };
+						const char* Aspect_Ratios[] = { xorstr_("16:9"), xorstr_("4:3"), xorstr_("5:4"), xorstr_("3:2"), xorstr_("16:10"), xorstr_("5:3"), xorstr_("19:10"), xorstr_("21:9") };
 
-						if (comboBoxGen(xorstr_("Aspect Ratio"), &settings.aspect_ratio, Aspect_Ratios, 7)) {
+						if (comboBoxGen(xorstr_("Aspect Ratio"), &settings.aspect_ratio, Aspect_Ratios, 8)) {
 							globals.filesystem.unsavedChanges = true;
 						}
 

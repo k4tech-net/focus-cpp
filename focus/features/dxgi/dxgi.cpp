@@ -302,19 +302,19 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 
     // Define the region of interest (ROI) coordinates as a percentage of the frame
-    float roi1XPercent = 0.02f; // X coordinate percentage for ROI 1
+    float roi1XPercent = 0.f; // X coordinate percentage for ROI 1
     float roi1YPercent = 0.06f; // Y coordinate percentage for ROI 1
-    float roi1WidthPercent = 0.9f; // Width percentage for ROI 1
+    float roi1WidthPercent = 1.f; // Width percentage for ROI 1
     float roi1HeightPercent = 0.25f; // Height percentage for ROI 1
 
-    float roi2XPercent = 0.02f; // X coordinate percentage for ROI 2
+    float roi2XPercent = 0.f; // X coordinate percentage for ROI 2
     float roi2YPercent = 0.4f; // Y coordinate percentage for ROI 2
-    float roi2WidthPercent = 0.9f; // Width percentage for ROI 2
+    float roi2WidthPercent = 1.f; // Width percentage for ROI 2
     float roi2HeightPercent = 0.25f; // Height percentage for ROI 2
 
-    float roi3XPercent = 0.02f; // X coordinate percentage for ROI 3
+    float roi3XPercent = 0.f; // X coordinate percentage for ROI 3
     float roi3YPercent = 0.7f; // Y coordinate percentage for ROI 3
-    float roi3WidthPercent = 0.9f; // Width percentage for ROI 3
+    float roi3WidthPercent = 1.f; // Width percentage for ROI 3
     float roi3HeightPercent = 0.25f; // Height percentage for ROI 3
 
     // Calculate ROI coordinates based on percentage of frame dimensions
@@ -522,7 +522,7 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
             }
         }
 
-        if (bestMatchPercentage <= 5.0f) {  // Adjust between 1-5% based on testing
+        if (bestMatchPercentage <= 10.0f) {  // Adjust between 1-5% based on testing
             operatorFound = true;
         }
     }

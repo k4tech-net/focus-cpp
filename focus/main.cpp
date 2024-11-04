@@ -175,11 +175,13 @@ int main()
 		mn.gui();
 
 		//if (GetAsyncKeyState(VK_RSHIFT)) {
-		//	if (!globals.desktopMat.empty()) {
-		//		globals.desktopMutex_.lock();
-		//		cv::imshow("output", globals.desktopMat); // Debug window
-		//		globals.desktopMutex_.unlock();
-		//	}
+			//if (!globals.desktopMat.empty()) {
+			//	globals.desktopMutex_.lock();
+			//	cv::Mat desktop;
+			//	cv::resize(globals.desktopMat, desktop, cv::Size(1920, 1080));
+			//	cv::imshow("output", desktop); // Debug window
+			//	globals.desktopMutex_.unlock();
+			//}
 		//}
 
 		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
