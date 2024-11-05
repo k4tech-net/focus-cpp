@@ -838,7 +838,7 @@ void keybindManager() {
 					cv::Mat smallRegion = globals.desktopMat(roi);
 					globals.desktopMutex_.unlock();
 
-					dx.detectWeaponR6(smallRegion, 25, 75);
+					dx.detectWeaponR6(smallRegion, 25, 25);
 				}
 			}
 			else {

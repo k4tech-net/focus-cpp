@@ -449,7 +449,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
 
     if (((settings.mode == xorstr_("Character") && settings.characters[settings.selectedCharacterIndex].options[4]) ||
         (settings.mode == xorstr_("Game") && settings.game == xorstr_("Siege") && settings.characters[settings.selectedCharacterIndex].options[1])) &&
-        primaryArea1 > minActiveAreaThreshold&& primaryArea1 > primaryArea2&& primaryArea1 > primaryArea3) {
+        primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
     
         if (totalBrightness2 > minActiveAreaThreshold && totalBrightness2 > totalBrightness3) {
             activeROI = 2;
