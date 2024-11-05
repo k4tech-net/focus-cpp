@@ -89,6 +89,45 @@ bool Utils::initilizeMarker() {
 	}
 }
 
+int checkAVXSupport() {
+	// Check if OS supports XSAVE/XRSTOR for saving AVX states
+	int cpuInfo[4];
+	__cpuid(cpuInfo, 1);
+	bool osSupportsAVX = (cpuInfo[2] & (1 << 27)) != 0;  // OSXSAVE flag
+
+	if (!osSupportsAVX) {
+		return 0;
+	}
+
+	// Check if OS supports AVX state saving
+	unsigned long long xcrFeatureMask = _xgetbv(_XCR_XFEATURE_ENABLED_MASK);
+	bool avxStateSupported = (xcrFeatureMask & 6) == 6;
+	bool avx512StateSupported = (xcrFeatureMask & 0xE6) == 0xE6;
+
+	if (!avxStateSupported) {
+		return 0;
+	}
+
+	// Check CPU AVX support
+	bool hasAVX = (cpuInfo[2] & (1 << 28)) != 0;  // AVX flag
+	if (!hasAVX) {
+		return 0;
+	}
+
+	// Check CPU AVX2 and AVX512 support
+	__cpuidex(cpuInfo, 7, 0);
+
+	if (avx512StateSupported && (cpuInfo[1] & (1 << 16))) {  // AVX-512F flag
+		return 2;
+	}
+
+	if (cpuInfo[1] & (1 << 5)) {  // AVX2 flag
+		return 1;
+	}
+
+	return 0;
+}
+
 void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
 		globals.startup.mouse_driver = true;
@@ -109,6 +148,8 @@ void Utils::startUpChecksRunner() {
 	if (initilizeMarker()) {
 		globals.startup.marker = true;
 	}
+
+	globals.startup.avx = checkAVXSupport();
 
 	if (globals.startup.mouse_driver && globals.startup.keyboard_driver && globals.startup.dxgi && globals.startup.marker) {
 		globals.startup.passedstartup = true;
@@ -133,3 +174,4 @@ int Utils::findCharacterIndex(const std::string& characterName) {
 int Utils::hammingDistance(const IconHash& hash1, const IconHash& hash2) {
 	return (hash1 ^ hash2).count();
 }
+

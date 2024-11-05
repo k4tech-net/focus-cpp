@@ -111,6 +111,7 @@ struct Globals
         bool dxgi = false;
         bool marker = false;
         bool hasFinished = false;
+        int avx = -1;
     } startup;
 
     struct MouseInfo {

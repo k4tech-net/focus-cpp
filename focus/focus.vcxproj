@@ -173,7 +173,7 @@
     <ClCompile Include="imgui\plugins\implot_items.cpp" />
     <ClCompile Include="main.cpp" />
     <ClCompile Include="WinMain.cpp" />
-    <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp" />
+    <ClCompile Include="YOLOv11-ONNXRuntime-CPP\engine.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="driver\keyboard.hpp" />
@@ -199,7 +199,7 @@
     <ClInclude Include="imgui\plugins\implot.h" />
     <ClInclude Include="imgui\plugins\implot_internal.h" />
     <ClInclude Include="includes.hpp" />
-    <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp" />
+    <ClInclude Include="YOLOv11-ONNXRuntime-CPP\engine.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets" />

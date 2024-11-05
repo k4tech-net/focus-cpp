@@ -100,6 +100,8 @@ void DXGI::CaptureDesktopDXGI() {
 
         //imshow("output", frameCopy); // Debug window
         //cv::waitKey(1);
+
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -235,6 +237,12 @@ void DXGI::aimbot() {
 
     bool aimbotInit = false;
 
+    // Pre-calculate ROI values
+    const float cropRatioX = 0.25f;
+    const float cropRatioY = 0.25f;
+    const float cropRatioWidth = 0.5f;
+    const float cropRatioHeight = 0.5f;
+
     std::unique_ptr<YoloInferencer> inferencer;
 
     while (!globals.shutdown) {
@@ -265,17 +273,38 @@ void DXGI::aimbot() {
             continue;
         }
 
-        globals.desktopMutex_.lock();
-        cv::Mat desktopImage = globals.desktopMat.clone();
-        globals.desktopMutex_.unlock();
+        cv::Mat croppedImage;
+        {
+            std::lock_guard<std::mutex> lock(globals.desktopMutex_);
+            if (globals.desktopMat.empty()) {
+                continue;
+            }
 
-        if (desktopImage.empty()) {
+            // Calculate ROI directly from desktop dimensions
+            const int screenWidth = globals.desktopMat.cols;
+            const int screenHeight = globals.desktopMat.rows;
+            const cv::Rect roi(
+                static_cast<int>(cropRatioX * screenWidth),
+                static_cast<int>(cropRatioY * screenHeight),
+                static_cast<int>(cropRatioWidth * screenWidth),
+                static_cast<int>(cropRatioHeight * screenHeight)
+            );
+
+            // Convert BGRA to BGR during the crop operation
+            cv::cvtColor(globals.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
+        }
+
+        if (croppedImage.empty()) {
             continue;
         }
 
-		std::vector<Detection> detections = inferencer->infer(desktopImage, 0.05, 0.5);
+		std::vector<Detection> detections = inferencer->infer(croppedImage, 0.05, 0.5);
 
-        std::vector<float> corrections = calculateCorrections(desktopImage, detections, settings.aimbotData.hitbox, settings.fov);
+        if (detections.empty()) {
+			continue;
+		}
+
+        std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov);
 
         if (corrections[0] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionX = corrections[0];

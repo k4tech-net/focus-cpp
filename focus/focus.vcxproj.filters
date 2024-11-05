@@ -51,9 +51,6 @@
     <ClCompile Include="features\crypto\crypto.cpp">
       <Filter>features\crypto</Filter>
     </ClCompile>
-    <ClCompile Include="YoloV8-ONNXRuntime-CPP\engine.cpp">
-      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
-    </ClCompile>
     <ClCompile Include="features\dxgi\weaponmasks.cpp">
       <Filter>features\dxgi</Filter>
     </ClCompile>
@@ -68,6 +65,9 @@
     </ClCompile>
     <ClCompile Include="driver\mouse.cpp">
       <Filter>driver</Filter>
+    </ClCompile>
+    <ClCompile Include="YOLOv11-ONNXRuntime-CPP\engine.cpp">
+      <Filter>YOLOv11-ONNXRuntime-CPP</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -98,11 +98,11 @@
     <Filter Include="features\crypto">
       <UniqueIdentifier>{70b25cbf-e585-44ac-9cf8-eae5b82c1848}</UniqueIdentifier>
     </Filter>
-    <Filter Include="YoloV8-ONNXRuntime-CPP">
-      <UniqueIdentifier>{f2f4c344-1df6-4a70-a9ba-21474d368f5a}</UniqueIdentifier>
-    </Filter>
     <Filter Include="driver">
       <UniqueIdentifier>{ac4e747f-e5ff-4d53-8323-027ae64f57e5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="YOLOv11-ONNXRuntime-CPP">
+      <UniqueIdentifier>{e103a3d8-22d2-4c1e-8fd4-83a1089db62e}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -158,9 +158,6 @@
     <ClInclude Include="features\crypto\crypto.hpp">
       <Filter>features\crypto</Filter>
     </ClInclude>
-    <ClInclude Include="YoloV8-ONNXRuntime-CPP\engine.hpp">
-      <Filter>YoloV8-ONNXRuntime-CPP</Filter>
-    </ClInclude>
     <ClInclude Include="features\dxgi\weaponmasks.hpp">
       <Filter>features\dxgi</Filter>
     </ClInclude>
@@ -175,6 +172,9 @@
     </ClInclude>
     <ClInclude Include="driver\mouse.hpp">
       <Filter>driver</Filter>
+    </ClInclude>
+    <ClInclude Include="YOLOv11-ONNXRuntime-CPP\engine.hpp">
+      <Filter>YOLOv11-ONNXRuntime-CPP</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

@@ -408,6 +408,24 @@ void Menu::startupchecks_gui() {
 		ImGui::PopStyleColor();
 	}
 
+	ImGui::Separator();
+
+	if (globals.startup.avx) {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+		if (globals.startup.avx == 1) {
+			ImGui::Text(xorstr_("AVX2 available on this system"));
+		}
+		else if (globals.startup.avx == 2) {
+			ImGui::Text(xorstr_("AVX512 available on this system"));
+		}
+		ImGui::PopStyleColor();
+	}
+	else {
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::Text(xorstr_("AVX not available on this system"));
+		ImGui::PopStyleColor();
+	}
+
     ImGui::End();
 }
 
@@ -469,6 +487,8 @@ void Menu::mouseScrollHandler()
 			break;
 		}
 		// No messages in the queue
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 
 	UnhookWindowsHookEx(mouseHook);

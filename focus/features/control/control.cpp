@@ -55,6 +55,8 @@ void Control::driveMouse() {
 
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
+	static float correctionXAccumulator = 0;
+	static float correctionYAccumulator = 0;
 
 	// New variables for smoothin
 	static int currentIteration = 0;
@@ -123,8 +125,23 @@ void Control::driveMouse() {
 						currentIteration = 0;
 					}
 
-					xMove += std::clamp(static_cast<int>(smoothedCorrectionX), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
-					yMove += std::clamp(static_cast<int>(smoothedCorrectionY), -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+					// Apply smoothed corrections every iteration
+					correctionXAccumulator += smoothedCorrectionX;
+					correctionYAccumulator += smoothedCorrectionY * 0.25f;
+
+					int correctionXMove = static_cast<int>(correctionXAccumulator);
+					int correctionYMove = static_cast<int>(correctionYAccumulator);
+
+					correctionXAccumulator -= correctionXMove;
+					correctionYAccumulator -= correctionYMove;
+
+					// Apply clamping to the correction moves
+					correctionXMove = std::clamp(correctionXMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+					correctionYMove = std::clamp(correctionYMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+
+					// Combine regular movement with corrections
+					xMove += correctionXMove;
+					yMove += correctionYMove;
 					
 					ms.moveR(xMove, yMove);
 			
@@ -132,8 +149,6 @@ void Control::driveMouse() {
 						pressMouse1(flipFlop);
 						flipFlop = !flipFlop;
 					}
-
-					//std::cout << "X: " << xMove << " Y: " << yMove << " Cycles: " << cycles << std::endl;
 
 					cycles++;
 
@@ -168,6 +183,8 @@ void Control::driveMouse() {
 			currentIteration = 0;
 			smoothedCorrectionX = 0;
 			smoothedCorrectionY = 0;
+			correctionXAccumulator = 0;
+			correctionYAccumulator = 0;
 
 			//if (GetAsyncKeyState(VK_RSHIFT)) {
 				//std::this_thread::sleep_for(std::chrono::seconds(2));

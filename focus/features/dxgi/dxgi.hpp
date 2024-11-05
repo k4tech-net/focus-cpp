@@ -17,7 +17,7 @@
 #include "../driver/mouse.hpp"
 #include "../driver/keyboard.hpp"
 #include "../settings/settings.hpp"
-#include "../YoloV8-ONNXRuntime-CPP/engine.hpp"
+#include "../YOLOv11-ONNXRuntime-CPP/engine.hpp"
 #include "../utils/utils.hpp"
 #include "weaponmasks.hpp"
 

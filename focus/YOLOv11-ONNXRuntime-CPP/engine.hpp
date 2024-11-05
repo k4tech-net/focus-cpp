@@ -44,10 +44,38 @@ private:
     std::vector<int64_t> inputTensorShape_;
     std::string task_;
 
-    std::vector<float> inputTensorValues_;
+    //std::vector<float> inputTensorValues_;
+    alignas(64) std::vector<float> inputTensorValues_;  // Ensure 64-byte alignment for AVX-512
 
     cv::Size cvSize_;
     cv::Size rawImgSize_;
+
+    enum class SIMDSupport {
+        UNINITIALIZED,
+        NONE,
+        AVX2,
+        AVX512
+    };
+    SIMDSupport simd_support_ = SIMDSupport::UNINITIALIZED;
+
+    SIMDSupport check_simd_support() {
+#if defined(_WIN32) || defined(__x86_64__) || defined(_M_X64) || defined(__i386__) || defined(_M_IX86)
+        int cpuInfo[4];
+
+        // Check for AVX-512
+        __cpuid(cpuInfo, 7);
+        if ((cpuInfo[1] & (1 << 16)) != 0) {  // Check AVX-512F
+            return SIMDSupport::AVX512;
+        }
+
+        // Check for AVX2
+        __cpuid(cpuInfo, 1);
+        if ((cpuInfo[2] & (1 << 28)) != 0) {  // Check AVX2
+            return SIMDSupport::AVX2;
+        }
+#endif
+        return SIMDSupport::NONE;
+    }
 
     // Helper functions, These were stolen and modified from https://github.com/FourierMourier/yolov8-onnx-cpp
     // Same with pretty much everything else
@@ -105,98 +133,6 @@ private:
         }
 
         return result;
-    }
-
-    int64_t vector_product(const std::vector<int64_t>& vec) {
-        int64_t result = 1;
-        for (int64_t value : vec) {
-            result *= value;
-        }
-        return result;
-    }
-
-    const int& DEFAULT_LETTERBOX_PAD_VALUE = 114;
-
-    cv::Mat letterbox(const cv::Mat& image, const cv::Size& newShape, cv::Scalar_<double> color, bool auto_, bool scaleFill, bool scaleUp, int stride) {
-
-        cv::Mat outimage;
-
-        cv::Size shape = image.size();
-        float r = std::min(static_cast<float>(newShape.height) / static_cast<float>(shape.height),
-            static_cast<float>(newShape.width) / static_cast<float>(shape.width));
-        if (!scaleUp)
-            r = std::min(r, 1.0f);
-
-        float ratio[2]{ r, r };
-        int newUnpad[2]{ static_cast<int>(std::round(static_cast<float>(shape.width) * r)),
-                         static_cast<int>(std::round(static_cast<float>(shape.height) * r)) };
-
-        auto dw = static_cast<float>(newShape.width - newUnpad[0]);
-        auto dh = static_cast<float>(newShape.height - newUnpad[1]);
-
-        if (auto_)
-        {
-            dw = static_cast<float>((static_cast<int>(dw) % stride));
-            dh = static_cast<float>((static_cast<int>(dh) % stride));
-        }
-        else if (scaleFill)
-        {
-            dw = 0.0f;
-            dh = 0.0f;
-            newUnpad[0] = newShape.width;
-            newUnpad[1] = newShape.height;
-            ratio[0] = static_cast<float>(newShape.width) / static_cast<float>(shape.width);
-            ratio[1] = static_cast<float>(newShape.height) / static_cast<float>(shape.height);
-        }
-
-        dw /= 2.0f;
-        dh /= 2.0f;
-
-        //cv::Mat outImage;
-        if (shape.width != newUnpad[0] || shape.height != newUnpad[1])
-        {
-            cv::resize(image, outimage, cv::Size(newUnpad[0], newUnpad[1]));
-        }
-        else
-        {
-            outimage = image.clone();
-        }
-
-        int top = static_cast<int>(std::round(dh - 0.1f));
-        int bottom = static_cast<int>(std::round(dh + 0.1f));
-        int left = static_cast<int>(std::round(dw - 0.1f));
-        int right = static_cast<int>(std::round(dw + 0.1f));
-
-
-        if (color == cv::Scalar()) {
-            color = cv::Scalar(DEFAULT_LETTERBOX_PAD_VALUE, DEFAULT_LETTERBOX_PAD_VALUE, DEFAULT_LETTERBOX_PAD_VALUE);
-        }
-
-        cv::copyMakeBorder(outimage, outimage, top, bottom, left, right, cv::BORDER_CONSTANT, color);
-
-        return outimage;
-    }
-
-    std::vector<float> fill_blob(cv::Mat& image, std::vector<int64_t>& inputTensorShape) {
-
-        cv::Mat floatImage;
-
-        int inputChannelsNum = inputTensorShape[1];
-        int rtype = CV_32FC3;
-        image.convertTo(floatImage, rtype, 1.0f / 255.0);
-
-        std::vector<float> blob(floatImage.cols * floatImage.rows * floatImage.channels());
-        cv::Size floatImageSize{ floatImage.cols, floatImage.rows };
-
-        // hwc -> chw
-        std::vector<cv::Mat> chw(floatImage.channels());
-        for (int i = 0; i < floatImage.channels(); ++i)
-        {
-            chw[i] = cv::Mat(floatImageSize, CV_32FC1, blob.data() + i * floatImageSize.width * floatImageSize.height);
-        }
-        cv::split(floatImage, chw);
-
-        return blob;
     }
 
     void clip_boxes(cv::Rect& box, const cv::Size& shape) {
