@@ -301,7 +301,9 @@ void DXGI::aimbot() {
             continue;
         }
 
-		std::vector<Detection> detections = inferencer->infer(croppedImage, settings.aimbotData.confidence / 100, 0.5);
+        std::cout << xorstr_("Aimbot: ") << static_cast<float>(settings.aimbotData.confidence) / 100.0f << std::endl;
+
+		std::vector<Detection> detections = inferencer->infer(croppedImage, static_cast<float>(settings.aimbotData.confidence) / 100.0f, 0.5);
 
         if (detections.empty()) {
 			continue;
@@ -313,14 +315,14 @@ void DXGI::aimbot() {
             settings.aimbotData.correctionX = corrections[0];
         }
         else {
-            settings.aimbotData.correctionX = corrections[0] * (settings.aimbotData.percentDistance / 100);
+            settings.aimbotData.correctionX = corrections[0] * (static_cast<float>(settings.aimbotData.percentDistance) / 100.0f);
         }
 
 		if (corrections[1] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionY = corrections[1];
 		}
 		else {
-            settings.aimbotData.correctionY = corrections[1] * (settings.aimbotData.percentDistance / 100);
+            settings.aimbotData.correctionY = corrections[1] * (static_cast<float>(settings.aimbotData.percentDistance) / 100.0f);
 		}
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
