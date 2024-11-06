@@ -21,13 +21,13 @@ using json = nlohmann::json;
 
 struct weaponData {
     std::string weaponname = "";
-    bool autofire = false;
+    bool rapidfire = false;
     std::vector<int> attachments = { 0, 0, 0 };
     std::vector<std::vector<float>> values;
 
     bool operator==(const weaponData& other) const {
         return weaponname == other.weaponname &&
-            autofire == other.autofire &&
+            rapidfire == other.rapidfire &&
 			attachments == other.attachments &&
             values == other.values;
     }
@@ -47,8 +47,10 @@ struct aimbotData {
     int provider = 0;
     int smoothing = 0;
     int maxDistance = 0;
-    float percentDistance = 0.1f;
+    int percentDistance = 1;
     int hitbox = 0;
+    int confidence = 10;
+    bool forceHitbox = false;
 };
 
 class Settings 

@@ -117,7 +117,7 @@ void DXGI::CleanupDXGI() {
     }
 }
 
-std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass, float fov) {
+std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass, float fov, bool forceHitbox) {
     int imageCenterX = image.cols / 2;
     int imageCenterY = image.rows / 2;
 
@@ -126,19 +126,22 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
     bool found = false;
 
     for (const auto& detection : detections) {
-        // Find the closest detection if targetClass is 2, otherwise filter by targetClass
-        if (targetClass == 2 || detection.class_id == targetClass) {
+        // Original logic when forceHitbox is true, or when targeting closest (2)
+        if (targetClass == 2 || (forceHitbox && detection.class_id == targetClass) ||
+            (!forceHitbox && (detection.class_id == targetClass || (!found && (detection.class_id == 0 || detection.class_id == 1))))) {
+
             cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.0f,
                 detection.box.y + detection.box.height / 2.0f);
             float distance = cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY));
 
-            if (distance < minDistance) {
+            if (distance < minDistance && (targetClass == 2 || forceHitbox || detection.class_id == targetClass || !found)) {
                 minDistance = distance;
                 closestDetectionCenter = detectionCenter;
                 found = true;
             }
         }
     }
+
 
     if (!found) {
         return { 0.0f, 0.0f };
@@ -298,26 +301,26 @@ void DXGI::aimbot() {
             continue;
         }
 
-		std::vector<Detection> detections = inferencer->infer(croppedImage, 0.05, 0.5);
+		std::vector<Detection> detections = inferencer->infer(croppedImage, settings.aimbotData.confidence / 100, 0.5);
 
         if (detections.empty()) {
 			continue;
 		}
 
-        std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov);
+        std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov, settings.aimbotData.forceHitbox);
 
         if (corrections[0] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionX = corrections[0];
         }
         else {
-            settings.aimbotData.correctionX = corrections[0] * settings.aimbotData.percentDistance;
+            settings.aimbotData.correctionX = corrections[0] * (settings.aimbotData.percentDistance / 100);
         }
 
 		if (corrections[1] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionY = corrections[1];
 		}
 		else {
-            settings.aimbotData.correctionY = corrections[1] * settings.aimbotData.percentDistance;
+            settings.aimbotData.correctionY = corrections[1] * (settings.aimbotData.percentDistance / 100);
 		}
 
         std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -741,7 +744,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         // Set the selectedPrimary if a matching weapon is found
         if (weaponIndex != -1) {
             settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
-            settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].autofire;
+            settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;

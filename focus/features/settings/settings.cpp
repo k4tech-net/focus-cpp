@@ -40,6 +40,8 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.percentDistance = std::stof(item);
             std::getline(ss, item, ','); aimbotData.hitbox = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.confidence = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.forceHitbox = item == xorstr_("1");
         }
         else if (key == xorstr_("WeaponKeybinds")) {
             wpn_keybinds.clear();
@@ -91,8 +93,8 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             }
             currentWeapon.weaponname = value;
         }
-        else if (key == xorstr_("AutoFire")) {
-            currentWeapon.autofire = (value == xorstr_("1"));
+        else if (key == xorstr_("RapidFire")) {
+            currentWeapon.rapidfire = (value == xorstr_("1"));
         }
         else if (key == xorstr_("Attachments")) {
             std::istringstream ss(value);
@@ -172,13 +174,14 @@ void Settings::saveSettings(const std::string& filename) {
     file << xorstr_("Mode=") << mode << "\n";
     file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
     file << xorstr_("AimAssist=") << aimbotData.provider << xorstr_(",") << aimbotData.smoothing << xorstr_(",")
-        << aimbotData.maxDistance << xorstr_(",") << aimbotData.percentDistance << xorstr_(",") << aimbotData.hitbox << xorstr_("\n");
+        << aimbotData.maxDistance << xorstr_(",") << aimbotData.percentDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
+        << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
 
     if (mode == xorstr_("Generic")) {
         for (const auto& character : characters) {
             for (const auto& weapon : character.weapondata) {
                 file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("AutoFire=") << (weapon.autofire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
                 file << xorstr_("Values=");
                 for (const auto& valueSet : weapon.values) {
                     for (const auto& value : valueSet) {
@@ -213,7 +216,7 @@ void Settings::saveSettings(const std::string& filename) {
 
             for (const auto& weapon : character.weapondata) {
                 file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("AutoFire=") << (weapon.autofire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
                 file << xorstr_("Values=");
                 for (const auto& valueSet : weapon.values) {
                     for (const auto& value : valueSet) {
@@ -249,7 +252,7 @@ void Settings::saveSettings(const std::string& filename) {
 
                 for (const auto& weapon : character.weapondata) {
                     file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                    file << xorstr_("AutoFire=") << (weapon.autofire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+                    file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
                     file << xorstr_("Attachments=") << weapon.attachments[0] << xorstr_(",") << weapon.attachments[1] << xorstr_(",") << weapon.attachments[2] << xorstr_("\n");
                     file << xorstr_("Values=");
                     for (const auto& valueSet : weapon.values) {
@@ -280,7 +283,7 @@ void Settings::saveSettings(const std::string& filename) {
 
             for (const auto& weapon : characters[0].weapondata) {
                 file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("AutoFire=") << (weapon.autofire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
                 file << xorstr_("Values=");
                 for (const auto& valueSet : weapon.values) {
                     for (const auto& value : valueSet) {

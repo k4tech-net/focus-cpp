@@ -103,15 +103,15 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 			std::string newFileName = std::string(newConfigName) + xorstr_(".focus");
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
-			newSettings.potato = false;
-			newSettings.aimbotData = { 0, 0, false, 0, 50, 10, 0.5f, 0 }; // Default aimbot settings
+			newSettings.potato = true;
+			newSettings.aimbotData = { 0, 0, false, 0, 50, 10, 10, 0, 10, false }; // Default aimbot settings
 
 			// Pre-fill with example values based on mode and game
 			if (newSettings.mode == xorstr_("Generic")) {
 				characterData genericChar;
 				weaponData exampleWeapon;
 				exampleWeapon.weaponname = xorstr_("Example Weapon");
-				exampleWeapon.autofire = true;
+				exampleWeapon.rapidfire = true;
 				exampleWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
 				genericChar.weapondata.push_back(exampleWeapon);
 				genericChar.selectedweapon = { 0, 0 };
@@ -127,13 +127,13 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 
 				weaponData primaryWeapon;
 				primaryWeapon.weaponname = xorstr_("Primary Weapon");
-				primaryWeapon.autofire = true;
+				primaryWeapon.rapidfire = true;
 				primaryWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
 				exampleChar.weapondata.push_back(primaryWeapon);
 
 				weaponData secondaryWeapon;
 				secondaryWeapon.weaponname = xorstr_("Secondary Weapon");
-				secondaryWeapon.autofire = false;
+				secondaryWeapon.rapidfire = false;
 				secondaryWeapon.values = { {0.05f, 0.05f, 1.0f}, {0.1f, 0.1f, 1.0f} };
 				exampleChar.weapondata.push_back(secondaryWeapon);
 
@@ -150,14 +150,14 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 
 					weaponData primaryWeapon;
 					primaryWeapon.weaponname = xorstr_("Primary Weapon");
-					primaryWeapon.autofire = true;
+					primaryWeapon.rapidfire = true;
 					primaryWeapon.attachments = { 0, 0, 0 };
 					primaryWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
 					exampleChar.weapondata.push_back(primaryWeapon);
 
 					weaponData secondaryWeapon;
 					secondaryWeapon.weaponname = xorstr_("Secondary Weapon");
-					secondaryWeapon.autofire = false;
+					secondaryWeapon.rapidfire = false;
 					secondaryWeapon.attachments = { 0, 0, 0 };
 					secondaryWeapon.values = { {0.05f, 0.05f, 1.0f}, {0.1f, 0.1f, 1.0f} };
 					exampleChar.weapondata.push_back(secondaryWeapon);
@@ -172,7 +172,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 
 					weaponData exampleWeapon;
 					exampleWeapon.weaponname = xorstr_("Example Weapon");
-					exampleWeapon.autofire = true;
+					exampleWeapon.rapidfire = true;
 					exampleWeapon.attachments = { 0, 0, 0 };
 					exampleWeapon.values = { {0.1f, 0.1f, 1.0f}, {0.2f, 0.2f, 1.0f} };
 					rustChar.weapondata.push_back(exampleWeapon);
@@ -326,6 +326,18 @@ void Menu::popup(bool& trigger, int type) {
 			globals.initshutdown = false;
 			trigger = false;
 			ImGui::CloseCurrentPopup();
+		}
+
+		if (type == 2) {
+			ImGui::SameLine();
+			if (ImGui::Button(xorstr_("Save and Quit"), ImVec2(120, 0))) {
+				settings.saveSettings(globals.filesystem.configFiles[globals.filesystem.activeFileIndex]);
+				globals.filesystem.unsavedChanges = false;
+
+				globals.done = true;
+				trigger = false;
+				ImGui::CloseCurrentPopup();
+			}
 		}
 
 		ImGui::EndPopup();
@@ -1065,7 +1077,7 @@ void Menu::gui()
 						settings.weaponDataChanged = true;
 					}
 
-					if (ImGui::Checkbox(xorstr_("AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+					if (ImGui::Checkbox(xorstr_("Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire)) {
 						settings.weaponDataChanged = true;
 						globals.filesystem.unsavedChanges = true;
 					}
@@ -1133,7 +1145,7 @@ void Menu::gui()
 						globals.filesystem.unsavedChanges = true;
 					}
 					
-					if (ImGui::Checkbox(xorstr_("Primary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+					if (ImGui::Checkbox(xorstr_("Primary Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire)) {
 						settings.weaponDataChanged = true;
 						globals.filesystem.unsavedChanges = true;
 					}
@@ -1160,7 +1172,7 @@ void Menu::gui()
 						globals.filesystem.unsavedChanges = true;
 					}
 
-					if (ImGui::Checkbox(xorstr_("Secondary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].autofire)) {
+					if (ImGui::Checkbox(xorstr_("Secondary Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].rapidfire)) {
 						settings.weaponDataChanged = true;
 						globals.filesystem.unsavedChanges = true;
 					}
@@ -1244,7 +1256,7 @@ void Menu::gui()
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
-						if (ImGui::Checkbox(xorstr_("Primary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+						if (ImGui::Checkbox(xorstr_("Primary Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
@@ -1282,7 +1294,7 @@ void Menu::gui()
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
-						if (ImGui::Checkbox(xorstr_("Secondary AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].autofire)) {
+						if (ImGui::Checkbox(xorstr_("Secondary Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].rapidfire)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
@@ -1391,7 +1403,7 @@ void Menu::gui()
 						if (comboBoxWep(xorstr_("Weapon"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
 							settings.weaponDataChanged = true;
 						}
-						if (ImGui::Checkbox(xorstr_("AutoFire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].autofire)) {
+						if (ImGui::Checkbox(xorstr_("Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
@@ -1483,18 +1495,24 @@ void Menu::gui()
 				}
 
 				if (settings.aimbotData.enabled) {
-					if (ImGui::SliderInt(xorstr_("Aim Assist Smoothing"), &settings.aimbotData.smoothing, 1, 200)) {
+					if (ImGui::SliderInt(xorstr_("Aim Assist Smoothing (Ticks per Move)"), &settings.aimbotData.smoothing, 1, 200)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-					if (ImGui::SliderFloat(xorstr_("% of Total Distance"), &settings.aimbotData.percentDistance, 0.01f, 1.0f, xorstr_("%.2f"))) {
+					if (ImGui::SliderInt(xorstr_("Total Distance per Move"), &settings.aimbotData.percentDistance, 1, 100, xorstr_("%d%%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 
 					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-					if (ImGui::Combo(xorstr_("Hitbox"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
+					if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
 						globals.filesystem.unsavedChanges = true;
 					}
 				}
@@ -1768,7 +1786,7 @@ void Menu::gui()
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Weapon Data"));
 
-						if (ImGui::Checkbox(xorstr_("Auto Fire"), &weapon.autofire))
+						if (ImGui::Checkbox(xorstr_("Rapid Fire"), &weapon.rapidfire))
 						{
 							globals.filesystem.unsavedChanges = true;
 							settings.weaponDataChanged = true;
