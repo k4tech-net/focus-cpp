@@ -301,8 +301,6 @@ void DXGI::aimbot() {
             continue;
         }
 
-        std::cout << xorstr_("Aimbot: ") << static_cast<float>(settings.aimbotData.confidence) / 100.0f << std::endl;
-
 		std::vector<Detection> detections = inferencer->infer(croppedImage, static_cast<float>(settings.aimbotData.confidence) / 100.0f, 0.5);
 
         if (detections.empty()) {
