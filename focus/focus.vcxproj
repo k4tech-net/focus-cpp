@@ -184,6 +184,7 @@
     <ClInclude Include="features\dxgi\dxgi.hpp" />
     <ClInclude Include="features\dxgi\weaponmasks.hpp" />
     <ClInclude Include="features\menu\menu.hpp" />
+    <ClInclude Include="features\settings\hotkeys.hpp" />
     <ClInclude Include="features\settings\settings.hpp" />
     <ClInclude Include="features\utils\utils.hpp" />
     <ClInclude Include="imgui\imconfig.h" />

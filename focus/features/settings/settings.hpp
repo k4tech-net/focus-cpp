@@ -17,6 +17,9 @@
 
 #include <nlohmann/json.hpp>
 
+#include "../imgui/imgui.h"
+#include "hotkeys.hpp"
+
 using json = nlohmann::json;
 
 struct weaponData {
@@ -64,6 +67,8 @@ public:
     // Character mode settings
     std::vector<std::string> wpn_keybinds;
     std::vector<std::string> aux_keybinds;
+
+    HotkeySystem hotkeys;
 
     // Game mode settings
     std::string game = "";

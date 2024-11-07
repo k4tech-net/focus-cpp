@@ -223,23 +223,101 @@ void Control::driveMouse() {
 	}
 }
 
+void resetLean() {
+	kb.keyboard_press(KeyboardKey::q);
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	kb.keyboard_release();
+
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+	kb.keyboard_press(KeyboardKey::e);
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	kb.keyboard_release();
+
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+
+	kb.keyboard_press(KeyboardKey::e);
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	kb.keyboard_release();
+
+	std::this_thread::sleep_for(std::chrono::microseconds(10));
+}
+
 void Control::driveKeyboard() {
-	static int lean = 0;
+	static bool moved = false;
+	static int direction = 0;
+	static bool init = true;
 
 	while (!globals.shutdown) {
 		if (GetAsyncKeyState(VK_CAPITAL)) {
-			if (GetAsyncKeyState(0x41) && lean != 1) {
-				kb.keyboard_press(KeyboardKey::q);
-				lean = 1;
+
+			if (init) {
+				// Going Left
+				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
+					resetLean();
+					direction = 1;
+					init = false;
+
+					kb.keyboard_press(KeyboardKey::q);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
+					resetLean();
+					direction = 2;
+					init = false;
+
+					kb.keyboard_press(KeyboardKey::e);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+				else {
+					moved = false;
+					direction = 0;
+					init = true;
+				}
 			}
-			else if (GetAsyncKeyState(0x44) && lean != 2) {
+
+			// Was going left, now right
+			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
 				kb.keyboard_press(KeyboardKey::e);
-				lean = 2;
+				std::this_thread::sleep_for(std::chrono::milliseconds(75));
+				kb.keyboard_press(KeyboardKey::q);
+				std::this_thread::sleep_for(std::chrono::microseconds(10));
+				kb.keyboard_release();
+
+				moved = true;
 			}
-			std::this_thread::sleep_for(std::chrono::microseconds(50));
-			kb.keyboard_release();
+
+			// Wait until moving left again
+			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				moved = false;
+			}
+
+			// Was going right, now left
+			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
+				kb.keyboard_press(KeyboardKey::q);
+				std::this_thread::sleep_for(std::chrono::milliseconds(75));
+				kb.keyboard_press(KeyboardKey::e);
+				std::this_thread::sleep_for(std::chrono::microseconds(10));
+				kb.keyboard_release();
+
+				moved = true;
+			}
+
+			// Wait until moving right again
+			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				moved = false;
+			}
+		}
+		else {
+			moved = false;
+			direction = 0;
+			init = true;
 		}
 
-		std::this_thread::sleep_for(std::chrono::microseconds(50));
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }

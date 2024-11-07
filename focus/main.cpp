@@ -138,7 +138,7 @@ int main()
 	startUpCheckThread.join();
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
-	//std::thread driveKeyboardThread(&Control::driveKeyboard, &ctr);
+	std::thread driveKeyboardThread(&Control::driveKeyboard, &ctr);
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
 
@@ -223,7 +223,7 @@ int main()
 
 	aimbotThread.join();
 	captureDesktopThread.join();
-	//driveKeyboardThread.join();
+	driveKeyboardThread.join();
 	driveMouseThread.join();
   
 	//#if !_DEBUG

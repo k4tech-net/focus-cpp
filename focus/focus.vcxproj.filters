@@ -176,5 +176,8 @@
     <ClInclude Include="YOLOv11-ONNXRuntime-CPP\engine.hpp">
       <Filter>YOLOv11-ONNXRuntime-CPP</Filter>
     </ClInclude>
+    <ClInclude Include="features\settings\hotkeys.hpp">
+      <Filter>features\settings</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

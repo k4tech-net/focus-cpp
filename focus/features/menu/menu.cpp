@@ -733,6 +733,8 @@ std::vector<float> calculateSensitivityModifierRust() {
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
+	settings.hotkeys.Update();
+
 	if (settings.mode == xorstr_("Generic")) {
 		settings.isPrimaryActive = true;
 		settings.sensMultiplier = { 1.f, 1.f };
@@ -1362,6 +1364,8 @@ void Menu::gui()
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
+
+						settings.hotkeys.RenderHotkey(xorstr_("Aim Assist"), HotkeyIndex::AimAssist);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
