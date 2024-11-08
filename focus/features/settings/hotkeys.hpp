@@ -30,6 +30,7 @@ enum class HotkeyIndex {
     AutoQuickPeek,
     FakeSpinBot,
     AutoHashomPeek,
+    ProneKey,
     COUNT
 };
 
@@ -56,93 +57,93 @@ private:
     const char* GetKeyName(const Hotkey& hotkey) {
         static char keyName[256];
         if (hotkey.type == InputType::None) {
-            return xorstr_("None");
+            return "None";
         }
 
         int vKey = hotkey.vKey.load();
 
         switch (vKey) {
             // Mouse buttons
-        case VK_LBUTTON: return xorstr_("Mouse 1");
-        case VK_RBUTTON: return xorstr_("Mouse 2");
-        case VK_MBUTTON: return xorstr_("Mouse 3");
-        case VK_XBUTTON1: return xorstr_("Mouse 4");
-        case VK_XBUTTON2: return xorstr_("Mouse 5");
+        case VK_LBUTTON: return "Mouse 1";
+        case VK_RBUTTON: return "Mouse 2";
+        case VK_MBUTTON: return "Mouse 3";
+        case VK_XBUTTON1: return "Mouse 4";
+        case VK_XBUTTON2: return "Mouse 5";
 
             // Special keys
-        case VK_BACK: return xorstr_("Backspace");
-        case VK_TAB: return xorstr_("Tab");
-        case VK_RETURN: return xorstr_("Enter");
-        case VK_PAUSE: return xorstr_("Pause");
-        case VK_CAPITAL: return xorstr_("Caps Lock");
-        case VK_ESCAPE: return xorstr_("Escape");
-        case VK_SPACE: return xorstr_("Space");
-        case VK_PRIOR: return xorstr_("Page Up");
-        case VK_NEXT: return xorstr_("Page Down");
-        case VK_END: return xorstr_("End");
-        case VK_HOME: return xorstr_("Home");
-        case VK_LEFT: return xorstr_("Left");
-        case VK_UP: return xorstr_("Up");
-        case VK_RIGHT: return xorstr_("Right");
-        case VK_DOWN: return xorstr_("Down");
-        case VK_SNAPSHOT: return xorstr_("Print Screen");
-        case VK_INSERT: return xorstr_("Insert");
-        case VK_DELETE: return xorstr_("Delete");
+        case VK_BACK: "Backspace";
+        case VK_TAB: return "Tab";
+        case VK_RETURN: return "Enter";
+        case VK_PAUSE: return "Pause";
+        case VK_CAPITAL: return "Caps Lock";
+        case VK_ESCAPE: return "Escape";
+        case VK_SPACE: return "Space";
+        case VK_PRIOR: return "Page Up";
+        case VK_NEXT: return "Page Down";
+        case VK_END: return "End";
+        case VK_HOME: return "Home";
+        case VK_LEFT: return "Left";
+        case VK_UP: return "Up";
+        case VK_RIGHT: return "Right";
+        case VK_DOWN: return "Down";
+        case VK_SNAPSHOT: return "Print Screen";
+        case VK_INSERT: return "Insert";
+        case VK_DELETE: return "Delete";
 
             // Windows keys
-        case VK_LWIN: return xorstr_("Left Win");
-        case VK_RWIN: return xorstr_("Right Win");
-        case VK_APPS: return xorstr_("Menu");
+        case VK_LWIN: "Left Win";
+        case VK_RWIN: return "Right Win";
+        case VK_APPS: return "Menu";
 
             // Numpad specific
-        case VK_NUMPAD0: return xorstr_("Num 0");
-        case VK_NUMPAD1: return xorstr_("Num 1");
-        case VK_NUMPAD2: return xorstr_("Num 2");
-        case VK_NUMPAD3: return xorstr_("Num 3");
-        case VK_NUMPAD4: return xorstr_("Num 4");
-        case VK_NUMPAD5: return xorstr_("Num 5");
-        case VK_NUMPAD6: return xorstr_("Num 6");
-        case VK_NUMPAD7: return xorstr_("Num 7");
-        case VK_NUMPAD8: return xorstr_("Num 8");
-        case VK_NUMPAD9: return xorstr_("Num 9");
-        case VK_MULTIPLY: return xorstr_("Num *");
-        case VK_ADD: return xorstr_("Num +");
-        case VK_SEPARATOR: return xorstr_("Separator");
-        case VK_SUBTRACT: return xorstr_("Num -");
-        case VK_DECIMAL: return xorstr_("Num .");
-        case VK_DIVIDE: return xorstr_("Num /");
-        case VK_NUMLOCK: return xorstr_("Num Lock");
+        case VK_NUMPAD0: return "Num 0";
+        case VK_NUMPAD1: return "Num 1";
+        case VK_NUMPAD2: return "Num 2";
+        case VK_NUMPAD3: return "Num 3";
+        case VK_NUMPAD4: return "Num 4";
+        case VK_NUMPAD5: return "Num 5";
+        case VK_NUMPAD6: return "Num 6";
+        case VK_NUMPAD7: return "Num 7";
+        case VK_NUMPAD8: return "Num 8";
+        case VK_NUMPAD9: return "Num 9";
+        case VK_MULTIPLY: return "Num *";
+        case VK_ADD: return "Num +";
+        case VK_SEPARATOR: return "Separator";
+        case VK_SUBTRACT: return "Num -";
+        case VK_DECIMAL: return "Num .";
+        case VK_DIVIDE: return "Num /";
+        case VK_NUMLOCK: return "Num Lock";
 
             // Function keys
-        case VK_F1: return xorstr_("F1");
-        case VK_F2: return xorstr_("F2");
-        case VK_F3: return xorstr_("F3");
-        case VK_F4: return xorstr_("F4");
-        case VK_F5: return xorstr_("F5");
-        case VK_F6: return xorstr_("F6");
-        case VK_F7: return xorstr_("F7");
-        case VK_F8: return xorstr_("F8");
-        case VK_F9: return xorstr_("F9");
-        case VK_F10: return xorstr_("F10");
-        case VK_F11: return xorstr_("F11");
-        case VK_F12: return xorstr_("F12");
+        case VK_F1: return "F1";
+        case VK_F2: return "F2";
+        case VK_F3: return "F3";
+        case VK_F4: return "F4";
+        case VK_F5: return "F5";
+        case VK_F6: return "F6";
+        case VK_F7: return "F7";
+        case VK_F8: return "F8";
+        case VK_F9: return "F9";
+        case VK_F10: return "F10";
+        case VK_F11: return "F11";
+        case VK_F12: return "F12";
 
             // Modifier
-        case VK_LSHIFT: return xorstr_("Left Shift");
-        case VK_RSHIFT: return xorstr_("Right Shift");
-        case VK_LCONTROL: return xorstr_("Left Ctrl");
-        case VK_RCONTROL: return xorstr_("Right Ctrl");
-        case VK_LMENU: return xorstr_("Left Alt");
-        case VK_RMENU: return xorstr_("Right Alt");
+        case VK_LSHIFT: return "Left Shift";
+        case VK_RSHIFT: return "Right Shift";
+        case VK_LCONTROL: return "Left Ctrl";
+        case VK_RCONTROL: return "Right Ctrl";
+        case VK_LMENU: return "Left Alt";
+        case VK_RMENU: return "Right Alt";
 
             // Media keys
-        case VK_VOLUME_MUTE: return xorstr_("Vol Mute");
-        case VK_VOLUME_DOWN: return xorstr_("Vol Down");
-        case VK_VOLUME_UP: return xorstr_("Vol Up");
-        case VK_MEDIA_NEXT_TRACK: return xorstr_("Next Track");
-        case VK_MEDIA_PREV_TRACK: return xorstr_("Prev Track");
-        case VK_MEDIA_STOP: return xorstr_("Media Stop");
-        case VK_MEDIA_PLAY_PAUSE: return xorstr_("Play/Pause");
+        case VK_VOLUME_MUTE: return "Vol Mute";
+        case VK_VOLUME_DOWN: return "Vol Down";
+        case VK_VOLUME_UP: return "Vol Up";
+        case VK_MEDIA_NEXT_TRACK: return "Next Track";
+        case VK_MEDIA_PREV_TRACK: return "Prev Track";
+        case VK_MEDIA_STOP: return "Media Stop";
+        case VK_MEDIA_PLAY_PAUSE: return "Play/Pause";
 
         default:
             // For standard keys (letters, numbers, etc.)
@@ -152,7 +153,7 @@ private:
             }
 
             // If we still don't have a name, return the hex value
-            snprintf(keyName, sizeof(keyName), xorstr_("Key 0x%X"), vKey);
+            snprintf(keyName, sizeof(keyName), "Key 0x%X", vKey);
             return keyName;
         }
     }
@@ -201,6 +202,10 @@ public:
                 break;
             }
         }
+    }
+
+    int GetHotkeyVK(HotkeyIndex index) const {
+        return hotkeys[static_cast<size_t>(index)].vKey;
     }
 
     bool IsActive(HotkeyIndex index) {

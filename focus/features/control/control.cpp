@@ -223,24 +223,24 @@ void Control::driveMouse() {
 	}
 }
 
+void pressAndReleaseKey(KeyboardKey key, int pressDuration = 50) {
+	kb.keyboard_press(key);
+	std::this_thread::sleep_for(std::chrono::microseconds(pressDuration));
+	kb.keyboard_release();
+}
+
 void resetLean() {
-	kb.keyboard_press(KeyboardKey::q);
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
-	kb.keyboard_release();
+	pressAndReleaseKey(KeyboardKey::q, 20);
 
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	std::this_thread::sleep_for(std::chrono::microseconds(20));
 
-	kb.keyboard_press(KeyboardKey::e);
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
-	kb.keyboard_release();
+	pressAndReleaseKey(KeyboardKey::e, 20);
 
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	std::this_thread::sleep_for(std::chrono::microseconds(20));
 
-	kb.keyboard_press(KeyboardKey::e);
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
-	kb.keyboard_release();
+	pressAndReleaseKey(KeyboardKey::e, 20);
 
-	std::this_thread::sleep_for(std::chrono::microseconds(10));
+	std::this_thread::sleep_for(std::chrono::microseconds(20));
 }
 
 void Control::driveKeyboard() {
@@ -258,22 +258,18 @@ void Control::driveKeyboard() {
 					direction = 1;
 					init = false;
 
-					kb.keyboard_press(KeyboardKey::q);
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
-					kb.keyboard_release();
+					pressAndReleaseKey(KeyboardKey::q);
 
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
 					resetLean();
 					direction = 2;
 					init = false;
 
-					kb.keyboard_press(KeyboardKey::e);
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
-					kb.keyboard_release();
+					pressAndReleaseKey(KeyboardKey::e);
 
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else {
 					moved = false;
@@ -317,6 +313,8 @@ void Control::driveKeyboard() {
 			}
 		}
 		else if (settings.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
+			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
+
 			if (init) {
 				// Going Left
 				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
@@ -324,22 +322,18 @@ void Control::driveKeyboard() {
 					direction = 1;
 					init = false;
 
-					kb.keyboard_press(KeyboardKey::q);
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
-					kb.keyboard_release();
+					pressAndReleaseKey(KeyboardKey::q);
 
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
 					resetLean();
 					direction = 2;
 					init = false;
 
-					kb.keyboard_press(KeyboardKey::e);
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
-					kb.keyboard_release();
+					pressAndReleaseKey(KeyboardKey::e);
 
-					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else {
 					moved = false;
@@ -350,15 +344,11 @@ void Control::driveKeyboard() {
 
 			// Was going left, now right
 			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				kb.keyboard_press(KeyboardKey::z);
-				std::this_thread::sleep_for(std::chrono::microseconds(50));
-				kb.keyboard_release();
+				pressAndReleaseKey(proneKey);
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
 
-				kb.keyboard_press(KeyboardKey::z);
-				std::this_thread::sleep_for(std::chrono::microseconds(50));
-				kb.keyboard_release();
+				pressAndReleaseKey(proneKey);
 
 				moved = true;
 			}
@@ -371,15 +361,11 @@ void Control::driveKeyboard() {
 
 			// Was going right, now left
 			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				kb.keyboard_press(KeyboardKey::z);
-				std::this_thread::sleep_for(std::chrono::microseconds(50));
-				kb.keyboard_release();
+				pressAndReleaseKey(proneKey);
 
 				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
 
-				kb.keyboard_press(KeyboardKey::z);
-				std::this_thread::sleep_for(std::chrono::microseconds(50));
-				kb.keyboard_release();
+				pressAndReleaseKey(proneKey);
 
 				moved = true;
 			}

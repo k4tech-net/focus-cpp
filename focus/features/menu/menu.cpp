@@ -1399,6 +1399,10 @@ void Menu::gui()
 					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+
+					if (settings.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 					
 					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
 						globals.filesystem.unsavedChanges = true;

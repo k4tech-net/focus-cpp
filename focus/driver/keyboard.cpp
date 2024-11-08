@@ -135,7 +135,7 @@ BOOL Keyboard::keyboard_release_all()
 
 std::wstring Keyboard::findDriver() {
     HKEY hKey;
-    std::wstring deviceKeyName = L"SYSTEM\\ControlSet001\\Control\\DeviceClasses\\{dfbedcdb-2148-416d-9e4d-cecc2424128c}";
+    std::wstring deviceKeyName = L"SYSTEM\\ControlSet001\\Control\\DeviceClasses\\{1abc05c0-c378-41b9-9cef-df1aba82b015}";
     std::wstring subkeyName = L"";
     std::wstring deviceLocation;
 

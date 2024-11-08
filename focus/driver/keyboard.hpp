@@ -146,6 +146,94 @@ public:
 
     std::wstring findDriver();
 
+    static KeyboardKey VKToKeyboardKey(int vkCode) {
+        switch (vkCode) {
+            // Letters
+        case 'A': return KeyboardKey::a;
+        case 'B': return KeyboardKey::b;
+        case 'C': return KeyboardKey::c;
+        case 'D': return KeyboardKey::d;
+        case 'E': return KeyboardKey::e;
+        case 'F': return KeyboardKey::f;
+        case 'G': return KeyboardKey::g;
+        case 'H': return KeyboardKey::h;
+        case 'I': return KeyboardKey::i;
+        case 'J': return KeyboardKey::j;
+        case 'K': return KeyboardKey::k;
+        case 'L': return KeyboardKey::l;
+        case 'M': return KeyboardKey::m;
+        case 'N': return KeyboardKey::n;
+        case 'O': return KeyboardKey::o;
+        case 'P': return KeyboardKey::p;
+        case 'Q': return KeyboardKey::q;
+        case 'R': return KeyboardKey::r;
+        case 'S': return KeyboardKey::s;
+        case 'T': return KeyboardKey::t;
+        case 'U': return KeyboardKey::u;
+        case 'V': return KeyboardKey::v;
+        case 'W': return KeyboardKey::w;
+        case 'X': return KeyboardKey::x;
+        case 'Y': return KeyboardKey::y;
+        case 'Z': return KeyboardKey::z;
+
+            // Numbers
+        case '1': return KeyboardKey::n1;
+        case '2': return KeyboardKey::n2;
+        case '3': return KeyboardKey::n3;
+        case '4': return KeyboardKey::n4;
+        case '5': return KeyboardKey::n5;
+        case '6': return KeyboardKey::n6;
+        case '7': return KeyboardKey::n7;
+        case '8': return KeyboardKey::n8;
+        case '9': return KeyboardKey::n9;
+        case '0': return KeyboardKey::n0;
+
+            // Function keys
+        case VK_F1: return KeyboardKey::f1;
+        case VK_F2: return KeyboardKey::f2;
+        case VK_F3: return KeyboardKey::f3;
+        case VK_F4: return KeyboardKey::f4;
+        case VK_F5: return KeyboardKey::f5;
+        case VK_F6: return KeyboardKey::f6;
+        case VK_F7: return KeyboardKey::f7;
+        case VK_F8: return KeyboardKey::f8;
+        case VK_F9: return KeyboardKey::f9;
+        case VK_F10: return KeyboardKey::f10;
+        case VK_F11: return KeyboardKey::f11;
+        case VK_F12: return KeyboardKey::f12;
+
+            // Special keys
+        case VK_RETURN: return KeyboardKey::enter;
+        case VK_ESCAPE: return KeyboardKey::esc;
+        case VK_BACK: return KeyboardKey::back_space;
+        case VK_TAB: return KeyboardKey::tab;
+        case VK_SPACE: return KeyboardKey::space;
+        case VK_SNAPSHOT: return KeyboardKey::snapshot;
+        case VK_INSERT: return KeyboardKey::insert;
+        case VK_DELETE: return KeyboardKey::del;
+        case VK_HOME: return KeyboardKey::home;
+        case VK_END: return KeyboardKey::end;
+        case VK_PRIOR: return KeyboardKey::page_up;
+        case VK_NEXT: return KeyboardKey::page_down;
+        case VK_LEFT: return KeyboardKey::left;
+        case VK_RIGHT: return KeyboardKey::right;
+        case VK_UP: return KeyboardKey::up;
+        case VK_DOWN: return KeyboardKey::down;
+
+            // Modifier keys
+        case VK_LCONTROL: return KeyboardKey::lctrl;
+        case VK_RCONTROL: return KeyboardKey::rctrl;
+        case VK_LSHIFT: return KeyboardKey::lshift;
+        case VK_RSHIFT: return KeyboardKey::rshift;
+        case VK_LMENU: return KeyboardKey::lalt;
+        case VK_RMENU: return KeyboardKey::ralt;
+        case VK_LWIN: return KeyboardKey::lwin;
+        case VK_RWIN: return KeyboardKey::rwin;
+
+        default: return KeyboardKey{}; // Return empty/default key if not found
+        }
+    }
+
 private:
     struct KEYBOARD_IO
     {
