@@ -77,6 +77,7 @@ public:
     int aspect_ratio = 0;
     float fov = 0;
     float fovSensitivityModifier = 1.f;
+    int quickPeekDelay = 0;
 
     // Character data
     std::vector<characterData> characters;

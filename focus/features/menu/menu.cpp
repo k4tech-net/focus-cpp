@@ -1364,8 +1364,6 @@ void Menu::gui()
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
-
-						settings.hotkeys.RenderHotkey(xorstr_("Aim Assist"), HotkeyIndex::AimAssist);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
@@ -1388,6 +1386,27 @@ void Menu::gui()
 
 					ImGui::EndChild();
 					ImGui::Columns(1);
+
+					ImGui::EndTabItem();
+				}
+
+				if (ImGui::BeginTabItem(xorstr_("Scripts"))) {
+
+					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+
+					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					
+					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+
+					if (settings.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
 					ImGui::EndTabItem();
 				}

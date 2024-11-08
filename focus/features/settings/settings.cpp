@@ -142,6 +142,28 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         else if (key == xorstr_("Fov")) {
             fov = std::stoi(value);
         }
+        else if (key == xorstr_("QuickPeekDelay")) {
+			quickPeekDelay = std::stoi(value);
+		}
+
+        if (key.substr(0, 6) == "Hotkey") {
+            int index = std::stoi(key.substr(6));
+            if (index >= 0 && index < static_cast<size_t>(HotkeyIndex::COUNT)) {
+                std::vector<int> hotkeyData;
+                std::istringstream valuess(value);
+                std::string token;
+
+                while (std::getline(valuess, token, ',')) {
+                    hotkeyData.push_back(std::stoi(token));
+                }
+
+                if (hotkeyData.size() >= 3) {
+                    hotkeys.hotkeys[index].type.store(static_cast<InputType>(hotkeyData[0]));
+                    hotkeys.hotkeys[index].vKey.store(hotkeyData[1]);
+                    hotkeys.hotkeys[index].mode.store(static_cast<HotkeyMode>(hotkeyData[2]));
+                }
+            }
+        }
     }
 
     // Add the last weapon and character
@@ -176,6 +198,15 @@ void Settings::saveSettings(const std::string& filename) {
     file << xorstr_("AimAssist=") << aimbotData.provider << xorstr_(",") << aimbotData.smoothing << xorstr_(",")
         << aimbotData.maxDistance << xorstr_(",") << aimbotData.percentDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
         << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+
+    // Save hotkeys in matching format
+    for (size_t i = 0; i < static_cast<size_t>(HotkeyIndex::COUNT); i++) {
+        const Hotkey& hotkey = hotkeys.hotkeys[i];
+        file << "Hotkey" << i << "=" <<
+            static_cast<int>(hotkey.type.load()) << "," <<
+            hotkey.vKey.load() << "," <<
+            static_cast<int>(hotkey.mode.load()) << "\n";
+    }
 
     if (mode == xorstr_("Generic")) {
         for (const auto& character : characters) {
@@ -240,6 +271,7 @@ void Settings::saveSettings(const std::string& filename) {
 
             file << xorstr_("AspectRatio=") << aspect_ratio << xorstr_("\n");
             file << xorstr_("Fov=") << fov << xorstr_("\n");
+			file << xorstr_("QuickPeekDelay=") << quickPeekDelay << xorstr_("\n");
 
             for (const auto& character : characters) {
                 file << xorstr_("Character=") << character.charactername << xorstr_("\n");

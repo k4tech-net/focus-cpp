@@ -249,7 +249,7 @@ void Control::driveKeyboard() {
 	static bool init = true;
 
 	while (!globals.shutdown) {
-		if (GetAsyncKeyState(VK_CAPITAL)) {
+		if (settings.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
 
 			if (init) {
 				// Going Left
@@ -261,6 +261,8 @@ void Control::driveKeyboard() {
 					kb.keyboard_press(KeyboardKey::q);
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					kb.keyboard_release();
+
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
 				}
 				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
 					resetLean();
@@ -270,6 +272,8 @@ void Control::driveKeyboard() {
 					kb.keyboard_press(KeyboardKey::e);
 					std::this_thread::sleep_for(std::chrono::microseconds(10));
 					kb.keyboard_release();
+
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
 				}
 				else {
 					moved = false;
@@ -281,7 +285,7 @@ void Control::driveKeyboard() {
 			// Was going left, now right
 			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
 				kb.keyboard_press(KeyboardKey::e);
-				std::this_thread::sleep_for(std::chrono::milliseconds(75));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
 				kb.keyboard_press(KeyboardKey::q);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 				kb.keyboard_release();
@@ -298,9 +302,83 @@ void Control::driveKeyboard() {
 			// Was going right, now left
 			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
 				kb.keyboard_press(KeyboardKey::q);
-				std::this_thread::sleep_for(std::chrono::milliseconds(75));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
 				kb.keyboard_press(KeyboardKey::e);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
+				kb.keyboard_release();
+
+				moved = true;
+			}
+
+			// Wait until moving right again
+			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				moved = false;
+			}
+		}
+		else if (settings.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
+			if (init) {
+				// Going Left
+				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
+					resetLean();
+					direction = 1;
+					init = false;
+
+					kb.keyboard_press(KeyboardKey::q);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+				}
+				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
+					resetLean();
+					direction = 2;
+					init = false;
+
+					kb.keyboard_press(KeyboardKey::e);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+				}
+				else {
+					moved = false;
+					direction = 0;
+					init = true;
+				}
+			}
+
+			// Was going left, now right
+			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
+				kb.keyboard_press(KeyboardKey::z);
+				std::this_thread::sleep_for(std::chrono::microseconds(50));
+				kb.keyboard_release();
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+
+				kb.keyboard_press(KeyboardKey::z);
+				std::this_thread::sleep_for(std::chrono::microseconds(50));
+				kb.keyboard_release();
+
+				moved = true;
+			}
+
+			// Wait until moving left again
+			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
+				std::this_thread::sleep_for(std::chrono::milliseconds(100));
+				moved = false;
+			}
+
+			// Was going right, now left
+			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
+				kb.keyboard_press(KeyboardKey::z);
+				std::this_thread::sleep_for(std::chrono::microseconds(50));
+				kb.keyboard_release();
+
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+
+				kb.keyboard_press(KeyboardKey::z);
+				std::this_thread::sleep_for(std::chrono::microseconds(50));
 				kb.keyboard_release();
 
 				moved = true;
@@ -316,6 +394,11 @@ void Control::driveKeyboard() {
 			moved = false;
 			direction = 0;
 			init = true;
+		}
+
+		if (settings.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
+			
+			ms.moveR(100000, 1000);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));

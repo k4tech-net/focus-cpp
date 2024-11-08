@@ -48,7 +48,7 @@ BOOL Keyboard::keyboard_open()
             std::vector parsedDriver = parseStringKB(driver);
 
             wchar_t buffer0[256];
-            swprintf(buffer0, 256, L"\\??\\%s#%s#%s#{dfbedcdb-2148-416d-9e4d-cecc2424128c}",
+            swprintf(buffer0, 256, L"\\??\\%s#%s#%s#{1abc05c0-c378-41b9-9cef-df1aba82b015}",
                 parsedDriver[0].c_str(), parsedDriver[1].c_str(), parsedDriver[2].c_str());
 
             status = device_initialize(buffer0);
