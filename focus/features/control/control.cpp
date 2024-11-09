@@ -384,7 +384,7 @@ void Control::driveKeyboard() {
 
 		if (settings.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
 			
-			ms.moveR(100000, 1000);
+			ms.moveR(50000, 1000);
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
