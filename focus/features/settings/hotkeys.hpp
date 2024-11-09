@@ -247,7 +247,7 @@ public:
         ImGui::EndGroup();
 
         if (ImGui::BeginPopupContextItem(xorstr_("ModeMenu"))) {
-            const char* modeNames[] = { xorstr_("Off"), xorstr_("Hold"), xorstr_("Toggle"), xorstr_("Hold Off"), xorstr_("Always")};
+            const char* modeNames[] = { "Off", "Hold", "Toggle", "Hold Off", "Always"};
             HotkeyMode currentMode = hotkey.mode.load();
             for (int i = 0; i < IM_ARRAYSIZE(modeNames); i++) {
                 if (ImGui::Selectable(modeNames[i], static_cast<int>(currentMode) == i)) {
