@@ -518,15 +518,16 @@ void debugHammingDistances(const IconHash& hash) {
     }
 }
 
-void DXGI::detectOperatorR6(cv::Mat& src) {
+bool DXGI::detectOperatorR6(cv::Mat& src) {
 
     if (src.empty()) {
-        return;
+        return false;
     }
 
     cv::Mat normalizedIcon = normalizeIconSize(src);
     IconHash hash = hashIcon(normalizedIcon);
 
+    //std::cout << xorstr_("Hash: ") << hash << std::endl;
 	//debugHammingDistances(hash);
 
     std::string detectedOperator;
@@ -564,8 +565,11 @@ void DXGI::detectOperatorR6(cv::Mat& src) {
         if (characterIndex != -1) {
             settings.selectedCharacterIndex = characterIndex;
             settings.weaponDataChanged = true;
+			return true;
         }
     }
+
+    return false;
 }
 
 void DXGI::initializeRustDetector(cv::Mat& src) {

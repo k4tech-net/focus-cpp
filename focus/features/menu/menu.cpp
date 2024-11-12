@@ -861,6 +861,9 @@ void keybindManager() {
 			}
 
 			if (settings.characters[settings.selectedCharacterIndex].options[2]) {
+				static bool detectedOperator = false;
+				static bool useShootingRangeOffset = false;
+
 				int screenWidth = globals.desktopMat.cols;
 				int screenHeight = globals.desktopMat.rows;
 
@@ -872,35 +875,35 @@ void keybindManager() {
 				// Define ratios for crop region
 				switch (settings.aspect_ratio) {
 					case 0:
-						cropRatioX = 0.3928f;
+						cropRatioX = 0.3928f * (useShootingRangeOffset ? 1.139f : 1.f);
 						cropRatioWidth = 0.0253f;
 						break;
 					case 1:
-						cropRatioX = 0.358f;
+						cropRatioX = 0.358f * (useShootingRangeOffset ? 1.202f : 1.f);
 						cropRatioWidth = 0.0325f;
 						break;
 					case 2:
-						cropRatioX = 0.3473f;
+						cropRatioX = 0.3473f * (useShootingRangeOffset ? 1.224f : 1.f);
 						cropRatioWidth = 0.0357f;
 						break;
 					case 3:
-						cropRatioX = 0.3727f;
+						cropRatioX = 0.3727f * (useShootingRangeOffset ? 1.174f : 1.f);
 						cropRatioWidth = 0.03f;
 						break;
 					case 4:
-						cropRatioX = 0.381f;
+						cropRatioX = 0.381f * (useShootingRangeOffset ? 1.159f : 1.f);
 						cropRatioWidth = 0.028f;
 						break;
 					case 5:
-						cropRatioX = 0.3857f;
+						cropRatioX = 0.3857f * (useShootingRangeOffset ? 1.152f : 1.f);
 						cropRatioWidth = 0.0263f;
 						break;
 					case 6:
-						cropRatioX = 0.4f;
+						cropRatioX = 0.4f * (useShootingRangeOffset ? 1.128f : 1.f);
 						cropRatioWidth = 0.023f;
 						break;
 					case 7:
-						cropRatioX = 0.4196f;
+						cropRatioX = 0.4196f * (useShootingRangeOffset ? 1.097f : 1.f);
 						cropRatioWidth = 0.0191f;
 						break;
 				}
@@ -924,7 +927,11 @@ void keybindManager() {
 				cv::Mat smallRegion = globals.desktopMat(roi);
 				globals.desktopMutex_.unlock();
 
-				dx.detectOperatorR6(smallRegion);
+				detectedOperator = dx.detectOperatorR6(smallRegion);
+
+				if (!detectedOperator) {
+					useShootingRangeOffset = !useShootingRangeOffset;
+				}
 			}
 
 			settings.sensMultiplier = calculateSensitivityModifierR6();

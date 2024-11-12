@@ -31,7 +31,7 @@ public:
 	void CleanupDXGI();
 	void aimbot();
 	void detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minActiveAreaThreshold);
-	void detectOperatorR6(cv::Mat& src);
+	bool detectOperatorR6(cv::Mat& src);
 	void detectWeaponRust(cv::Mat& src);
 	std::string detectWeaponTypeWithMask(const cv::Mat& weaponIcon);
 	void initializeRustDetector(cv::Mat& src);
