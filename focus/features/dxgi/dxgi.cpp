@@ -249,6 +249,64 @@ void DXGI::aimbot() {
     std::unique_ptr<YoloInferencer> inferencer;
 
     while (!globals.shutdown) {
+
+        if (settings.test) {
+
+            // FPS tracking variables
+            static int frameCount = 0;
+            static auto lastFpsTime = std::chrono::high_resolution_clock::now();
+            static float currentFps = 0.0f;
+
+            if (globals.desktopMat.empty()) {
+                std::this_thread::sleep_for(std::chrono::microseconds(100));
+                continue;
+            }
+
+            cv::Mat croppedImage;
+            {
+                std::lock_guard<std::mutex> lock(globals.desktopMutex_);
+
+                // Calculate ROI directly from desktop dimensions
+                const int screenWidth = globals.desktopMat.cols;
+                const int screenHeight = globals.desktopMat.rows;
+                const cv::Rect roi(
+                    static_cast<int>(cropRatioX * screenWidth),
+                    static_cast<int>(cropRatioY * screenHeight),
+                    static_cast<int>(cropRatioWidth * screenWidth),
+                    static_cast<int>(cropRatioHeight * screenHeight)
+                );
+
+                // Actually crop the image (this was missing in original code)
+                croppedImage = globals.desktopMat(roi).clone();
+            }
+
+            if (croppedImage.empty()) {
+                continue;
+            }
+
+            overwatchDetector(croppedImage);
+
+            cv::imshow(xorstr_("Test"), croppedImage);
+            cv::waitKey(1);
+
+            // Only increment frame count after successful processing
+            frameCount++;
+
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFpsTime).count();
+
+            // Update FPS every 500ms for smoother readings
+            if (elapsed >= 500) {
+                currentFps = (frameCount * 1000.0f) / elapsed;  // Convert to per-second rate
+                printf("FPS: %.2f\n", currentFps);  // Format to 2 decimal places
+                frameCount = 0;
+                lastFpsTime = currentTime;
+            }
+
+            //std::this_thread::sleep_for(std::chrono::microseconds(500));
+            continue;
+        }
+
         if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
                 inferencer.reset();
@@ -322,8 +380,6 @@ void DXGI::aimbot() {
 		else {
             settings.aimbotData.correctionY = corrections[1] * (static_cast<float>(settings.aimbotData.percentDistance) / 100.0f);
 		}
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
     }
 }
 
@@ -767,5 +823,102 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
     }
     else {
         settings.weaponOffOverride = true;
+    }
+}
+
+void DXGI::overwatchDetector(cv::Mat& src) {
+    // Pre-allocate matrices and vectors
+    static cv::Mat downsampledSrc, hsvImage, mask, filledMask;
+    static std::vector<std::vector<cv::Point>> contours;
+
+    // Create kernels for morphological operations
+    static cv::Mat closeKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    static cv::Mat dilateKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10)); // Larger kernel for connecting gaps
+
+    // Downsample
+    cv::resize(src, downsampledSrc, cv::Size(src.cols / 2, src.rows / 2), 0, 0, cv::INTER_NEAREST);
+
+    // Convert to HSV
+    cv::cvtColor(downsampledSrc, hsvImage, cv::COLOR_BGR2HSV);
+
+    // Color detection for magenta
+    cv::inRange(hsvImage, cv::Scalar(145, 100, 100), cv::Scalar(165, 255, 255), mask);
+
+    // Connect nearby regions
+    cv::morphologyEx(mask, filledMask, cv::MORPH_CLOSE, closeKernel);  // Initial closing to clean noise
+    cv::dilate(filledMask, filledMask, dilateKernel);  // Dilate to connect nearby regions
+    cv::morphologyEx(filledMask, filledMask, cv::MORPH_CLOSE, closeKernel);  // Final closing to smooth edges
+
+    // Find contours
+    contours.clear();
+    cv::findContours(filledMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
+    // Centers and FOV calculations
+    const int imageCenterX = downsampledSrc.cols / 2;
+    const int imageCenterY = downsampledSrc.rows / 2;
+    float minDistance = std::numeric_limits<float>::max();
+    bool targetFound = false;
+    cv::Point targetPoint;
+    cv::Rect targetBox;
+
+    // Find closest bounding box
+    for (const auto& contour : contours) {
+        cv::Rect box = cv::boundingRect(contour);
+        cv::Point boxCenter(box.x + box.width / 2, box.y + box.height / 2);
+        float distance = cv::norm(boxCenter - cv::Point(imageCenterX, imageCenterY));
+
+        if (distance < minDistance) {
+            minDistance = distance;
+            // Aim point is slightly above center
+            targetPoint = cv::Point(boxCenter.x, box.y + box.height * 0.2);
+            targetBox = box;
+            targetFound = true;
+        }
+    }
+
+    if (targetFound) {
+        // Calculate FOV-based corrections
+        const float effectiveFOV = settings.fov;
+        const float fovRad = effectiveFOV * std::numbers::pi / 180.0f;
+        const float pixelsPerDegree = static_cast<float>(downsampledSrc.cols) / effectiveFOV;
+
+        // Calculate aspect ratio and vertical FOV
+        const float aspectRatio = static_cast<float>(downsampledSrc.cols) / downsampledSrc.rows;
+        const float verticalFov = 2.0f * atan(tan(fovRad * 0.5f) / aspectRatio) * 180.0f / std::numbers::pi;
+
+        // Calculate pixel offsets
+        const float pixelOffsetX = targetPoint.x - imageCenterX;
+        const float pixelOffsetY = targetPoint.y - imageCenterY;
+
+        // Convert to angles
+        const float angleX = pixelOffsetX / pixelsPerDegree;
+        const float angleY = (pixelOffsetY / pixelsPerDegree) * (effectiveFOV / verticalFov);
+
+        // Calculate final mouse movements
+        settings.aimbotData.correctionX = (angleX / 360.0f) * constants.OW360DIST * 2;
+        settings.aimbotData.correctionY = (angleY / 360.0f) * constants.OW360DIST * 2;
+
+        // Debug visualization
+#ifdef _DEBUG
+// Show both original and filled masks
+        cv::imshow("Original Mask", mask);
+        cv::imshow("Filled Mask", filledMask);
+
+        // Draw the box (scaled back up to original size)
+        cv::rectangle(src,
+            cv::Rect(targetBox.x * 2, targetBox.y * 2, targetBox.width * 2, targetBox.height * 2),
+            cv::Scalar(0, 255, 0), 2);
+
+        // Draw aim point
+        cv::circle(src, cv::Point(targetPoint.x * 2, targetPoint.y * 2), 3, cv::Scalar(0, 0, 255), -1);
+
+        // Draw line from center to aim point
+        cv::line(src, cv::Point(src.cols / 2, src.rows / 2),
+            cv::Point(targetPoint.x * 2, targetPoint.y * 2), cv::Scalar(255, 0, 0), 1);
+#endif
+    }
+    else {
+        settings.aimbotData.correctionX = 0;
+        settings.aimbotData.correctionY = 0;
     }
 }

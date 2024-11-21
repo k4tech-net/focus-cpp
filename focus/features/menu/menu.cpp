@@ -730,6 +730,12 @@ std::vector<float> calculateSensitivityModifierRust() {
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
 
+std::vector<float> calculateSensitivityModifierOverwatch() {
+	settings.fovSensitivityModifier = 1;
+
+	return std::vector<float>{ 1.f, 1.f };
+}
+
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
@@ -1371,6 +1377,8 @@ void Menu::gui()
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
+
+						ImGui::Checkbox(xorstr_("Test"), &settings.test);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));

@@ -65,6 +65,8 @@ void Control::driveMouse() {
 	static float smoothedCorrectionX = 0;
 	static float smoothedCorrectionY = 0;
 
+	static AimbotPredictor predictor;
+
 	while (!globals.shutdown) {
 		// Check if the selected weapon has changed
 
@@ -82,6 +84,51 @@ void Control::driveMouse() {
 		}
 
 		int smoothingIterations = settings.aimbotData.smoothing;
+
+		while (settings.test && GetAsyncKeyState(VK_RBUTTON)) {
+			if (settings.aimbotData.correctionX == 0 && settings.aimbotData.correctionY == 0) {
+				predictor.reset();
+				continue;
+			}
+
+			// Update predictor with raw corrections
+			predictor.update(settings.aimbotData.correctionX, settings.aimbotData.correctionY);
+
+			// Get predicted corrections
+			float predictedX, predictedY;
+			predictor.getPredictedCorrections(predictedX, predictedY);
+
+			// Add to accumulators
+			correctionXAccumulator += predictedX;
+			correctionYAccumulator += predictedY;
+
+
+			// Get integer part of movements
+			int xMove = static_cast<int>(correctionXAccumulator);
+			int yMove = static_cast<int>(correctionYAccumulator);
+
+			// Remove used movement
+			correctionXAccumulator -= xMove;
+			correctionYAccumulator -= yMove;
+
+			// Apply clamping
+			xMove = std::clamp(xMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+			yMove = std::clamp(yMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+
+			// Move mouse
+			if (xMove != 0 || yMove != 0) {
+				ms.moveR(xMove, yMove);
+				std::cout << "Move X: " << xMove << " Y: " << yMove
+					<< " | Raw Correction X: " << settings.aimbotData.correctionX
+					<< " Y: " << settings.aimbotData.correctionY
+					<< " | Predicted X: " << predictedX
+					<< " Y: " << predictedY
+					<< " | Accum X: " << correctionXAccumulator
+					<< " Y: " << correctionYAccumulator << std::endl;
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
 
 		while ((currwpn.rapidfire ? globals.mouseinfo.l_mouse_down && globals.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) && !complete && !settings.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
@@ -213,7 +260,27 @@ void Control::driveMouse() {
 				// 90 = 8732
 				// 70 = 11228
 				// 80 = 9824
+
+				//Overwatch
+				// all = 6284
 			//}
+
+			const double TRIGGERBOT_THRESHOLD = 5.0; // Adjust this value as needed
+
+			if (GetAsyncKeyState(VK_RSHIFT)) {
+				// Triggerbot
+				double totalCorrection = std::sqrt(std::pow(settings.aimbotData.correctionX, 2) +
+					std::pow(settings.aimbotData.correctionY, 2));
+
+				if (totalCorrection <= TRIGGERBOT_THRESHOLD) {
+					// Simulate a mouse click
+					pressMouse1(true);
+					std::this_thread::sleep_for(std::chrono::milliseconds(1));
+					pressMouse1(false);
+
+					std::cout << "Triggerbot activated! Correction: " << totalCorrection << std::endl;
+				}
+			}
 		}
 
 		if (settings.potato) {

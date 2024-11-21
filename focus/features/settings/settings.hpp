@@ -79,6 +79,8 @@ public:
     float fovSensitivityModifier = 1.f;
     int quickPeekDelay = 0;
 
+    bool test = false;
+
     // Character data
     std::vector<characterData> characters;
 
@@ -132,6 +134,7 @@ struct Globals
 struct Constants {
     static constexpr int SIEGE360DIST = 7274; //82 FOV
     static constexpr int RUST360DIST = 8732; //90 FOV
+    static constexpr int OW360DIST = 6284; //ALL FOV
 };
 
 extern Constants constants;
