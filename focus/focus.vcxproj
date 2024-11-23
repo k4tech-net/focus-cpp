@@ -158,6 +158,7 @@
     <ClCompile Include="features\dxgi\dxgi.cpp" />
     <ClCompile Include="features\dxgi\weaponmasks.cpp" />
     <ClCompile Include="features\menu\menu.cpp" />
+    <ClCompile Include="features\network\network.cpp" />
     <ClCompile Include="features\settings\settings.cpp" />
     <ClCompile Include="features\utils\utils.cpp" />
     <ClCompile Include="imgui\imgui.cpp" />
@@ -184,6 +185,7 @@
     <ClInclude Include="features\dxgi\dxgi.hpp" />
     <ClInclude Include="features\dxgi\weaponmasks.hpp" />
     <ClInclude Include="features\menu\menu.hpp" />
+    <ClInclude Include="features\network\network.hpp" />
     <ClInclude Include="features\settings\hotkeys.hpp" />
     <ClInclude Include="features\settings\settings.hpp" />
     <ClInclude Include="features\utils\utils.hpp" />

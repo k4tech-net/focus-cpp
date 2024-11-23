@@ -31,6 +31,7 @@ enum class HotkeyIndex {
     FakeSpinBot,
     AutoHashomPeek,
     ProneKey,
+    DimXKey,
     COUNT
 };
 
