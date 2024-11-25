@@ -906,7 +906,7 @@ void keybindManager() {
 						cropRatioWidth = 0.03f;
 						break;
 					case 4:
-						cropRatioX = 0.381f * (useShootingRangeOffset ? 1.159f : 1.f);
+						cropRatioX = 0.3815f * (useShootingRangeOffset ? 1.158f : 1.f);
 						cropRatioWidth = 0.028f;
 						break;
 					case 5:
@@ -943,6 +943,8 @@ void keybindManager() {
 				globals.desktopMutex_.unlock();
 
 				detectedOperator = dx.detectOperatorR6(smallRegion);
+
+				cv::imshow("Operator Detection", smallRegion);
 
 				if (!detectedOperator) {
 					useShootingRangeOffset = !useShootingRangeOffset;
