@@ -944,8 +944,6 @@ void keybindManager() {
 
 				detectedOperator = dx.detectOperatorR6(smallRegion);
 
-				cv::imshow("Operator Detection", smallRegion);
-
 				if (!detectedOperator) {
 					useShootingRangeOffset = !useShootingRangeOffset;
 				}
