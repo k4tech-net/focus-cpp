@@ -65,7 +65,8 @@ void Control::driveMouse() {
 	static float smoothedCorrectionX = 0;
 	static float smoothedCorrectionY = 0;
 
-	static AimbotPredictor predictor;
+	PIDController pidX(0.03f, 0.2f, 0.001f); // Starting values for tuning
+	PIDController pidY(0.03f, 0.2f, 0.001f);
 
 	while (!globals.shutdown) {
 		// Check if the selected weapon has changed
@@ -85,46 +86,32 @@ void Control::driveMouse() {
 
 		int smoothingIterations = settings.aimbotData.smoothing;
 
-		while (settings.test && GetAsyncKeyState(VK_RBUTTON)) {
+		while (settings.test && GetAsyncKeyState(VK_RCONTROL)) {
 			if (settings.aimbotData.correctionX == 0 && settings.aimbotData.correctionY == 0) {
-				predictor.reset();
+				pidX.reset();
+				pidY.reset();
 				continue;
 			}
 
-			// Update predictor with raw corrections
-			predictor.update(settings.aimbotData.correctionX, settings.aimbotData.correctionY);
+			// Calculate PID corrections directly from the raw corrections
+			float pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+			float pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
 
-			// Get predicted corrections
-			float predictedX, predictedY;
-			predictor.getPredictedCorrections(predictedX, predictedY);
+			// Round to integer movements
+			int xMove = static_cast<int>(std::round(pidCorrectionX));
+			int yMove = static_cast<int>(std::round(pidCorrectionY));
 
-			// Add to accumulators
-			correctionXAccumulator += predictedX;
-			correctionYAccumulator += predictedY;
-
-
-			// Get integer part of movements
-			int xMove = static_cast<int>(correctionXAccumulator);
-			int yMove = static_cast<int>(correctionYAccumulator);
-
-			// Remove used movement
-			correctionXAccumulator -= xMove;
-			correctionYAccumulator -= yMove;
-
-			// Apply clamping
 			xMove = std::clamp(xMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
 			yMove = std::clamp(yMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
 
-			// Move mouse
+			// Move mouse if there's any movement
 			if (xMove != 0 || yMove != 0) {
 				ms.moveR(xMove, yMove);
 				std::cout << "Move X: " << xMove << " Y: " << yMove
-					<< " | Raw Correction X: " << settings.aimbotData.correctionX
+					<< " | Raw X: " << settings.aimbotData.correctionX
 					<< " Y: " << settings.aimbotData.correctionY
-					<< " | Predicted X: " << predictedX
-					<< " Y: " << predictedY
-					<< " | Accum X: " << correctionXAccumulator
-					<< " Y: " << correctionYAccumulator << std::endl;
+					<< " | PID X: " << pidCorrectionX
+					<< " Y: " << pidCorrectionY << std::endl;
 			}
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));
