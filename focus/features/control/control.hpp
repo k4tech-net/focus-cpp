@@ -13,7 +13,7 @@ class PIDController {
 private:
     // Base PID coefficients
     float baseKp, Ki, Kd;
-    float maxKp;  // Maximum P value for large errors
+    float maxKp;
 
     // Error tracking
     float previousError;
@@ -26,41 +26,68 @@ private:
     // Integral windup prevention
     float integralLimit;
 
-    // Smoothing for derivative term
-    float lastDerivative;
-    float derivativeSmoothingFactor;
+    // Enhanced derivative filtering
+    static const int DERIVATIVE_FILTER_SIZE = 5;
+    std::array<float, DERIVATIVE_FILTER_SIZE> derivativeHistory;
+    int derivativeHistoryIndex;
+    float derivativeFilterBeta;  // Low-pass filter coefficient
+    float lastFilteredDerivative;
 
     float clamp(float value, float min, float max) {
         return std::max(min, std::min(value, max));
     }
 
     float calculateAdaptiveKp(float error) {
-        // Increase Kp based on error magnitude
-        float errorThreshold = 10.0f;  // Adjust based on your needs
+        float errorThreshold = 10.0f;
         float errorRatio = std::min(std::abs(error) / errorThreshold, 1.0f);
-
-        // Smooth transition between base and max Kp
         return baseKp + (maxKp - baseKp) * errorRatio * errorRatio;
+    }
+
+    float filterDerivative(float newDerivative) {
+        // Update circular buffer
+        derivativeHistory[derivativeHistoryIndex] = newDerivative;
+        derivativeHistoryIndex = (derivativeHistoryIndex + 1) % DERIVATIVE_FILTER_SIZE;
+
+        // Calculate median
+        std::array<float, DERIVATIVE_FILTER_SIZE> sortedValues = derivativeHistory;
+        std::sort(sortedValues.begin(), sortedValues.end());
+        float medianDerivative = sortedValues[DERIVATIVE_FILTER_SIZE / 2];
+
+        // Apply exponential smoothing
+        lastFilteredDerivative = derivativeFilterBeta * lastFilteredDerivative + 
+                                (1.0f - derivativeFilterBeta) * medianDerivative;
+
+        // Apply non-linear filtering for large changes
+        float derivativeThreshold = 100.0f;  // Adjust based on testing
+        if (std::abs(lastFilteredDerivative) > derivativeThreshold) {
+            lastFilteredDerivative *= (derivativeThreshold / std::abs(lastFilteredDerivative));
+        }
+
+        return lastFilteredDerivative;
     }
 
 public:
     PIDController(float p = 0.03f, float i = 0.2f, float d = 0.001f)
         : baseKp(p), Ki(i), Kd(d),
-        maxKp(p * 3.0f),  // Max Kp is 3x the base value
-        previousError(0.0f),
-        integralError(0.0f),
-        lastCorrection(0.0f),
-        lastDerivative(0.0f),
-        derivativeSmoothingFactor(0.7f), // Adjust between 0 and 1
-        integralLimit(20.0f) {
+          maxKp(p * 3.0f),
+          previousError(0.0f),
+          integralError(0.0f),
+          lastCorrection(0.0f),
+          lastFilteredDerivative(0.0f),
+          derivativeFilterBeta(0.85f),  // Increased smoothing
+          integralLimit(20.0f),
+          derivativeHistoryIndex(0) {
         lastUpdateTime = std::chrono::steady_clock::now();
+        derivativeHistory.fill(0.0f);
     }
 
     void reset() {
         previousError = 0.0f;
         integralError = 0.0f;
         lastCorrection = 0.0f;
-        lastDerivative = 0.0f;
+        lastFilteredDerivative = 0.0f;
+        derivativeHistory.fill(0.0f);
+        derivativeHistoryIndex = 0;
         lastUpdateTime = std::chrono::steady_clock::now();
     }
 
@@ -69,39 +96,30 @@ public:
         float deltaTime = std::chrono::duration<float>(currentTime - lastUpdateTime).count();
         lastUpdateTime = currentTime;
 
-        // Avoid division by zero and extreme delta times
         if (deltaTime < 0.0001f || deltaTime > 0.1f) {
             return lastCorrection;
         }
 
-        // Calculate error
         float error = targetPosition - currentPosition;
-
-        // Calculate adaptive Kp based on error magnitude
         float adaptiveKp = calculateAdaptiveKp(error);
-
-        // Proportional term with adaptive Kp
+        
+        // Proportional term
         float P = adaptiveKp * error;
 
         // Integral term with anti-windup
         integralError = clamp(integralError + error * deltaTime, -integralLimit, integralLimit);
         float I = Ki * integralError;
 
-        // Smoothed derivative term (on measurement to avoid derivative kick)
-        float currentDerivative = (error - previousError) / deltaTime;
-        float smoothedDerivative = (derivativeSmoothingFactor * lastDerivative) +
-            ((1.0f - derivativeSmoothingFactor) * currentDerivative);
-        float D = Kd * smoothedDerivative;
+        // Enhanced derivative term with sophisticated filtering
+        float rawDerivative = (error - previousError) / deltaTime;
+        float filteredDerivative = filterDerivative(rawDerivative);
+        float D = Kd * filteredDerivative;
 
-        // Store values for next iteration
         previousError = error;
-        lastDerivative = smoothedDerivative;
 
-        // Calculate final correction with additional smoothing for small movements
+        // Calculate final correction with deadzone for small movements
         float correction = P + I + D;
-
-        // Additional smoothing for very small corrections to prevent jitter
-        if (std::abs(correction) < 0.1f) {
+        if (std::abs(correction) < 0.15f) {  // Slightly increased deadzone
             correction = 0.0f;
         }
 

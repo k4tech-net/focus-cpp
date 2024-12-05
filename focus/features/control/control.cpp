@@ -65,8 +65,8 @@ void Control::driveMouse() {
 	static float smoothedCorrectionX = 0;
 	static float smoothedCorrectionY = 0;
 
-	PIDController pidX(0.03f, 0.2f, 0.001f); // Starting values for tuning
-	PIDController pidY(0.03f, 0.2f, 0.001f);
+	PIDController pidX(0.03f, 0.05f, 0.008f); // Starting values for tuning
+	PIDController pidY(0.03f, 0.05f, 0.008f);
 
 	while (!globals.shutdown) {
 		// Check if the selected weapon has changed
@@ -97,6 +97,11 @@ void Control::driveMouse() {
 			float pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
 			float pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
 
+			float totalDistance = std::sqrt(
+				settings.aimbotData.correctionX * settings.aimbotData.correctionX +
+				settings.aimbotData.correctionY * settings.aimbotData.correctionY
+			);
+
 			// Round to integer movements
 			int xMove = static_cast<int>(std::round(pidCorrectionX));
 			int yMove = static_cast<int>(std::round(pidCorrectionY));
@@ -112,6 +117,12 @@ void Control::driveMouse() {
 					<< " Y: " << settings.aimbotData.correctionY
 					<< " | PID X: " << pidCorrectionX
 					<< " Y: " << pidCorrectionY << std::endl;
+			}
+
+			if (totalDistance < 15.f) {
+				pressMouse1(true);
+				std::this_thread::sleep_for(std::chrono::milliseconds(1));
+				pressMouse1(false);
 			}
 
 			std::this_thread::sleep_for(std::chrono::milliseconds(1));

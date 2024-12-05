@@ -827,94 +827,183 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 }
 
 void DXGI::overwatchDetector(cv::Mat& src) {
-    // Pre-allocate matrices and vectors
-    static cv::Mat downsampledSrc, hsvImage, mask, filledMask;
+    static cv::Mat hsvImage, mask, downsampledSrc;
     static std::vector<std::vector<cv::Point>> contours;
+    static cv::Mat dilateKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    static cv::Rect excludeROI;
+    static cv::Size lastSize;
+    static bool simdInitialized = false;
+    static bool hasAVX512 = false;
+    static bool hasAVX2 = false;
 
-    // Create kernels for morphological operations
-    static cv::Mat closeKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
-    static cv::Mat dilateKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10)); // Larger kernel for connecting gaps
+    if (!simdInitialized) {
+        hasAVX512 = globals.startup.avx == 2;
+        hasAVX2 = globals.startup.avx >= 1;
+        simdInitialized = true;
+    }
 
-    // Downsample
+    // Downsample with nearest neighbor to preserve thin lines
     cv::resize(src, downsampledSrc, cv::Size(src.cols / 2, src.rows / 2), 0, 0, cv::INTER_NEAREST);
 
-    // Convert to HSV
-    cv::cvtColor(downsampledSrc, hsvImage, cv::COLOR_BGR2HSV);
+    if (lastSize != downsampledSrc.size()) {
+        lastSize = downsampledSrc.size();
+        excludeROI = cv::Rect(
+            static_cast<int>(downsampledSrc.cols * 0.385f),
+            static_cast<int>(downsampledSrc.rows * 0.89f),
+            static_cast<int>(downsampledSrc.cols * 0.23f),
+            static_cast<int>(downsampledSrc.rows * 0.15f)
+        );
+        hsvImage.create(downsampledSrc.size(), CV_8UC3);
+        mask.create(downsampledSrc.size(), CV_8UC1);
+    }
 
-    // Color detection for magenta
-    cv::inRange(hsvImage, cv::Scalar(145, 100, 100), cv::Scalar(165, 255, 255), mask);
+    const int totalPixels = downsampledSrc.rows * downsampledSrc.cols;
+    cv::cvtColor(downsampledSrc, hsvImage, cv::COLOR_BGR2HSV, 3);
 
-    // Connect nearby regions
-    cv::morphologyEx(mask, filledMask, cv::MORPH_CLOSE, closeKernel);  // Initial closing to clean noise
-    cv::dilate(filledMask, filledMask, dilateKernel);  // Dilate to connect nearby regions
-    cv::morphologyEx(filledMask, filledMask, cv::MORPH_CLOSE, closeKernel);  // Final closing to smooth edges
+    if (hasAVX512) {
+#pragma omp parallel for
+        for (int y = 0; y < downsampledSrc.rows; y++) {
+            const uint8_t* hsvRow = hsvImage.ptr<uint8_t>(y);
+            uint8_t* maskRow = mask.ptr<uint8_t>(y);
 
-    // Find contours
-    contours.clear();
-    cv::findContours(filledMask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+            for (int x = 0; x < downsampledSrc.cols; x += 16) {
+                if (y >= excludeROI.y && y < excludeROI.y + excludeROI.height &&
+                    x >= excludeROI.x && x < excludeROI.x + excludeROI.width) {
+                    std::memset(maskRow + x, 0, 16);
+                    continue;
+                }
 
-    // Centers and FOV calculations
-    const int imageCenterX = downsampledSrc.cols / 2;
-    const int imageCenterY = downsampledSrc.rows / 2;
+                alignas(64) uint8_t h_vals[16], s_vals[16], v_vals[16];
+
+                const uint8_t* pixel = hsvRow + x * 3;
+                for (int j = 0; j < 16 && (x + j) < downsampledSrc.cols; j++) {
+                    h_vals[j] = pixel[j * 3];
+                    s_vals[j] = pixel[j * 3 + 1];
+                    v_vals[j] = pixel[j * 3 + 2];
+                }
+
+                __m512i h = _mm512_load_si512((__m512i*)h_vals);
+                __m512i s = _mm512_load_si512((__m512i*)s_vals);
+                __m512i v = _mm512_load_si512((__m512i*)v_vals);
+
+                __mmask16 h_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(h)), _mm512_set1_epi32(146)) &
+                    _mm512_cmple_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(h)), _mm512_set1_epi32(153));
+                __mmask16 s_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(s)), _mm512_set1_epi32(130));
+                __mmask16 v_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(v)), _mm512_set1_epi32(181));
+
+                __mmask16 final_mask = h_mask & s_mask & v_mask;
+
+                alignas(64) uint8_t result[16];
+                for (int j = 0; j < 16; j++) {
+                    result[j] = (final_mask & (1 << j)) ? 255 : 0;
+                }
+                std::memcpy(maskRow + x, result, 16);
+            }
+        }
+    }
+    else if (hasAVX2) {
+#pragma omp parallel for
+        for (int y = 0; y < downsampledSrc.rows; y++) {
+            const uint8_t* hsvRow = hsvImage.ptr<uint8_t>(y);
+            uint8_t* maskRow = mask.ptr<uint8_t>(y);
+
+            for (int x = 0; x < downsampledSrc.cols; x += 32) {
+                if (y >= excludeROI.y && y < excludeROI.y + excludeROI.height &&
+                    x >= excludeROI.x && x < excludeROI.x + excludeROI.width) {
+                    std::memset(maskRow + x, 0, 32);
+                    continue;
+                }
+
+                alignas(32) uint8_t h_vals[32], s_vals[32], v_vals[32];
+
+                const uint8_t* pixel = hsvRow + x * 3;
+                for (int j = 0; j < 32 && (x + j) < downsampledSrc.cols; j++) {
+                    h_vals[j] = pixel[j * 3];
+                    s_vals[j] = pixel[j * 3 + 1];
+                    v_vals[j] = pixel[j * 3 + 2];
+                }
+
+                __m256i h = _mm256_load_si256((__m256i*)h_vals);
+                __m256i s = _mm256_load_si256((__m256i*)s_vals);
+                __m256i v = _mm256_load_si256((__m256i*)v_vals);
+
+                __m256i h_mask = _mm256_and_si256(
+                    _mm256_cmpgt_epi8(h, _mm256_set1_epi8(146)),
+                    _mm256_cmpgt_epi8(_mm256_set1_epi8(153), h)
+                );
+                __m256i s_mask = _mm256_cmpgt_epi8(s, _mm256_set1_epi8(130));
+                __m256i v_mask = _mm256_cmpgt_epi8(v, _mm256_set1_epi8(181));
+
+                __m256i result = _mm256_and_si256(_mm256_and_si256(h_mask, s_mask), v_mask);
+                _mm256_store_si256((__m256i*)(maskRow + x), result);
+            }
+        }
+    }
+    else {
+#pragma omp parallel for
+        for (int y = 0; y < downsampledSrc.rows; y++) {
+            const uint8_t* hsvRow = hsvImage.ptr<uint8_t>(y);
+            uint8_t* maskRow = mask.ptr<uint8_t>(y);
+
+            for (int x = 0; x < downsampledSrc.cols; x++) {
+                if (y >= excludeROI.y && y < excludeROI.y + excludeROI.height &&
+                    x >= excludeROI.x && x < excludeROI.x + excludeROI.width) {
+                    maskRow[x] = 0;
+                    continue;
+                }
+
+                const uint8_t* pixel = hsvRow + x * 3;
+                maskRow[x] = (pixel[0] >= 146 && pixel[0] <= 153 &&
+                    pixel[1] >= 130 && pixel[2] >= 181) ? 255 : 0;
+            }
+        }
+    }
+
+    cv::dilate(mask, mask, dilateKernel);
+
+    const cv::Point imageCenter(downsampledSrc.cols / 2, downsampledSrc.rows / 2);
     float minDistance = std::numeric_limits<float>::max();
-    bool targetFound = false;
     cv::Point targetPoint;
-    cv::Rect targetBox;
+    bool targetFound = false;
 
-    // Find closest bounding box
+    contours.clear();
+    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+
     for (const auto& contour : contours) {
+        if (contour.size() < 4) continue;
+
         cv::Rect box = cv::boundingRect(contour);
+        if (box.width < 3 || box.height < 3) continue;
+
         cv::Point boxCenter(box.x + box.width / 2, box.y + box.height / 2);
-        float distance = cv::norm(boxCenter - cv::Point(imageCenterX, imageCenterY));
+        float dx = boxCenter.x - imageCenter.x;
+        float dy = boxCenter.y - imageCenter.y;
+        float distance = std::abs(dx) + std::abs(dy);
 
         if (distance < minDistance) {
             minDistance = distance;
-            // Aim point is slightly above center
-            targetPoint = cv::Point(boxCenter.x, box.y + box.height * 0.2);
-            targetBox = box;
+            targetPoint = cv::Point(boxCenter.x, box.y + box.height * 0.2f);
             targetFound = true;
         }
     }
 
     if (targetFound) {
-        // Calculate FOV-based corrections
-        const float effectiveFOV = settings.fov;
-        const float fovRad = effectiveFOV * std::numbers::pi / 180.0f;
-        const float pixelsPerDegree = static_cast<float>(downsampledSrc.cols) / effectiveFOV;
+        static const float fovScale = constants.OW360DIST * 2.0f / 360.0f;
+        const float pixelsPerDegree = static_cast<float>(src.cols) / settings.fov;  // Note: using original size
 
-        // Calculate aspect ratio and vertical FOV
-        const float aspectRatio = static_cast<float>(downsampledSrc.cols) / downsampledSrc.rows;
-        const float verticalFov = 2.0f * atan(tan(fovRad * 0.5f) / aspectRatio) * 180.0f / std::numbers::pi;
+        // Scale back up to original coordinates
+        const float scaledX = (targetPoint.x * 2.0f) - src.cols / 2;
+        const float scaledY = (targetPoint.y * 2.0f) - src.rows / 2;
 
-        // Calculate pixel offsets
-        const float pixelOffsetX = targetPoint.x - imageCenterX;
-        const float pixelOffsetY = targetPoint.y - imageCenterY;
+        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
+        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
 
-        // Convert to angles
-        const float angleX = pixelOffsetX / pixelsPerDegree;
-        const float angleY = (pixelOffsetY / pixelsPerDegree) * (effectiveFOV / verticalFov);
-
-        // Calculate final mouse movements
-        settings.aimbotData.correctionX = (angleX / 360.0f) * constants.OW360DIST * 2;
-        settings.aimbotData.correctionY = (angleY / 360.0f) * constants.OW360DIST * 2;
-
-        // Debug visualization
 #ifdef _DEBUG
-// Show both original and filled masks
-        cv::imshow("Original Mask", mask);
-        cv::imshow("Filled Mask", filledMask);
-
-        // Draw the box (scaled back up to original size)
-        cv::rectangle(src,
-            cv::Rect(targetBox.x * 2, targetBox.y * 2, targetBox.width * 2, targetBox.height * 2),
-            cv::Scalar(0, 255, 0), 2);
-
-        // Draw aim point
-        cv::circle(src, cv::Point(targetPoint.x * 2, targetPoint.y * 2), 3, cv::Scalar(0, 0, 255), -1);
-
-        // Draw line from center to aim point
-        cv::line(src, cv::Point(src.cols / 2, src.rows / 2),
-            cv::Point(targetPoint.x * 2, targetPoint.y * 2), cv::Scalar(255, 0, 0), 1);
+        // Scale points back up for visualization
+        cv::Point scaledTarget(targetPoint.x * 2, targetPoint.y * 2);
+        cv::circle(src, scaledTarget, 3, cv::Scalar(0, 0, 255), -1);
+        cv::line(src, cv::Point(src.cols / 2, src.rows / 2), scaledTarget, cv::Scalar(255, 0, 0), 1);
+        cv::imshow("test", mask);
 #endif
     }
     else {
