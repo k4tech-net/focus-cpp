@@ -83,6 +83,21 @@ bool Menu::multiCombo(const char* label, std::vector<const char*>& items, std::v
     return changed;
 }
 
+void tooltip(const char* desc, bool showOnHover = true) {
+	if (showOnHover && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayShort) || !showOnHover) {
+		ImGui::BeginTooltip();
+		ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+
+		// Apply some styling to make the tooltip stand out
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 1.0f, 1.0f, 1.0f));
+		ImGui::Text("%s", desc);
+		ImGui::PopStyleColor();
+
+		ImGui::PopTextWrapPos();
+		ImGui::EndTooltip();
+	}
+}
+
 void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& selectedGame) {
 	if (trigger) {
 		ImGui::OpenPopup(xorstr_("NewConfigPopup"));
@@ -450,7 +465,7 @@ void Menu::startupchecks_gui() {
 		ImGui::PopStyleColor();
 	}
 	else {
-		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.0f, 0.0f, 1.0f));
+		ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.6f, 0.2f, 1.0f));
 		ImGui::Text(xorstr_("AVX not available on this system"));
 		ImGui::PopStyleColor();
 	}
@@ -914,7 +929,7 @@ void keybindManager() {
 						cropRatioWidth = 0.03f;
 						break;
 					case 4:
-						cropRatioX = 0.381f * (useShootingRangeOffset ? 1.159f : 1.f);
+						cropRatioX = 0.3815f * (useShootingRangeOffset ? 1.158f : 1.f);
 						cropRatioWidth = 0.028f;
 						break;
 					case 5:
@@ -1292,6 +1307,7 @@ void Menu::gui()
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Hold Left+Right mouse to automatically shoot"));
 						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 3)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
@@ -1330,6 +1346,7 @@ void Menu::gui()
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Hold Left+Right mouse to automatically shoot"));
 						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
@@ -1353,22 +1370,26 @@ void Menu::gui()
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Weapon Detection - Automatically swaps between the selected primary and secondary\nGadget Detection Override - Prevents gadgets from disabling weapon detection\nOperator Detection - Automatically selects the operator after spawning in"));
 
 						if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Significantly reduces CPU usage but causes more first-shot recoil"));
 
 						const char* Aspect_Ratios[] = { xorstr_("16:9"), xorstr_("4:3"), xorstr_("5:4"), xorstr_("3:2"), xorstr_("16:10"), xorstr_("5:3"), xorstr_("19:10"), xorstr_("21:9") };
 
 						if (comboBoxGen(xorstr_("Aspect Ratio"), &settings.aspect_ratio, Aspect_Ratios, 8)) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Display -> Aspect Ratio"));
 
 						ImGui::Spacing();
 
 						if (ImGui::SliderFloat(xorstr_("FOV"), &settings.fov, 60.0f, 90.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Display -> Field of View"));
 
 						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
@@ -1376,18 +1397,23 @@ void Menu::gui()
 						if (ImGui::SliderFloat(xorstr_("X Base Sensitivity"), &settings.sensitivity[0], 0.0f, 100.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Controls -> Mouse Sensitivity Horizontal"));
 						if (ImGui::SliderFloat(xorstr_("Y Base Sensitivity"), &settings.sensitivity[1], 0.0f, 100.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Controls -> Mouse Sensitivity Vertical"));
 						if (ImGui::SliderFloat(xorstr_("1x Sensitivity"), &settings.sensitivity[2], 0.0f, 200.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Controls -> Mouse ADS Sensitivity -> 1.0x Magnification"));
 						if (ImGui::SliderFloat(xorstr_("2.5x Sensitivity"), &settings.sensitivity[3], 0.0f, 200.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Controls -> Mouse ADS Sensitivity -> 2.5x Magnification"));
 						if (ImGui::SliderFloat(xorstr_("3.5x Sensitivity"), &settings.sensitivity[4], 0.0f, 200.0f, xorstr_("%.0f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("Settings -> Controls -> Mouse ADS Sensitivity -> 3.5x Magnification"));
 						if (ImGui::SliderFloat(xorstr_("Sensitivity Multiplier"), &settings.sensitivity[5], 0.0f, 1.0f, xorstr_("%.3f"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
@@ -1429,6 +1455,7 @@ void Menu::gui()
 					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+					tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
 
 					if (settings.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
 						globals.filesystem.unsavedChanges = true;
@@ -1441,6 +1468,11 @@ void Menu::gui()
 					if (settings.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+
+					if (settings.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
 
 					ImGui::EndTabItem();
 				}
@@ -1608,6 +1640,7 @@ void Menu::gui()
 					if (ImGui::Checkbox(xorstr_("Colour Aimbot"), &settings.aimbotData.enabled)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+					tooltip(xorstr_("CPU is recommended for most systems (Unless you have a 4080/4090)"));
 				}
 				else {
 					settings.aimbotData.type = 1;
@@ -1665,14 +1698,17 @@ void Menu::gui()
 					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+          tooltip(xorstr_("The farthest a single aimbot movement can travel"));
 
 					if (settings.aimbotData.type == 1) {
 						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
+            tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
 						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
 							globals.filesystem.unsavedChanges = true;
 						}
+            tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
 
 						std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
 						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {

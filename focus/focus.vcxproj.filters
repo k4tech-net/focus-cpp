@@ -69,6 +69,9 @@
     <ClCompile Include="YOLOv11-ONNXRuntime-CPP\engine.cpp">
       <Filter>YOLOv11-ONNXRuntime-CPP</Filter>
     </ClCompile>
+    <ClCompile Include="features\network\network.cpp">
+      <Filter>features\network</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="features">
@@ -103,6 +106,9 @@
     </Filter>
     <Filter Include="YOLOv11-ONNXRuntime-CPP">
       <UniqueIdentifier>{e103a3d8-22d2-4c1e-8fd4-83a1089db62e}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\network">
+      <UniqueIdentifier>{8a1626d7-90fe-4b79-8c6a-344af0cf43f8}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -178,6 +184,9 @@
     </ClInclude>
     <ClInclude Include="features\settings\hotkeys.hpp">
       <Filter>features\settings</Filter>
+    </ClInclude>
+    <ClInclude Include="features\network\network.hpp">
+      <Filter>features\network</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

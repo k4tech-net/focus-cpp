@@ -363,6 +363,10 @@ void Control::driveKeyboard() {
 	static int direction = 0;
 	static bool init = true;
 
+	NetworkBlocker nb;
+
+	nb.initForR6();
+
 	while (!globals.shutdown) {
 		if (settings.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
 
@@ -500,6 +504,15 @@ void Control::driveKeyboard() {
 		if (settings.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
 			
 			ms.moveR(50000, 1000);
+		}
+
+		if (settings.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
+			if (!nb.isCurrentlyBlocking()) {
+				nb.enableBlocking();
+			}
+		}
+		else if (nb.isCurrentlyBlocking()) {
+			nb.disableBlocking();
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
