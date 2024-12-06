@@ -35,13 +35,27 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         else if (key == xorstr_("AimAssist") && updateAimbotInfo) {
             std::istringstream ss(value);
             std::string item;
+            std::getline(ss, item, ','); aimbotData.type = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.provider = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.smoothing = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.percentDistance = std::stof(item);
             std::getline(ss, item, ','); aimbotData.hitbox = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.confidence = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.forceHitbox = item == xorstr_("1");
+        }
+        else if (key == xorstr_("PidSettings")) {
+			std::istringstream ss(value);
+			std::string item;
+            std::getline(ss, item, ','); aimbotData.pidSettings.pidPreset = std::stoi(item);
+			std::getline(ss, item, ','); aimbotData.pidSettings.proportional = std::stof(item);
+			std::getline(ss, item, ','); aimbotData.pidSettings.integral = std::stof(item);
+			std::getline(ss, item, ','); aimbotData.pidSettings.derivative = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.pidSettings.rampUpTime = std::stof(item);
+        }
+        else if (key == xorstr_("Extras")) {
+			std::istringstream ss(value);
+			std::string item;
+            std::getline(ss, item, ','); extras.aimKeyMode = std::stoi(item);
+            std::getline(ss, item, ','); extras.recoilKeyMode = std::stoi(item);
         }
         else if (key == xorstr_("WeaponKeybinds")) {
             wpn_keybinds.clear();
@@ -171,7 +185,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         currentCharacter.weapondata.push_back(currentWeapon);
         weaponCount++;
     }
-    if (!currentCharacter.charactername.empty() || mode == xorstr_("Generic") || game == xorstr_("Rust")) {
+    if (!currentCharacter.charactername.empty() || mode == xorstr_("Generic") || game == xorstr_("Rust") || game == xorstr_("Overwatch")) {
         // Set selectedPrimary and selectedSecondary based on defaultweapon
         characters.push_back(currentCharacter);
     }
@@ -184,6 +198,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
 
     // Set the weaponDataChanged flag
     weaponDataChanged = true;
+    pidDataChanged = true;
 }
 
 void Settings::saveSettings(const std::string& filename) {
@@ -193,11 +208,15 @@ void Settings::saveSettings(const std::string& filename) {
         return;
     }
 
-    file << xorstr_("Mode=") << mode << "\n";
+    file << xorstr_("Mode=") << mode << xorstr_("\n");
     file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AimAssist=") << aimbotData.provider << xorstr_(",") << aimbotData.smoothing << xorstr_(",")
-        << aimbotData.maxDistance << xorstr_(",") << aimbotData.percentDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
+    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.provider << xorstr_(",")
+        << aimbotData.maxDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
         << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",")
+        << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative
+        << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
+    file << xorstr_("Extras=") << extras.aimKeyMode << xorstr_(",") << extras.recoilKeyMode << xorstr_("\n");
 
     // Save hotkeys in matching format
     for (size_t i = 0; i < static_cast<size_t>(HotkeyIndex::COUNT); i++) {
@@ -307,6 +326,34 @@ void Settings::saveSettings(const std::string& filename) {
             file << xorstr_("Fov=") << fov << xorstr_("\n");
 
             file << xorstr_("CrouchKeybind=") << crouch_keybind << xorstr_("\n");
+            file << xorstr_("Options=");
+            for (const auto& option : characters[0].options) {
+                file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
+            }
+            file << xorstr_("\n");
+
+            for (const auto& weapon : characters[0].weapondata) {
+                file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
+                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+                file << xorstr_("Values=");
+                for (const auto& valueSet : weapon.values) {
+                    for (const auto& value : valueSet) {
+                        file << value << xorstr_(",");
+                    }
+                    file << xorstr_(";");
+                }
+                file << xorstr_("\n");
+            }
+        }
+        else if (game == xorstr_("Overwatch")) {
+            file << xorstr_("Sensitivity=");
+            for (const auto& sens : sensitivity) {
+                file << sens << xorstr_(",");
+            }
+            file << xorstr_("\n");
+
+            file << xorstr_("Fov=") << fov << xorstr_("\n");
+
             file << xorstr_("Options=");
             for (const auto& option : characters[0].options) {
                 file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");

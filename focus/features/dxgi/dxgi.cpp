@@ -250,12 +250,18 @@ void DXGI::aimbot() {
 
     while (!globals.shutdown) {
 
-        if (settings.test) {
+        if (settings.aimbotData.type == 1 && !settings.aimbotData.enabled) {
+            if (aimbotInit) {
+                inferencer.reset();
+                aimbotInit = false;
+            }
+            settings.aimbotData.correctionX = 0;
+            settings.aimbotData.correctionY = 0;
+            std::this_thread::sleep_for(std::chrono::milliseconds(200));
+            continue;
+        }
 
-            // FPS tracking variables
-            static int frameCount = 0;
-            static auto lastFpsTime = std::chrono::high_resolution_clock::now();
-            static float currentFps = 0.0f;
+        if (settings.aimbotData.type == 0 && settings.aimbotData.enabled && settings.game == xorstr_("Overwatch")) {
 
             if (globals.desktopMat.empty()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
@@ -285,101 +291,60 @@ void DXGI::aimbot() {
             }
 
             overwatchDetector(croppedImage);
+        }
+        else if (settings.aimbotData.type == 1 && settings.aimbotData.enabled) {
+            if (!aimbotInit) {
+                if (settings.aimbotData.provider == 1) {
+                    provider = xorstr_("CUDA");
+                }
+                else {
+                    provider = xorstr_("CPU");
+                }
 
-            cv::imshow(xorstr_("Test"), croppedImage);
-            cv::waitKey(1);
-
-            // Only increment frame count after successful processing
-            frameCount++;
-
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFpsTime).count();
-
-            // Update FPS every 500ms for smoother readings
-            if (elapsed >= 500) {
-                currentFps = (frameCount * 1000.0f) / elapsed;  // Convert to per-second rate
-                printf("FPS: %.2f\n", currentFps);  // Format to 2 decimal places
-                frameCount = 0;
-                lastFpsTime = currentTime;
+                inferencer = std::make_unique<YoloInferencer>(modelPath, logid, provider);
+                aimbotInit = true;
             }
 
-            //std::this_thread::sleep_for(std::chrono::microseconds(500));
-            continue;
-        }
-
-        if (!settings.aimbotData.enabled) {
-            if (aimbotInit) {
-                inferencer.reset();
-                aimbotInit = false;
-			}
-            settings.aimbotData.correctionX = 0;
-            settings.aimbotData.correctionY = 0;
-            std::this_thread::sleep_for(std::chrono::milliseconds(200));
-            continue;
-        }
-
-        if (!aimbotInit) {
-            if (settings.aimbotData.provider == 1) {
-                provider = xorstr_("CUDA");
-            }
-            else {
-				provider = xorstr_("CPU");
-            }
-
-            inferencer = std::make_unique<YoloInferencer>(modelPath, logid, provider);
-            aimbotInit = true;
-        }
-
-        if (!aimbotInit) {
-            continue;
-        }
-
-        cv::Mat croppedImage;
-        {
-            std::lock_guard<std::mutex> lock(globals.desktopMutex_);
-            if (globals.desktopMat.empty()) {
+            if (!aimbotInit) {
                 continue;
             }
 
-            // Calculate ROI directly from desktop dimensions
-            const int screenWidth = globals.desktopMat.cols;
-            const int screenHeight = globals.desktopMat.rows;
-            const cv::Rect roi(
-                static_cast<int>(cropRatioX * screenWidth),
-                static_cast<int>(cropRatioY * screenHeight),
-                static_cast<int>(cropRatioWidth * screenWidth),
-                static_cast<int>(cropRatioHeight * screenHeight)
-            );
+            cv::Mat croppedImage;
+            {
+                std::lock_guard<std::mutex> lock(globals.desktopMutex_);
+                if (globals.desktopMat.empty()) {
+                    continue;
+                }
 
-            // Convert BGRA to BGR during the crop operation
-            cv::cvtColor(globals.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
-        }
+                // Calculate ROI directly from desktop dimensions
+                const int screenWidth = globals.desktopMat.cols;
+                const int screenHeight = globals.desktopMat.rows;
+                const cv::Rect roi(
+                    static_cast<int>(cropRatioX * screenWidth),
+                    static_cast<int>(cropRatioY * screenHeight),
+                    static_cast<int>(cropRatioWidth * screenWidth),
+                    static_cast<int>(cropRatioHeight * screenHeight)
+                );
 
-        if (croppedImage.empty()) {
-            continue;
-        }
+                // Convert BGRA to BGR during the crop operation
+                cv::cvtColor(globals.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
+            }
 
-		std::vector<Detection> detections = inferencer->infer(croppedImage, static_cast<float>(settings.aimbotData.confidence) / 100.0f, 0.5);
+            if (croppedImage.empty()) {
+                continue;
+            }
 
-        if (detections.empty()) {
-			continue;
-		}
+            std::vector<Detection> detections = inferencer->infer(croppedImage, static_cast<float>(settings.aimbotData.confidence) / 100.0f, 0.5);
 
-        std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov, settings.aimbotData.forceHitbox);
+            if (detections.empty()) {
+                continue;
+            }
 
-        if (corrections[0] == 0 || settings.aimbotData.percentDistance == 0) {
+            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov, settings.aimbotData.forceHitbox);
+
             settings.aimbotData.correctionX = corrections[0];
-        }
-        else {
-            settings.aimbotData.correctionX = corrections[0] * (static_cast<float>(settings.aimbotData.percentDistance) / 100.0f);
-        }
-
-		if (corrections[1] == 0 || settings.aimbotData.percentDistance == 0) {
             settings.aimbotData.correctionY = corrections[1];
-		}
-		else {
-            settings.aimbotData.correctionY = corrections[1] * (static_cast<float>(settings.aimbotData.percentDistance) / 100.0f);
-		}
+        }
     }
 }
 
@@ -997,14 +962,6 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
         settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
         settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
-
-#ifdef _DEBUG
-        // Scale points back up for visualization
-        cv::Point scaledTarget(targetPoint.x * 2, targetPoint.y * 2);
-        cv::circle(src, scaledTarget, 3, cv::Scalar(0, 0, 255), -1);
-        cv::line(src, cv::Point(src.cols / 2, src.rows / 2), scaledTarget, cv::Scalar(255, 0, 0), 1);
-        cv::imshow("test", mask);
-#endif
     }
     else {
         settings.aimbotData.correctionX = 0;

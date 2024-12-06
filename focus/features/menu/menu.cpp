@@ -88,6 +88,8 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 		ImGui::OpenPopup(xorstr_("NewConfigPopup"));
 	}
 
+	const char* games[] = { xorstr_("Siege"), xorstr_("Rust"), xorstr_("Overwatch") };
+
 	if (ImGui::BeginPopup(xorstr_("NewConfigPopup"))) {
 		ImGui::InputText(xorstr_("Config Name"), newConfigName, 256);
 
@@ -95,7 +97,6 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 		ImGui::Combo(xorstr_("Mode"), &selectedMode, modes, IM_ARRAYSIZE(modes));
 
 		if (selectedMode == 2) {  // If "Game" mode is selected
-			const char* games[] = { xorstr_("Siege"), xorstr_("Rust") };
 			ImGui::Combo(xorstr_("Game"), &selectedGame, games, IM_ARRAYSIZE(games));
 		}
 
@@ -104,7 +105,8 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
 			newSettings.potato = true;
-			newSettings.aimbotData = { 0, 0, false, 0, 50, 10, 10, 0, 10, false }; // Default aimbot settings
+			newSettings.aimbotData = { 0, 0, false, 0, 0, 10, 0, 10, false, { 0, 0.f, 0.f, 0.f, 0.f } }; // Default aimbot settings
+			newSettings.extras = { 0 };
 
 			// Pre-fill with example values based on mode and game
 			if (newSettings.mode == xorstr_("Generic")) {
@@ -141,7 +143,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 				newSettings.characters.push_back(exampleChar);
 			}
 			else if (newSettings.mode == xorstr_("Game")) {
-				newSettings.game = selectedGame == 0 ? xorstr_("Siege") : xorstr_("Rust");
+				newSettings.game = games[selectedGame];
 
 				if (newSettings.game == xorstr_("Siege")) {
 					characterData exampleChar;
@@ -181,6 +183,21 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 					newSettings.characters.push_back(rustChar);
 					newSettings.sensitivity = { 0.5f, 1.0f };
 					newSettings.crouch_keybind = xorstr_("0x11");  // Default to Ctrl key
+				}
+				else if (newSettings.game == xorstr_("Overwatch")) {
+					characterData owChar;
+					owChar.options = { true };
+
+					weaponData exampleWeapon;
+					exampleWeapon.weaponname = xorstr_(".Disabled");
+					exampleWeapon.rapidfire = false;
+					exampleWeapon.attachments = { 0, 0, 0 };
+					exampleWeapon.values = { {0.f, 0.f, 0.f} };
+					owChar.weapondata.push_back(exampleWeapon);
+
+					owChar.selectedweapon = { 0, 0 };
+					newSettings.characters.push_back(owChar);
+					newSettings.sensitivity = { 1.0f, 1.0f };
 				}
 			}
 
@@ -1377,8 +1394,6 @@ void Menu::gui()
 
 						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
 						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
-
-						ImGui::Checkbox(xorstr_("Test"), &settings.test);
 					}
 					else {
 						ImGui::Text(xorstr_("Please load a weapons file"));
@@ -1517,44 +1532,179 @@ void Menu::gui()
 					ImGui::EndTabItem();
 				}
 			}
+			else if (settings.game == xorstr_("Overwatch")) {
+				if (ImGui::BeginTabItem(xorstr_("Game"))) {
+
+					ImGui::Columns(2);
+					ImGui::BeginChild(xorstr_("Left Column"));
+
+					if (settings.characters.size() > 0) {
+						ImGui::Text(xorstr_("Game: %s"), settings.game.c_str());
+
+						if (comboBoxWep(xorstr_("Weapon"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
+							settings.weaponDataChanged = true;
+						}
+						if (ImGui::Checkbox(xorstr_("Rapid Fire"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						ImGui::Spacing();
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Options"));
+
+						if (ImGui::Checkbox(xorstr_("Potato Mode"), &settings.potato)) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						ImGui::Spacing();
+
+						if (ImGui::SliderFloat(xorstr_("FOV"), &settings.fov, 80.0f, 103.0f, xorstr_("%.0f"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						ImGui::Spacing();
+						ImGui::SeparatorText(xorstr_("Extra Data"));
+
+						ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.sensMultiplier[0]);
+						ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.sensMultiplier[1]);
+					}
+					else {
+						ImGui::Text(xorstr_("Please load a weapons file"));
+					}
+
+					ImGui::EndChild();
+					ImGui::NextColumn();
+					ImGui::BeginChild(xorstr_("Right Column"));
+
+					if (settings.characters.size() > 0 && settings.selectedCharacterIndex < settings.characters.size()) {
+						const auto& activeWeapon = settings.isPrimaryActive ?
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]] :
+							settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+
+						DrawRecoilPattern(activeWeapon.values);
+					}
+					else {
+						ImGui::Text(xorstr_("No weapon selected or data available."));
+					}
+
+					ImGui::EndChild();
+					ImGui::Columns(1);
+
+					ImGui::EndTabItem();
+				}
+			}
 			else {
 				ImGui::Text(xorstr_("Please load a valid game config"));
 			}
 		}
 
-		if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege") || settings.game == xorstr_("Rust") || settings.mode == xorstr_("Generic")) {
+		if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege") || settings.game == xorstr_("Rust") || settings.mode == xorstr_("Generic") || settings.game == xorstr_("Overwatch")) {
 			if (ImGui::BeginTabItem(xorstr_("Aim"))) {
 
-				if (!settings.aimbotData.enabled) {
-					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
-					if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.provider, providers.data(), (int)providers.size())) {
+				if (settings.game == xorstr_("Overwatch")) {
+					settings.aimbotData.type = 0;
+
+					if (ImGui::Checkbox(xorstr_("Colour Aimbot"), &settings.aimbotData.enabled)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 				}
+				else {
+					settings.aimbotData.type = 1;
 
-				if (ImGui::Checkbox(xorstr_("AI Aim Assist"), &settings.aimbotData.enabled)) {
-					globals.filesystem.unsavedChanges = true;
+					if (!settings.aimbotData.enabled) {
+						std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+						if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.provider, providers.data(), (int)providers.size())) {
+							globals.filesystem.unsavedChanges = true;
+						}
+					}
+
+					if (ImGui::Checkbox(xorstr_("AI Aim Assist"), &settings.aimbotData.enabled)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 				}
 
 				if (settings.aimbotData.enabled) {
-					if (ImGui::SliderInt(xorstr_("Aim Assist Smoothing (Ticks per Move)"), &settings.aimbotData.smoothing, 1, 200)) {
+					std::vector<const char*> pidPresets = { xorstr_("Slow"), xorstr_("Legit"), xorstr_("Aggressive"), xorstr_("Custom") };
+
+					if (ImGui::Combo(xorstr_("Aimbot Preset"), &settings.aimbotData.pidSettings.pidPreset, pidPresets.data(), (int)pidPresets.size())) {
 						globals.filesystem.unsavedChanges = true;
+
+						if (settings.aimbotData.pidSettings.pidPreset == 0) {
+							settings.aimbotData.pidSettings = { 0, 0.005f, 0.05f, 0.008f, 0.0f };
+							settings.pidDataChanged = true;
+						}
+						else if (settings.aimbotData.pidSettings.pidPreset == 1) {
+							settings.aimbotData.pidSettings = { 1, 0.02f, 1.f, 0.008f, 1.f };
+							settings.pidDataChanged = true;
+						}
+						else if (settings.aimbotData.pidSettings.pidPreset == 2) {
+							settings.aimbotData.pidSettings = { 2, 0.035f, 1.f, 0.008f, 1.f };
+							settings.pidDataChanged = true;
+						}
+						else if (settings.aimbotData.pidSettings.pidPreset == 3) {
+							if (ImGui::InputFloat(xorstr_("Proportional"), &settings.aimbotData.pidSettings.proportional, 0.0f, 0.0f)) {
+								globals.filesystem.unsavedChanges = true;
+								settings.pidDataChanged = true;
+							}
+							if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
+								globals.filesystem.unsavedChanges = true;
+								settings.pidDataChanged = true;
+							}
+							if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
+								globals.filesystem.unsavedChanges = true;
+								settings.pidDataChanged = true;
+							}
+							if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
+								globals.filesystem.unsavedChanges = true;
+								settings.pidDataChanged = true;
+							}
+						}
 					}
+
 					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-					if (ImGui::SliderInt(xorstr_("Total Distance per Move"), &settings.aimbotData.percentDistance, 1, 100, xorstr_("%d%%"))) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
-						globals.filesystem.unsavedChanges = true;
-					}
 
-					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-					if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
+					if (settings.aimbotData.type == 1) {
+						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
+							globals.filesystem.unsavedChanges = true;
+						}
+
+						std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
+						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
+							globals.filesystem.unsavedChanges = true;
+						}
+					}
+				}
+
+				ImGui::EndTabItem();
+			}
+		}
+
+		if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege") || settings.game == xorstr_("Rust") || settings.mode == xorstr_("Generic") || settings.game == xorstr_("Overwatch")) {
+
+			if (ImGui::BeginTabItem(xorstr_("Extras"))) {
+				std::vector<const char*> keysSettings = { xorstr_("Require Both"), xorstr_("Just Left Mouse"), xorstr_("Just Right Mouse"), xorstr_("Custom Key") };
+				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.extras.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				if (settings.extras.aimKeyMode == 3) {
+					if (settings.hotkeys.RenderHotkey(xorstr_("Custom Aimbot Key"), HotkeyIndex::AimKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+				}
+
+				if (ImGui::Combo(xorstr_("Recoil Mouse Buttons"), &settings.extras.recoilKeyMode, keysSettings.data(), (int)keysSettings.size())) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				if (settings.extras.recoilKeyMode == 3) {
+					if (settings.hotkeys.RenderHotkey(xorstr_("Custom Recoil Key"), HotkeyIndex::RecoilKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 				}
@@ -1681,7 +1831,7 @@ void Menu::gui()
 
 					ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
 					std::vector<weaponData>* currentWeaponData = nullptr;
-					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
 					{
 						if (!settings.characters.empty())
 						{
@@ -1726,7 +1876,7 @@ void Menu::gui()
 
 					if (ImGui::Button(xorstr_("Add Weapon")))
 					{
-						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
 						{
 							if (settings.characters.empty())
 							{
@@ -1767,7 +1917,7 @@ void Menu::gui()
 					if (ImGui::Button(xorstr_("Remove Weapon")))
 					{
 						std::vector<weaponData>* currentWeaponData = nullptr;
-						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+						if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
 						{
 							if (!settings.characters.empty())
 							{
@@ -1894,7 +2044,7 @@ void Menu::gui()
 				if (ImGui::Checkbox(xorstr_("Edit Recoil Pattern"), &editingPattern))
 				{
 					std::vector<weaponData>* currentWeaponData = nullptr;
-					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
 					{
 						if (!settings.characters.empty())
 						{
@@ -1963,7 +2113,7 @@ void Menu::gui()
 				ImGui::BeginChild(xorstr_("RecoilPatternDisplay"));
 
 				std::vector<weaponData>* currentWeaponData = nullptr;
-				if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust"))
+				if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
 				{
 					if (!settings.characters.empty())
 					{
@@ -1996,7 +2146,7 @@ void Menu::gui()
 				ImGui::Columns(1);
 
 				ImGui::EndTabItem();
-}
+			}
 
 		}
 

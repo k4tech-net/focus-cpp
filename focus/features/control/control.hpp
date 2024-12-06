@@ -6,14 +6,16 @@ class Control
 {
 public:
 	void driveMouse();
+    void driveAimbot();
 	void driveKeyboard();
 };
 
 class PIDController {
 private:
     // Base PID coefficients
-    float baseKp, Ki, Kd;
+    float baseKp, baseKi, Kd;
     float maxKp;
+    float maxKi;  // Maximum integral gain
 
     // Error tracking
     float previousError;
@@ -22,15 +24,20 @@ private:
 
     // Timing
     std::chrono::steady_clock::time_point lastUpdateTime;
+    std::chrono::steady_clock::time_point startTrackingTime;
+    bool isTracking;
 
     // Integral windup prevention
     float integralLimit;
+
+    // Integral ramp-up configuration
+    float integralRampTime;  // Time in seconds to reach full integral gain
 
     // Enhanced derivative filtering
     static const int DERIVATIVE_FILTER_SIZE = 5;
     std::array<float, DERIVATIVE_FILTER_SIZE> derivativeHistory;
     int derivativeHistoryIndex;
-    float derivativeFilterBeta;  // Low-pass filter coefficient
+    float derivativeFilterBeta;
     float lastFilteredDerivative;
 
     float clamp(float value, float min, float max) {
@@ -43,22 +50,29 @@ private:
         return baseKp + (maxKp - baseKp) * errorRatio * errorRatio;
     }
 
+    float calculateAdaptiveKi(float trackingDuration) {
+        if (!isTracking) return 0.0f;
+
+        // Gradually increase Ki over the ramp time
+        float rampRatio = std::min(trackingDuration / integralRampTime, 1.0f);
+
+        // Use a smooth acceleration curve
+        float smoothRatio = rampRatio * rampRatio * (3 - 2 * rampRatio);
+        return baseKi * smoothRatio;
+    }
+
     float filterDerivative(float newDerivative) {
-        // Update circular buffer
         derivativeHistory[derivativeHistoryIndex] = newDerivative;
         derivativeHistoryIndex = (derivativeHistoryIndex + 1) % DERIVATIVE_FILTER_SIZE;
 
-        // Calculate median
         std::array<float, DERIVATIVE_FILTER_SIZE> sortedValues = derivativeHistory;
         std::sort(sortedValues.begin(), sortedValues.end());
         float medianDerivative = sortedValues[DERIVATIVE_FILTER_SIZE / 2];
 
-        // Apply exponential smoothing
-        lastFilteredDerivative = derivativeFilterBeta * lastFilteredDerivative + 
-                                (1.0f - derivativeFilterBeta) * medianDerivative;
+        lastFilteredDerivative = derivativeFilterBeta * lastFilteredDerivative +
+            (1.0f - derivativeFilterBeta) * medianDerivative;
 
-        // Apply non-linear filtering for large changes
-        float derivativeThreshold = 100.0f;  // Adjust based on testing
+        float derivativeThreshold = 100.0f;
         if (std::abs(lastFilteredDerivative) > derivativeThreshold) {
             lastFilteredDerivative *= (derivativeThreshold / std::abs(lastFilteredDerivative));
         }
@@ -68,16 +82,19 @@ private:
 
 public:
     PIDController(float p = 0.03f, float i = 0.2f, float d = 0.001f)
-        : baseKp(p), Ki(i), Kd(d),
-          maxKp(p * 3.0f),
-          previousError(0.0f),
-          integralError(0.0f),
-          lastCorrection(0.0f),
-          lastFilteredDerivative(0.0f),
-          derivativeFilterBeta(0.85f),  // Increased smoothing
-          integralLimit(20.0f),
-          derivativeHistoryIndex(0) {
+        : baseKp(p), baseKi(i), Kd(d),
+        maxKp(p * 3.0f),
+        previousError(0.0f),
+        integralError(0.0f),
+        lastCorrection(0.0f),
+        lastFilteredDerivative(0.0f),
+        derivativeFilterBeta(0.85f),
+        integralLimit(20.0f),
+        derivativeHistoryIndex(0),
+        isTracking(false),
+        integralRampTime(0.5f) {  // Ramp up to full I gain over 0.5 seconds
         lastUpdateTime = std::chrono::steady_clock::now();
+        startTrackingTime = lastUpdateTime;
         derivativeHistory.fill(0.0f);
     }
 
@@ -89,6 +106,7 @@ public:
         derivativeHistory.fill(0.0f);
         derivativeHistoryIndex = 0;
         lastUpdateTime = std::chrono::steady_clock::now();
+        isTracking = false;
     }
 
     float calculate(float targetPosition, float currentPosition) {
@@ -101,25 +119,36 @@ public:
         }
 
         float error = targetPosition - currentPosition;
+
+        // Start tracking when we get non-zero error
+        if (!isTracking && std::abs(error) > 0.1f) {
+            isTracking = true;
+            startTrackingTime = currentTime;
+        }
+
+        // Calculate tracking duration
+        float trackingDuration = std::chrono::duration<float>(currentTime - startTrackingTime).count();
+
         float adaptiveKp = calculateAdaptiveKp(error);
-        
+        float adaptiveKi = calculateAdaptiveKi(trackingDuration);
+
         // Proportional term
         float P = adaptiveKp * error;
 
-        // Integral term with anti-windup
+        // Integral term with adaptive gain and anti-windup
         integralError = clamp(integralError + error * deltaTime, -integralLimit, integralLimit);
-        float I = Ki * integralError;
+        float I = adaptiveKi * integralError;
 
-        // Enhanced derivative term with sophisticated filtering
+        // Enhanced derivative term
         float rawDerivative = (error - previousError) / deltaTime;
         float filteredDerivative = filterDerivative(rawDerivative);
         float D = Kd * filteredDerivative;
 
         previousError = error;
 
-        // Calculate final correction with deadzone for small movements
+        // Calculate final correction with deadzone
         float correction = P + I + D;
-        if (std::abs(correction) < 0.15f) {  // Slightly increased deadzone
+        if (std::abs(correction) < 0.15f) {
             correction = 0.0f;
         }
 
@@ -130,7 +159,11 @@ public:
     void setTunings(float p, float i, float d) {
         baseKp = p;
         maxKp = p * 3.0f;
-        Ki = i;
+        baseKi = i;
         Kd = d;
+    }
+
+    void setIntegralRampTime(float seconds) {
+        integralRampTime = std::max(0.1f, seconds);
     }
 };
