@@ -55,15 +55,6 @@ void Control::driveMouse() {
 
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
-	static float correctionXAccumulator = 0;
-	static float correctionYAccumulator = 0;
-
-	// New variables for smoothin
-	static int currentIteration = 0;
-	static float totalCorrectionX = 0;
-	static float totalCorrectionY = 0;
-	static float smoothedCorrectionX = 0;
-	static float smoothedCorrectionY = 0;
 
 	while (!globals.shutdown) {
 		// Check if the selected weapon has changed
@@ -81,12 +72,29 @@ void Control::driveMouse() {
 			maxInstructions = currwpn.values.size();
 		}
 
-		int smoothingIterations = settings.aimbotData.smoothing;
+		// Check mouse button states based on keymode
+		bool mouseCondition = false;
+		bool l_mouse = currwpn.rapidfire ? globals.mouseinfo.l_mouse_down.load() : (GetAsyncKeyState(VK_LBUTTON) != 0);
+		bool r_mouse = currwpn.rapidfire ? globals.mouseinfo.r_mouse_down.load() : (GetAsyncKeyState(VK_RBUTTON) != 0);
 
-		while ((currwpn.rapidfire ? globals.mouseinfo.l_mouse_down && globals.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON)) && !complete && !settings.weaponOffOverride) {
+		switch (settings.extras.recoilKeyMode) {
+		case 0: // Both buttons
+			mouseCondition = l_mouse && r_mouse;
+			break;
+		case 1: // Left button only
+			mouseCondition = l_mouse;
+			break;
+		case 2: // Right button only
+			mouseCondition = r_mouse;
+			break;
+		case 3: // Custom key
+			mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::RecoilKey);
+			break;
+		}
+
+		while (mouseCondition && !complete && !settings.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
-
 				float x = instruction[0];
 				float y = instruction[1];
 				float duration = instruction[2];
@@ -95,13 +103,12 @@ void Control::driveMouse() {
 				float int_timer = 0;
 				auto nextExecution = currtime;
 
-				while (int_timer < duration / 1000.f && (currwpn.rapidfire ? globals.mouseinfo.l_mouse_down && globals.mouseinfo.r_mouse_down : GetAsyncKeyState(VK_LBUTTON) && GetAsyncKeyState(VK_RBUTTON))) {
-					nextExecution += std::chrono::microseconds(static_cast<long long>(10000)); // 10 milliseconds in microseconds
+				while (int_timer < duration / 1000.f && mouseCondition) {
+					nextExecution += std::chrono::microseconds(static_cast<long long>(10000));
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
 					std::vector<float> sens = settings.sensMultiplier;
-
 					xAccumulator += x * sens[0];
 					yAccumulator += y * sens[1];
 
@@ -111,40 +118,8 @@ void Control::driveMouse() {
 					xAccumulator -= xMove;
 					yAccumulator -= yMove;
 
-					// Apply smoothing
-					totalCorrectionX = settings.aimbotData.correctionX;
-					totalCorrectionY = settings.aimbotData.correctionY;
-					currentIteration++;
-
-					if (currentIteration >= smoothingIterations) {
-						smoothedCorrectionX = totalCorrectionX / smoothingIterations;
-						smoothedCorrectionY = totalCorrectionY / smoothingIterations;
-
-						totalCorrectionX = 0;
-						totalCorrectionY = 0;
-						currentIteration = 0;
-					}
-
-					// Apply smoothed corrections every iteration
-					correctionXAccumulator += smoothedCorrectionX;
-					correctionYAccumulator += smoothedCorrectionY * 0.25f;
-
-					int correctionXMove = static_cast<int>(correctionXAccumulator);
-					int correctionYMove = static_cast<int>(correctionYAccumulator);
-
-					correctionXAccumulator -= correctionXMove;
-					correctionYAccumulator -= correctionYMove;
-
-					// Apply clamping to the correction moves
-					correctionXMove = std::clamp(correctionXMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
-					correctionYMove = std::clamp(correctionYMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
-
-					// Combine regular movement with corrections
-					xMove += correctionXMove;
-					yMove += correctionYMove;
-					
 					ms.moveR(xMove, yMove);
-			
+
 					if (currwpn.rapidfire && cycles >= 8 && globals.mouseinfo.l_mouse_down) {
 						pressMouse1(flipFlop);
 						flipFlop = !flipFlop;
@@ -158,6 +133,25 @@ void Control::driveMouse() {
 					else {
 						ut.preciseSleepUntil(nextExecution);
 					}
+
+					// Update mouseCondition
+					l_mouse = currwpn.rapidfire ? globals.mouseinfo.l_mouse_down.load() : (GetAsyncKeyState(VK_LBUTTON) != 0);
+					r_mouse = currwpn.rapidfire ? globals.mouseinfo.r_mouse_down.load() : (GetAsyncKeyState(VK_RBUTTON) != 0);
+
+					switch (settings.extras.recoilKeyMode) {
+					case 0:
+						mouseCondition = l_mouse && r_mouse;
+						break;
+					case 1:
+						mouseCondition = l_mouse;
+						break;
+					case 2:
+						mouseCondition = r_mouse;
+						break;
+					case 3: // Custom key
+						mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::RecoilKey);
+						break;
+					}
 				}
 
 				if (index == maxInstructions - 1) {
@@ -166,7 +160,7 @@ void Control::driveMouse() {
 			}
 		}
 		
-		if (!globals.mouseinfo.l_mouse_down || !globals.mouseinfo.r_mouse_down) {
+		if (!mouseCondition) {
 
 			if (cycles > 8 || !flipFlop) {
 				pressMouse1(false);
@@ -177,14 +171,6 @@ void Control::driveMouse() {
 			cycles = 0;
 			xAccumulator = 0;
 			yAccumulator = 0;
-
-			totalCorrectionX = 0;
-			totalCorrectionY = 0;
-			currentIteration = 0;
-			smoothedCorrectionX = 0;
-			smoothedCorrectionY = 0;
-			correctionXAccumulator = 0;
-			correctionYAccumulator = 0;
 
 			//if (GetAsyncKeyState(VK_RSHIFT)) {
 				//std::this_thread::sleep_for(std::chrono::seconds(2));
@@ -213,6 +199,9 @@ void Control::driveMouse() {
 				// 90 = 8732
 				// 70 = 11228
 				// 80 = 9824
+
+				//Overwatch
+				// all = 6284
 			//}
 		}
 
@@ -220,6 +209,132 @@ void Control::driveMouse() {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 		//ut.preciseSleepFor(0.0005); // uses too much resources
+	}
+}
+
+void Control::driveAimbot() {
+	// Initial PID state
+	PIDController pidX(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
+	PIDController pidY(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
+	pidX.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
+	pidY.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
+
+	//while (settings.test && GetAsyncKeyState(VK_RCONTROL)) {
+		//	// Calculate PID corrections directly from the raw corrections
+		//	float pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+		//	float pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
+
+		//	float totalDistance = std::sqrt(
+		//		settings.aimbotData.correctionX * settings.aimbotData.correctionX +
+		//		settings.aimbotData.correctionY * settings.aimbotData.correctionY
+		//	);
+
+		//	// Round to integer movements
+		//	int xMove = static_cast<int>(std::round(pidCorrectionX));
+		//	int yMove = static_cast<int>(std::round(pidCorrectionY));
+
+		//	xMove = std::clamp(xMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+		//	yMove = std::clamp(yMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+
+		//	// Move mouse if there's any movement
+		//	if (xMove != 0 || yMove != 0) {
+		//		ms.moveR(xMove, yMove);
+		//	}
+
+		//	/*if (totalDistance < 15.f) {
+		//		pressMouse1(true);
+		//		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//		pressMouse1(false);
+		//	}*/
+
+		//	std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		//}
+
+	while (!globals.shutdown) {
+		if (settings.pidDataChanged) {
+			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
+			pidY.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
+			pidX.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
+			pidY.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
+			settings.pidDataChanged = false;
+		}
+
+		// Check activation conditions based on keymode
+		bool mouseCondition = false;
+		bool l_mouse = globals.mouseinfo.l_mouse_down.load();
+		bool r_mouse = globals.mouseinfo.r_mouse_down.load();
+
+		switch (settings.extras.aimKeyMode) {
+		case 0: // Both buttons
+			mouseCondition = l_mouse && r_mouse;
+			break;
+		case 1: // Left button only
+			mouseCondition = l_mouse;
+			break;
+		case 2: // Right button only
+			mouseCondition = r_mouse;
+			break;
+		case 3: // Custom key
+			mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::AimKey);
+			break;
+		}
+
+		// Main aimbot loop
+		while (mouseCondition && !settings.weaponOffOverride) {
+			// Calculate PID corrections
+			float pidCorrectionX = 0;
+			float pidCorrectionY = 0;
+
+			// Only calculate corrections if we have valid tracking data
+			if (settings.aimbotData.correctionX != 0 || settings.aimbotData.correctionY != 0) {
+				pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+				if (settings.game == xorstr_("Overwatch")) {
+					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
+				}
+				else {
+					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
+				}
+			}
+
+			int xMove = static_cast<int>(std::round(pidCorrectionX));
+			int yMove = static_cast<int>(std::round(pidCorrectionY));
+
+			xMove = std::clamp(xMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+			yMove = std::clamp(yMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
+
+			if (xMove != 0 || yMove != 0) {
+				ms.moveR(xMove, yMove);
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+
+			// Update mouseCondition
+			l_mouse = globals.mouseinfo.l_mouse_down.load();
+			r_mouse = globals.mouseinfo.r_mouse_down.load();
+
+			switch (settings.extras.aimKeyMode) {
+			case 0:
+				mouseCondition = l_mouse && r_mouse;
+				break;
+			case 1:
+				mouseCondition = l_mouse;
+				break;
+			case 2:
+				mouseCondition = r_mouse;
+				break;
+			case 3:
+				mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::AimKey);
+				break;
+			}
+		}
+
+		// Reset PID controllers when not active
+		if (!mouseCondition) {
+			pidX.reset();
+			pidY.reset();
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}
 }
 

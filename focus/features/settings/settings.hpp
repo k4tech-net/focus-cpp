@@ -43,17 +43,30 @@ struct characterData {
     std::vector<int> selectedweapon = { 0, 0 };
 };
 
+struct pidSettings {
+    int pidPreset = 0;
+    float proportional = 0.0f;
+	float integral = 0.0f;
+	float derivative = 0.0f;
+    float rampUpTime = 0.0f;
+};
+
 struct aimbotData {
 	int correctionX = 0;
 	int correctionY = 0;
 	bool enabled = false;
+    int type = 0;
     int provider = 0;
-    int smoothing = 0;
     int maxDistance = 0;
-    int percentDistance = 1;
     int hitbox = 0;
     int confidence = 10;
     bool forceHitbox = false;
+    pidSettings pidSettings;
+};
+
+struct extraSettings {
+    int aimKeyMode = 0;
+    int recoilKeyMode = 0;
 };
 
 class Settings 
@@ -87,11 +100,14 @@ public:
     bool isPrimaryActive = true;
     bool weaponOffOverride = false;
     bool weaponDataChanged = false;
+    bool pidDataChanged = false;
     std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+
+    // Misc Settings
+	extraSettings extras;
 
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
-    void convertJsonToTextConfig(const std::string& jsonFilename, const std::string& textFilename);
 };
 
 struct Globals
@@ -132,6 +148,7 @@ struct Globals
 struct Constants {
     static constexpr int SIEGE360DIST = 7274; //82 FOV
     static constexpr int RUST360DIST = 8732; //90 FOV
+    static constexpr int OW360DIST = 6284; //ALL FOV
 };
 
 extern Constants constants;

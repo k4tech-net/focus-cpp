@@ -35,6 +35,7 @@ public:
 	void detectWeaponRust(cv::Mat& src);
 	std::string detectWeaponTypeWithMask(const cv::Mat& weaponIcon);
 	void initializeRustDetector(cv::Mat& src);
+	void overwatchDetector(cv::Mat& src);
 
 private:
 	// DXGI variables
@@ -50,6 +51,12 @@ private:
 
 	struct BoxPercentage {
 		float x, y, width, height;
+	};
+
+	struct ColourDetection {
+		cv::Point2f center;
+		float area;
+		cv::Rect boundingBox;
 	};
 
 	std::vector<ProcessedMask> processedMasks;

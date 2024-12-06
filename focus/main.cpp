@@ -32,6 +32,8 @@ std::string clientVerificationKey = xorstr_("4783086bd5eacdea0f09c8fc6fea1642df9
 
 int main()
 {	
+	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Focus", nullptr };
 	::RegisterClassExW(&wc);
 	HWND hwnd = ::CreateWindowW(wc.lpszClassName, L"Focus", WS_POPUPWINDOW, 0, 0, 0, 0, nullptr, nullptr, wc.hInstance, nullptr);
@@ -138,6 +140,7 @@ int main()
 	startUpCheckThread.join();
 
 	std::thread driveMouseThread(&Control::driveMouse, &ctr);
+	std::thread driveAimbotThread(&Control::driveAimbot, &ctr);
 	std::thread driveKeyboardThread(&Control::driveKeyboard, &ctr);
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
@@ -224,6 +227,7 @@ int main()
 	aimbotThread.join();
 	captureDesktopThread.join();
 	driveKeyboardThread.join();
+	driveAimbotThread.join();
 	driveMouseThread.join();
   
 	//#if !_DEBUG
