@@ -120,7 +120,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
 			newSettings.potato = true;
-			newSettings.aimbotData = { 0, 0, false, 0, 0, 10, 0, 10, false, { 0, 0.f, 0.f, 0.f, 0.f } }; // Default aimbot settings
+			newSettings.aimbotData = { 0, 0, false, 0, 0, 10, 0, 10, false, 10, { 0, 0.f, 0.f, 0.f, 0.f } }; // Default aimbot settings
 			newSettings.extras = { 0 };
 
 			// Pre-fill with example values based on mode and game
@@ -781,10 +781,7 @@ void keybindManager() {
 
 		if (settings.characters[settings.selectedCharacterIndex].options[0]) {
 
-			if (!globals.desktopMat.empty()) {
-				int screenWidth = globals.desktopMat.cols;
-				int screenHeight = globals.desktopMat.rows;
-
+			if (!globals.capture.desktopMat.empty()) {
 				// Define ratios for crop region
 				float cropRatioX = 0.8f; // 20% from left
 				float cropRatioY = 0.82f; // 20% from top
@@ -792,23 +789,23 @@ void keybindManager() {
 				float cropRatioHeight = 0.14f; // 14% of total height
 
 				// Calculate the region of interest (ROI) based on ratios
-				int x = static_cast<int>(cropRatioX * screenWidth);
-				int y = static_cast<int>(cropRatioY * screenHeight);
-				int width = static_cast<int>(cropRatioWidth * screenWidth);
-				int height = static_cast<int>(cropRatioHeight * screenHeight);
+				int x = static_cast<int>(cropRatioX * globals.capture.desktopWidth);
+				int y = static_cast<int>(cropRatioY * globals.capture.desktopHeight);
+				int width = static_cast<int>(cropRatioWidth * globals.capture.desktopWidth);
+				int height = static_cast<int>(cropRatioHeight * globals.capture.desktopHeight);
 
 				// Ensure the ROI is within the bounds of the desktopMat
 				x = std::max(0, x);
 				y = std::max(0, y);
-				width = std::min(width, screenWidth - x);
-				height = std::min(height, screenHeight - y);
+				width = std::min(width, globals.capture.desktopWidth - x);
+				height = std::min(height, globals.capture.desktopHeight - y);
 
 				cv::Rect roi(x, y, width, height);
 
 				// Extract the region of interest from the desktopMat
-				globals.desktopMutex_.lock();
-				cv::Mat smallRegion = globals.desktopMat(roi);
-				globals.desktopMutex_.unlock();
+				globals.capture.desktopMutex_.lock();
+				cv::Mat smallRegion = globals.capture.desktopMat(roi);
+				globals.capture.desktopMutex_.unlock();
 
 				dx.detectWeaponR6(smallRegion, 25, 75);
 			}
@@ -834,10 +831,7 @@ void keybindManager() {
 		if (settings.game == xorstr_("Siege")) {
 			if (settings.characters[settings.selectedCharacterIndex].options[0]) {
 
-				if (!globals.desktopMat.empty()) {
-					int screenWidth = globals.desktopMat.cols;
-					int screenHeight = globals.desktopMat.rows;
-
+				if (!globals.capture.desktopMat.empty()) {
 					// Define ratios for crop region
 					float cropRatioX = 0.0f;
 					float cropRatioY = 0.82f;
@@ -872,23 +866,23 @@ void keybindManager() {
 					}
 
 					// Calculate the region of interest (ROI) based on ratios
-					int x = static_cast<int>(cropRatioX * screenWidth);
-					int y = static_cast<int>(cropRatioY * screenHeight);
-					int width = static_cast<int>(cropRatioWidth * screenWidth);
-					int height = static_cast<int>(cropRatioHeight * screenHeight);
+					int x = static_cast<int>(cropRatioX * globals.capture.desktopWidth);
+					int y = static_cast<int>(cropRatioY * globals.capture.desktopHeight);
+					int width = static_cast<int>(cropRatioWidth * globals.capture.desktopWidth);
+					int height = static_cast<int>(cropRatioHeight * globals.capture.desktopHeight);
 
 					// Ensure the ROI is within the bounds of the desktopMat
 					x = std::max(0, x);
 					y = std::max(0, y);
-					width = std::min(width, screenWidth - x);
-					height = std::min(height, screenHeight - y);
+					width = std::min(width, globals.capture.desktopWidth - x);
+					height = std::min(height, globals.capture.desktopHeight - y);
 
 					cv::Rect roi(x, y, width, height);
 
 					// Extract the region of interest from the desktopMat
-					globals.desktopMutex_.lock();
-					cv::Mat smallRegion = globals.desktopMat(roi);
-					globals.desktopMutex_.unlock();
+					globals.capture.desktopMutex_.lock();
+					cv::Mat smallRegion = globals.capture.desktopMat(roi);
+					globals.capture.desktopMutex_.unlock();
 
 					dx.detectWeaponR6(smallRegion, 25, 25);
 				}
@@ -901,9 +895,6 @@ void keybindManager() {
 			if (settings.characters[settings.selectedCharacterIndex].options[2]) {
 				static bool detectedOperator = false;
 				static bool useShootingRangeOffset = false;
-
-				int screenWidth = globals.desktopMat.cols;
-				int screenHeight = globals.desktopMat.rows;
 
 				float cropRatioX = 0.f;
 				float cropRatioY = 0.0f;
@@ -947,23 +938,23 @@ void keybindManager() {
 				}
 
 				// Calculate the region of interest (ROI) based on ratios
-				int x = static_cast<int>(cropRatioX * screenWidth);
-				int y = static_cast<int>(cropRatioY * screenHeight);
-				int width = static_cast<int>(cropRatioWidth * screenWidth);
-				int height = static_cast<int>(cropRatioHeight * screenHeight);
+				int x = static_cast<int>(cropRatioX * globals.capture.desktopWidth);
+				int y = static_cast<int>(cropRatioY * globals.capture.desktopHeight);
+				int width = static_cast<int>(cropRatioWidth * globals.capture.desktopWidth);
+				int height = static_cast<int>(cropRatioHeight * globals.capture.desktopHeight);
 
 				// Ensure the ROI is within the bounds of the desktopMat
 				x = std::max(0, x);
 				y = std::max(0, y);
-				width = std::min(width, screenWidth - x);
-				height = std::min(height, screenHeight - y);
+				width = std::min(width, globals.capture.desktopWidth - x);
+				height = std::min(height, globals.capture.desktopHeight - y);
 
 				cv::Rect roi(x, y, width, height);
 
 				// Extract the region of interest from the desktopMat
-				globals.desktopMutex_.lock();
-				cv::Mat smallRegion = globals.desktopMat(roi);
-				globals.desktopMutex_.unlock();
+				globals.capture.desktopMutex_.lock();
+				cv::Mat smallRegion = globals.capture.desktopMat(roi);
+				globals.capture.desktopMutex_.unlock();
 
 				detectedOperator = dx.detectOperatorR6(smallRegion);
 
@@ -978,10 +969,7 @@ void keybindManager() {
 			static bool initializeRustDetector = false;
 
 			if (settings.characters[settings.selectedCharacterIndex].options[0]) {
-				if (!globals.desktopMat.empty()) {
-					int screenWidth = globals.desktopMat.cols;
-					int screenHeight = globals.desktopMat.rows;
-
+				if (!globals.capture.desktopMat.empty()) {
 					// Define ratios for crop region
 					float cropRatioX = 0.3475f;
 					float cropRatioY = 0.892f;
@@ -989,23 +977,23 @@ void keybindManager() {
 					float cropRatioHeight = 0.084f;
 
 					// Calculate the region of interest (ROI) based on ratios
-					int x = static_cast<int>(cropRatioX * screenWidth);
-					int y = static_cast<int>(cropRatioY * screenHeight);
-					int width = static_cast<int>(cropRatioWidth * screenWidth);
-					int height = static_cast<int>(cropRatioHeight * screenHeight);
+					int x = static_cast<int>(cropRatioX * globals.capture.desktopWidth);
+					int y = static_cast<int>(cropRatioY * globals.capture.desktopHeight);
+					int width = static_cast<int>(cropRatioWidth * globals.capture.desktopWidth);
+					int height = static_cast<int>(cropRatioHeight * globals.capture.desktopHeight);
 
 					// Ensure the ROI is within the bounds of the desktopMat
 					x = std::max(0, x);
 					y = std::max(0, y);
-					width = std::min(width, screenWidth - x);
-					height = std::min(height, screenHeight - y);
+					width = std::min(width, globals.capture.desktopWidth - x);
+					height = std::min(height, globals.capture.desktopHeight - y);
 
 					cv::Rect roi(x, y, width, height);
 					
 					// Extract the region of interest from the desktopMat
-					globals.desktopMutex_.lock();
-					cv::Mat smallRegion = globals.desktopMat(roi);
-					globals.desktopMutex_.unlock();
+					globals.capture.desktopMutex_.lock();
+					cv::Mat smallRegion = globals.capture.desktopMat(roi);
+					globals.capture.desktopMutex_.unlock();
 
 					if (!initializeRustDetector) {
 						dx.initializeRustDetector(smallRegion);
@@ -1640,7 +1628,8 @@ void Menu::gui()
 					if (ImGui::Checkbox(xorstr_("Colour Aimbot"), &settings.aimbotData.enabled)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-					tooltip(xorstr_("CPU is recommended for most systems (Unless you have a 4080/4090)"));
+
+					// colour aimbot settings here
 				}
 				else {
 					settings.aimbotData.type = 1;
@@ -1650,6 +1639,7 @@ void Menu::gui()
 						if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.provider, providers.data(), (int)providers.size())) {
 							globals.filesystem.unsavedChanges = true;
 						}
+						tooltip(xorstr_("CPU is recommended for most systems (Unless you have a 4080/4090)"));
 					}
 
 					if (ImGui::Checkbox(xorstr_("AI Aim Assist"), &settings.aimbotData.enabled)) {
@@ -1664,51 +1654,67 @@ void Menu::gui()
 						globals.filesystem.unsavedChanges = true;
 
 						if (settings.aimbotData.pidSettings.pidPreset == 0) {
-							settings.aimbotData.pidSettings = { 0, 0.005f, 0.05f, 0.008f, 0.0f };
+							settings.aimbotData.pidSettings.proportional = 0.005f;
+							settings.aimbotData.pidSettings.integral = 0.05f;
+							settings.aimbotData.pidSettings.derivative = 0.008f;
+							settings.aimbotData.pidSettings.rampUpTime = 0.0f;
 							settings.pidDataChanged = true;
 						}
 						else if (settings.aimbotData.pidSettings.pidPreset == 1) {
-							settings.aimbotData.pidSettings = { 1, 0.02f, 1.f, 0.008f, 1.f };
+							settings.aimbotData.pidSettings.proportional = 0.02f;
+							settings.aimbotData.pidSettings.integral = 0.2f;
+							settings.aimbotData.pidSettings.derivative = 0.008f;
+							settings.aimbotData.pidSettings.rampUpTime = 1.f;
 							settings.pidDataChanged = true;
 						}
 						else if (settings.aimbotData.pidSettings.pidPreset == 2) {
-							settings.aimbotData.pidSettings = { 2, 0.035f, 1.f, 0.008f, 1.f };
+							settings.aimbotData.pidSettings.proportional = 0.035f;
+							settings.aimbotData.pidSettings.integral = 0.8f;
+							settings.aimbotData.pidSettings.derivative = 0.008f;
+							settings.aimbotData.pidSettings.rampUpTime = 1.f;
 							settings.pidDataChanged = true;
 						}
-						else if (settings.aimbotData.pidSettings.pidPreset == 3) {
-							if (ImGui::InputFloat(xorstr_("Proportional"), &settings.aimbotData.pidSettings.proportional, 0.0f, 0.0f)) {
-								globals.filesystem.unsavedChanges = true;
-								settings.pidDataChanged = true;
-							}
-							if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
-								globals.filesystem.unsavedChanges = true;
-								settings.pidDataChanged = true;
-							}
-							if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
-								globals.filesystem.unsavedChanges = true;
-								settings.pidDataChanged = true;
-							}
-							if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
-								globals.filesystem.unsavedChanges = true;
-								settings.pidDataChanged = true;
-							}
+					}
+
+					if (settings.aimbotData.pidSettings.pidPreset == 3) {
+						if (ImGui::InputFloat(xorstr_("Proportional"), &settings.aimbotData.pidSettings.proportional, 0.0f, 0.0f)) {
+							globals.filesystem.unsavedChanges = true;
+							settings.pidDataChanged = true;
+						}
+						if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
+							globals.filesystem.unsavedChanges = true;
+							settings.pidDataChanged = true;
+						}
+						if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
+							globals.filesystem.unsavedChanges = true;
+							settings.pidDataChanged = true;
+						}
+						if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
+							globals.filesystem.unsavedChanges = true;
+							settings.pidDataChanged = true;
 						}
 					}
 
 					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-          tooltip(xorstr_("The farthest a single aimbot movement can travel"));
+					tooltip(xorstr_("The farthest a single aimbot movement can travel"));
+
+					if (ImGui::SliderInt(xorstr_("Aimbot FOV"), &settings.aimbotData.fov, 0, 50, xorstr_("%d%%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
 
 					if (settings.aimbotData.type == 1) {
 						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
-            tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
+						tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
+
 						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
 							globals.filesystem.unsavedChanges = true;
 						}
-            tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
+						tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
 
 						std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
 						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {

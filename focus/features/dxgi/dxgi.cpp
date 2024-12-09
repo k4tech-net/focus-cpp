@@ -94,9 +94,17 @@ void DXGI::CaptureDesktopDXGI() {
         gOutputDuplication->ReleaseFrame();
 
         // Swap buffers
-        globals.desktopMutex_.lock();
-        globals.desktopMat = desktopImage;
-        globals.desktopMutex_.unlock();
+        globals.capture.desktopMutex_.lock();
+        globals.capture.desktopMat = desktopImage;
+        globals.capture.desktopMutex_.unlock();
+
+        if (!globals.capture.initDims) {
+			globals.capture.initDims = true;
+			globals.capture.desktopWidth = desktopImage.cols;
+			globals.capture.desktopHeight = desktopImage.rows;
+            globals.capture.desktopCenterX = globals.capture.desktopWidth / 2.0f;
+			globals.capture.desktopCenterY = globals.capture.desktopHeight / 2.0f;
+        }
 
         //imshow("output", frameCopy); // Debug window
         //cv::waitKey(1);
@@ -262,19 +270,23 @@ void DXGI::aimbot() {
         }
 
         if (settings.aimbotData.type == 0 && settings.aimbotData.enabled && settings.game == xorstr_("Overwatch")) {
+            // FPS tracking variables
+            static int frameCount = 0;
+            static auto lastFpsTime = std::chrono::high_resolution_clock::now();
+            static float currentFps = 0.0f;
 
-            if (globals.desktopMat.empty()) {
+            if (globals.capture.desktopMat.empty()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
                 continue;
             }
 
             cv::Mat croppedImage;
             {
-                std::lock_guard<std::mutex> lock(globals.desktopMutex_);
+                std::lock_guard<std::mutex> lock(globals.capture.desktopMutex_);
 
                 // Calculate ROI directly from desktop dimensions
-                const int screenWidth = globals.desktopMat.cols;
-                const int screenHeight = globals.desktopMat.rows;
+                const int screenWidth = globals.capture.desktopMat.cols;
+                const int screenHeight = globals.capture.desktopMat.rows;
                 const cv::Rect roi(
                     static_cast<int>(cropRatioX * screenWidth),
                     static_cast<int>(cropRatioY * screenHeight),
@@ -283,7 +295,7 @@ void DXGI::aimbot() {
                 );
 
                 // Actually crop the image (this was missing in original code)
-                croppedImage = globals.desktopMat(roi).clone();
+                croppedImage = globals.capture.desktopMat(roi).clone();
             }
 
             if (croppedImage.empty()) {
@@ -291,6 +303,23 @@ void DXGI::aimbot() {
             }
 
             overwatchDetector(croppedImage);
+
+            // Only increment frame count after successful processing
+            frameCount++;
+
+            auto currentTime = std::chrono::high_resolution_clock::now();
+            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFpsTime).count();
+
+            // Update FPS every 500ms for smoother readings
+            if (elapsed >= 500) {
+                currentFps = (frameCount * 1000.0f) / elapsed;  // Convert to per-second rate
+                printf("FPS: %.2f\n", currentFps);  // Format to 2 decimal places
+                frameCount = 0;
+                lastFpsTime = currentTime;
+            }
+
+            // put potato mode check here specifically for aimbot
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
         }
         else if (settings.aimbotData.type == 1 && settings.aimbotData.enabled) {
             if (!aimbotInit) {
@@ -311,14 +340,14 @@ void DXGI::aimbot() {
 
             cv::Mat croppedImage;
             {
-                std::lock_guard<std::mutex> lock(globals.desktopMutex_);
-                if (globals.desktopMat.empty()) {
+                std::lock_guard<std::mutex> lock(globals.capture.desktopMutex_);
+                if (globals.capture.desktopMat.empty()) {
                     continue;
                 }
 
                 // Calculate ROI directly from desktop dimensions
-                const int screenWidth = globals.desktopMat.cols;
-                const int screenHeight = globals.desktopMat.rows;
+                const int screenWidth = globals.capture.desktopMat.cols;
+                const int screenHeight = globals.capture.desktopMat.rows;
                 const cv::Rect roi(
                     static_cast<int>(cropRatioX * screenWidth),
                     static_cast<int>(cropRatioY * screenHeight),
@@ -327,7 +356,7 @@ void DXGI::aimbot() {
                 );
 
                 // Convert BGRA to BGR during the crop operation
-                cv::cvtColor(globals.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
+                cv::cvtColor(globals.capture.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
             }
 
             if (croppedImage.empty()) {
@@ -794,12 +823,26 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 void DXGI::overwatchDetector(cv::Mat& src) {
     static cv::Mat hsvImage, mask, downsampledSrc;
     static std::vector<std::vector<cv::Point>> contours;
-    static cv::Mat dilateKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(10, 10));
+    static cv::Mat dilateKernel = cv::getStructuringElement(cv::MORPH_RECT, cv::Size(5, 5));
     static cv::Rect excludeROI;
     static cv::Size lastSize;
     static bool simdInitialized = false;
     static bool hasAVX512 = false;
     static bool hasAVX2 = false;
+
+    // Temporal smoothing
+    struct SmoothTarget {
+        cv::Point2f pos;
+        float area;
+        int lastSeen;
+        float confidence;
+    };
+    static std::vector<SmoothTarget> trackedTargets;
+    static int frameCount = 0;
+    const int maxTrackAge = 2;  // Maximum frames to keep tracking a disappeared target
+    const float smoothingFactor = 0.f;  // Higher = more smoothing, range 0-1
+
+    frameCount++;
 
     if (!simdInitialized) {
         hasAVX512 = globals.startup.avx == 2;
@@ -826,43 +869,77 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     cv::cvtColor(downsampledSrc, hsvImage, cv::COLOR_BGR2HSV, 3);
 
     if (hasAVX512) {
-#pragma omp parallel for
+        // Precompute comparison values and masks
+        const __m512i h_lower = _mm512_set1_epi32(146);
+        const __m512i h_upper = _mm512_set1_epi32(153);
+        const __m512i s_thresh = _mm512_set1_epi32(130);
+        const __m512i v_thresh = _mm512_set1_epi32(181);
+        const __m512i gather_indices = _mm512_set_epi32(45, 42, 39, 36, 33, 30, 27, 24, 21, 18, 15, 12, 9, 6, 3, 0);
+        const __m512i channel_mask = _mm512_set1_epi32(0xFF);
+
+        // Pre-calculate ROI checks
+        const int roi_start_x = excludeROI.x;
+        const int roi_end_x = excludeROI.x + excludeROI.width;
+        const int roi_start_y = excludeROI.y;
+        const int roi_end_y = excludeROI.y + excludeROI.height;
+
+        // Calculate number of full vectors per row
+        const int vectors_per_row = downsampledSrc.cols / 16;
+        const int remainder = downsampledSrc.cols % 16;
+
+#pragma omp parallel for schedule(static)
         for (int y = 0; y < downsampledSrc.rows; y++) {
             const uint8_t* hsvRow = hsvImage.ptr<uint8_t>(y);
             uint8_t* maskRow = mask.ptr<uint8_t>(y);
+            const bool in_roi_y = (y >= roi_start_y && y < roi_end_y);
 
-            for (int x = 0; x < downsampledSrc.cols; x += 16) {
-                if (y >= excludeROI.y && y < excludeROI.y + excludeROI.height &&
-                    x >= excludeROI.x && x < excludeROI.x + excludeROI.width) {
-                    std::memset(maskRow + x, 0, 16);
+            // Process full vectors
+            for (int x = 0; x < vectors_per_row * 16; x += 16) {
+                // Quick ROI check
+                if (in_roi_y && x >= roi_start_x && x < roi_end_x) {
+                    _mm_store_si128((__m128i*)(maskRow + x), _mm_setzero_si128());
                     continue;
                 }
 
-                alignas(64) uint8_t h_vals[16], s_vals[16], v_vals[16];
+                // Load 48 bytes (16 pixels * 3 channels) using gather
+                __m512i pixels = _mm512_i32gather_epi32(
+                    gather_indices,
+                    (const int*)(hsvRow + x * 3),
+                    1
+                );
 
-                const uint8_t* pixel = hsvRow + x * 3;
-                for (int j = 0; j < 16 && (x + j) < downsampledSrc.cols; j++) {
-                    h_vals[j] = pixel[j * 3];
-                    s_vals[j] = pixel[j * 3 + 1];
-                    v_vals[j] = pixel[j * 3 + 2];
+                // Extract H, S, V channels using shifts and masks
+                __m512i h = _mm512_and_si512(_mm512_srli_epi32(pixels, 0), channel_mask);
+                __m512i s = _mm512_and_si512(_mm512_srli_epi32(pixels, 8), channel_mask);
+                __m512i v = _mm512_and_si512(_mm512_srli_epi32(pixels, 16), channel_mask);
+
+                // Perform comparisons - using compound operations
+                __mmask16 final_mask =
+                    _mm512_cmpge_epi32_mask(h, h_lower) &
+                    _mm512_cmple_epi32_mask(h, h_upper) &
+                    _mm512_cmpge_epi32_mask(s, s_thresh) &
+                    _mm512_cmpge_epi32_mask(v, v_thresh);
+
+                // Convert mask to bytes (0 or 255) and store
+                _mm_store_si128(
+                    (__m128i*)(maskRow + x),
+                    _mm512_cvtepi32_epi8(_mm512_maskz_set1_epi32(final_mask, 255))
+                );
+            }
+
+            // Handle remainder pixels using scalar operations
+            if (remainder > 0) {
+                const int start_x = vectors_per_row * 16;
+                for (int x = start_x; x < downsampledSrc.cols; x++) {
+                    if (in_roi_y && x >= roi_start_x && x < roi_end_x) {
+                        maskRow[x] = 0;
+                        continue;
+                    }
+
+                    const uint8_t* pixel = hsvRow + x * 3;
+                    maskRow[x] = (pixel[0] >= 146 && pixel[0] <= 153 &&
+                        pixel[1] >= 130 && pixel[2] >= 181) ? 255 : 0;
                 }
-
-                __m512i h = _mm512_load_si512((__m512i*)h_vals);
-                __m512i s = _mm512_load_si512((__m512i*)s_vals);
-                __m512i v = _mm512_load_si512((__m512i*)v_vals);
-
-                __mmask16 h_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(h)), _mm512_set1_epi32(146)) &
-                    _mm512_cmple_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(h)), _mm512_set1_epi32(153));
-                __mmask16 s_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(s)), _mm512_set1_epi32(130));
-                __mmask16 v_mask = _mm512_cmpge_epi32_mask(_mm512_cvtepu8_epi32(_mm512_castsi512_si128(v)), _mm512_set1_epi32(181));
-
-                __mmask16 final_mask = h_mask & s_mask & v_mask;
-
-                alignas(64) uint8_t result[16];
-                for (int j = 0; j < 16; j++) {
-                    result[j] = (final_mask & (1 << j)) ? 255 : 0;
-                }
-                std::memcpy(maskRow + x, result, 16);
             }
         }
     }
@@ -880,6 +957,8 @@ void DXGI::overwatchDetector(cv::Mat& src) {
                 }
 
                 alignas(32) uint8_t h_vals[32], s_vals[32], v_vals[32];
+                alignas(32) uint8_t result[32];
+
 
                 const uint8_t* pixel = hsvRow + x * 3;
                 for (int j = 0; j < 32 && (x + j) < downsampledSrc.cols; j++) {
@@ -892,15 +971,28 @@ void DXGI::overwatchDetector(cv::Mat& src) {
                 __m256i s = _mm256_load_si256((__m256i*)s_vals);
                 __m256i v = _mm256_load_si256((__m256i*)v_vals);
 
-                __m256i h_mask = _mm256_and_si256(
-                    _mm256_cmpgt_epi8(h, _mm256_set1_epi8(146)),
-                    _mm256_cmpgt_epi8(_mm256_set1_epi8(153), h)
-                );
-                __m256i s_mask = _mm256_cmpgt_epi8(s, _mm256_set1_epi8(130));
-                __m256i v_mask = _mm256_cmpgt_epi8(v, _mm256_set1_epi8(181));
+                // Create comparison masks
+                __m256i h_min = _mm256_set1_epi8(static_cast<char>(146));
+                __m256i h_max = _mm256_set1_epi8(static_cast<char>(153));
+                __m256i s_min = _mm256_set1_epi8(static_cast<char>(130));
+                __m256i v_min = _mm256_set1_epi8(static_cast<char>(181));
 
-                __m256i result = _mm256_and_si256(_mm256_and_si256(h_mask, s_mask), v_mask);
-                _mm256_store_si256((__m256i*)(maskRow + x), result);
+                // Correct comparisons for unsigned bytes
+                __m256i h_mask = _mm256_and_si256(
+                    _mm256_cmpeq_epi8(_mm256_max_epu8(h, h_min), h),
+                    _mm256_cmpeq_epi8(_mm256_min_epu8(h, h_max), h)
+                );
+                __m256i s_mask = _mm256_cmpeq_epi8(_mm256_max_epu8(s, s_min), s);
+                __m256i v_mask = _mm256_cmpeq_epi8(_mm256_max_epu8(v, v_min), v);
+
+                // Combine masks and set result
+                __m256i combined_mask = _mm256_and_si256(_mm256_and_si256(h_mask, s_mask), v_mask);
+
+                // Convert mask to 0/255 values
+                combined_mask = _mm256_and_si256(combined_mask, _mm256_set1_epi8(static_cast<char>(255)));
+
+                _mm256_store_si256((__m256i*)result, combined_mask);
+                std::memcpy(maskRow + x, result, 32);
             }
         }
     }
@@ -926,30 +1018,179 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
     cv::dilate(mask, mask, dilateKernel);
 
+    // Use connected components instead of contours
+    cv::Mat labels, stats, centroids;
+    int numLabels = cv::connectedComponentsWithStats(mask, labels, stats, centroids);
+
+    // Structure to hold component data for clustering
+    struct Component {
+        cv::Point center;
+        int area;
+        cv::Rect bounds;
+        float density;
+    };
+    std::vector<Component> validComponents;
+
+    // First pass: collect valid components
+    for (int label = 1; label < numLabels; label++) {
+        int area = stats.at<int>(label, cv::CC_STAT_AREA);
+
+        // Basic filtering for obviously invalid components
+        if (area < 5 || area >(src.rows * src.cols / 4)) {
+            continue;
+        }
+
+        int width = stats.at<int>(label, cv::CC_STAT_WIDTH);
+        int height = stats.at<int>(label, cv::CC_STAT_HEIGHT);
+        int x = stats.at<int>(label, cv::CC_STAT_LEFT);
+        int y = stats.at<int>(label, cv::CC_STAT_TOP);
+
+        float density = static_cast<float>(area) / (width * height);
+        if (density < 0.1f) continue;  // Filter very sparse components
+
+        Component comp;
+        comp.center = cv::Point2f(centroids.at<double>(label, 0), centroids.at<double>(label, 1));
+        comp.area = static_cast<float>(area);
+        comp.bounds = cv::Rect(x, y, width, height);
+        comp.density = density;
+
+        validComponents.push_back(comp);
+    }
+
+    // Improved clustering with density-based merging
+    const float minClusterDist = downsampledSrc.cols * 0.15f;  // Minimum distance between clusters
+    std::vector<Component> clusters;
+    std::vector<bool> used(validComponents.size(), false);
+
+    for (size_t i = 0; i < validComponents.size(); i++) {
+        if (used[i]) continue;
+
+        Component cluster = validComponents[i];
+        std::vector<size_t> clusterIndices = { i };
+        used[i] = true;
+
+        // Find components that belong to this cluster
+        for (size_t j = i + 1; j < validComponents.size(); j++) {
+            if (used[j]) continue;
+
+            float dx = cluster.center.x - validComponents[j].center.x;
+            float dy = cluster.center.y - validComponents[j].center.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+
+            // Check if components are close enough and have similar density
+            if (dist < minClusterDist &&
+                std::abs(cluster.density - validComponents[j].density) < 0.8f) {
+                clusterIndices.push_back(j);
+                used[j] = true;
+            }
+        }
+
+        // If we found a valid cluster, compute its properties
+        if (!clusterIndices.empty()) {
+            Component finalCluster;
+            finalCluster.center = cv::Point2f(0, 0);
+            finalCluster.area = 0;
+            cv::Rect bounds = validComponents[clusterIndices[0]].bounds;
+
+            float totalWeight = 0;
+            for (size_t idx : clusterIndices) {
+                float weight = validComponents[idx].area * validComponents[idx].density;
+                finalCluster.center += validComponents[idx].center * weight;
+                finalCluster.area += validComponents[idx].area;
+                bounds |= validComponents[idx].bounds;
+                totalWeight += weight;
+            }
+
+            if (totalWeight > 0) {
+                finalCluster.center *= 1.0f / totalWeight;
+                finalCluster.bounds = bounds;
+                finalCluster.density = finalCluster.area / (bounds.width * bounds.height);
+                clusters.push_back(finalCluster);
+            }
+        }
+    }
+
+    // Update tracked targets
+    std::vector<bool> clusterMatched(clusters.size(), false);
+    std::vector<SmoothTarget> newTrackedTargets;
+
+    // Update existing tracks
+    for (const auto& track : trackedTargets) {
+        bool matched = false;
+        float bestDist = downsampledSrc.cols * 0.15f;  // Maximum tracking distance
+        int bestIdx = -1;
+
+        // Find the closest unmatched cluster
+        for (size_t i = 0; i < clusters.size(); i++) {
+            if (clusterMatched[i]) continue;
+
+            float dx = track.pos.x - clusters[i].center.x;
+            float dy = track.pos.y - clusters[i].center.y;
+            float dist = std::sqrt(dx * dx + dy * dy);
+
+            if (dist < bestDist) {
+                bestDist = dist;
+                bestIdx = i;
+                matched = true;
+            }
+        }
+
+        if (matched) {
+            clusterMatched[bestIdx] = true;
+            SmoothTarget newTrack = track;
+            // Apply exponential smoothing
+            newTrack.pos = track.pos * smoothingFactor +
+                cv::Point2f(clusters[bestIdx].center) * (1.0f - smoothingFactor);
+            newTrack.area = track.area * smoothingFactor +
+                clusters[bestIdx].area * (1.0f - smoothingFactor);
+            newTrack.lastSeen = frameCount;
+            newTrack.confidence = std::min(1.0f, track.confidence + 0.2f);
+            newTrackedTargets.push_back(newTrack);
+        }
+        else if (frameCount - track.lastSeen < maxTrackAge) {
+            // Keep track alive but reduce confidence
+            SmoothTarget newTrack = track;
+            newTrack.confidence = std::max(0.0f, track.confidence - 0.2f);
+            newTrackedTargets.push_back(newTrack);
+        }
+    }
+
+    // Add new tracks for unmatched clusters
+    for (size_t i = 0; i < clusters.size(); i++) {
+        if (!clusterMatched[i]) {
+            SmoothTarget newTrack;
+            newTrack.pos = clusters[i].center;
+            newTrack.area = clusters[i].area;
+            newTrack.lastSeen = frameCount;
+            newTrack.confidence = 0.3f;  // Initial confidence
+            newTrackedTargets.push_back(newTrack);
+        }
+    }
+
+    trackedTargets = newTrackedTargets;
+
     const cv::Point imageCenter(downsampledSrc.cols / 2, downsampledSrc.rows / 2);
     float minDistance = std::numeric_limits<float>::max();
     cv::Point targetPoint;
     bool targetFound = false;
 
-    contours.clear();
-    cv::findContours(mask, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
+    for (const auto& track : trackedTargets) {
+        if (track.confidence < 0.5f) continue;  // Skip low confidence tracks
 
-    for (const auto& contour : contours) {
-        if (contour.size() < 4) continue;
-
-        cv::Rect box = cv::boundingRect(contour);
-        if (box.width < 3 || box.height < 3) continue;
-
-        cv::Point boxCenter(box.x + box.width / 2, box.y + box.height / 2);
-        float dx = boxCenter.x - imageCenter.x;
-        float dy = boxCenter.y - imageCenter.y;
+        float dx = track.pos.x - imageCenter.x;
+        float dy = track.pos.y - imageCenter.y;
         float distance = std::abs(dx) + std::abs(dy);
 
         if (distance < minDistance) {
             minDistance = distance;
-            targetPoint = cv::Point(boxCenter.x, box.y + box.height * 0.2f);
+            targetPoint = cv::Point2f(track.pos.x, track.pos.y);
             targetFound = true;
         }
+
+       /// cv::Scalar color(0, 255 * track.confidence, 255 * (1.0f - track.confidence));
+       // int radius = std::max(3, static_cast<int>(std::sqrt(track.area) * 0.5f));
+       // cv::circle(downsampledSrc, track.pos, radius, color, 1);
+       //cv::circle(downsampledSrc, track.pos, 2, color, -1);
     }
 
     if (targetFound) {
@@ -957,14 +1198,20 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         const float pixelsPerDegree = static_cast<float>(src.cols) / settings.fov;  // Note: using original size
 
         // Scale back up to original coordinates
-        const float scaledX = (targetPoint.x * 2.0f) - src.cols / 2;
-        const float scaledY = (targetPoint.y * 2.0f) - src.rows / 2;
+        const float scaledX = (targetPoint.x * 2) - src.cols / 2;
+        const float scaledY = (targetPoint.y * 2) - src.rows / 2;
 
         settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
         settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
+
+        //cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);
     }
     else {
         settings.aimbotData.correctionX = 0;
         settings.aimbotData.correctionY = 0;
     }
+
+    //cv::imshow("Source", downsampledSrc);
+    //cv::imshow("Mask", mask);
+    //cv::waitKey(1);
 }

@@ -41,6 +41,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.hitbox = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.confidence = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.forceHitbox = item == xorstr_("1");
+			std::getline(ss, item, ','); aimbotData.fov = std::stoi(item);
         }
         else if (key == xorstr_("PidSettings")) {
 			std::istringstream ss(value);
@@ -212,7 +213,7 @@ void Settings::saveSettings(const std::string& filename) {
     file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
     file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.provider << xorstr_(",")
         << aimbotData.maxDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
-        << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+        << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.fov << xorstr_("\n");
     file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",")
         << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative
         << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");

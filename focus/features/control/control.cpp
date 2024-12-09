@@ -287,12 +287,28 @@ void Control::driveAimbot() {
 
 			// Only calculate corrections if we have valid tracking data
 			if (settings.aimbotData.correctionX != 0 || settings.aimbotData.correctionY != 0) {
-				pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
-				if (settings.game == xorstr_("Overwatch")) {
-					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
+
+				const float fovPercentage = settings.aimbotData.fov / 50.f;
+				const int fovPixelsX = static_cast<int>(fovPercentage * globals.capture.desktopWidth);
+				const int fovPixelsY = static_cast<int>(fovPercentage * globals.capture.desktopHeight);
+
+				bool withinFov = std::abs(settings.aimbotData.correctionX) < fovPixelsX && std::abs(settings.aimbotData.correctionY) < fovPixelsY;
+
+				if (withinFov) {
+					// Calculate PID corrections only if within FOV
+					pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+
+					if (settings.game == xorstr_("Overwatch")) {
+						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
+					}
+					else {
+						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
+					}
 				}
 				else {
-					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
+					// Outside FOV - reset corrections
+					settings.aimbotData.correctionX = 0;
+					settings.aimbotData.correctionY = 0;
 				}
 			}
 

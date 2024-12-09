@@ -61,6 +61,7 @@ struct aimbotData {
     int hitbox = 0;
     int confidence = 10;
     bool forceHitbox = false;
+    int fov = 0;
     pidSettings pidSettings;
 };
 
@@ -114,10 +115,6 @@ struct Globals
 {
     bool shutdown = false;
     bool initshutdown = false;
-   
-    cv::Mat desktopMat;
-    std::mutex desktopMutex_;
-
     bool done = false;
 
     struct FileSystem {
@@ -143,6 +140,16 @@ struct Globals
 		std::atomic<bool> r_mouse_down = false;
         std::atomic<ULONG> marker = 0;
     } mouseinfo;
+
+    struct Capture {
+        cv::Mat desktopMat;
+        std::mutex desktopMutex_;
+        int desktopWidth = 0;
+		int desktopHeight = 0;
+        int desktopCenterX = 0;
+		int desktopCenterY = 0;
+        bool initDims = false;
+    } capture;
 };
 
 struct Constants {
