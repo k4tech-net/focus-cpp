@@ -3035,12 +3035,26 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
     const float w = CalcItemWidth();
 
     const ImVec2 label_size = CalcTextSize(label, NULL, true);
-    const ImRect frame_bb(window->DC.CursorPos + ImVec2(0, 10), window->DC.CursorPos + ImVec2(w, label_size.y + style.FramePadding.y * 2.0f));
-    const ImRect total_bb(frame_bb.Min, frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f));
+    const float label_height = label_size.y + style.ItemInnerSpacing.y;
+    const float frame_height = style.FramePadding.y * 2.0f + style.GrabMinSize;
+
+    // Create frame bounding box with proper vertical spacing
+    const ImRect frame_bb(
+        window->DC.CursorPos + ImVec2(0, label_height),
+        window->DC.CursorPos + ImVec2(w, label_height + frame_height)
+    );
+
+    // Calculate total bounding box including label
+    const ImRect total_bb(
+        frame_bb.Min - ImVec2(0, label_height),
+        frame_bb.Max + ImVec2(label_size.x > 0.0f ? style.ItemInnerSpacing.x + label_size.x : 0.0f, 0.0f)
+    );
 
     const bool temp_input_allowed = (flags & ImGuiSliderFlags_NoInput) == 0;
-    ItemSize(ImRect(total_bb.Min - ImVec2(0, 20), total_bb.Max), style.FramePadding.y);
-    if (!ItemAdd(ImRect(total_bb.Min - ImVec2(0, 20), total_bb.Max), id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
+
+    // Handle item size and visibility
+    ItemSize(total_bb, style.FramePadding.y);
+    if (!ItemAdd(total_bb, id, &frame_bb, temp_input_allowed ? ImGuiItemFlags_Inputable : 0))
         return false;
 
     // Default format string when passing NULL
@@ -3049,6 +3063,7 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
     const bool hovered = ItemHoverable(frame_bb, id, g.LastItemData.InFlags);
     bool temp_input_is_active = temp_input_allowed && TempInputIsActive(id);
+
     if (!temp_input_is_active)
     {
         // Tabbing or CTRL-clicking on Slider turns it into an input box
@@ -3071,39 +3086,74 @@ bool ImGui::SliderScalar(const char* label, ImGuiDataType data_type, void* p_dat
 
     if (temp_input_is_active)
     {
+        // Adjust frame height for text input
+        const float text_height = GetFrameHeight();
+        ImRect input_bb = frame_bb;
+        input_bb.Max.y = input_bb.Min.y + text_height;
+
         // Only clamp CTRL+Click input when ImGuiSliderFlags_AlwaysClamp is set
         const bool is_clamp_input = (flags & ImGuiSliderFlags_AlwaysClamp) != 0;
-        return TempInputScalar(frame_bb, id, label, data_type, p_data, format, is_clamp_input ? p_min : NULL, is_clamp_input ? p_max : NULL);
+        return TempInputScalar(input_bb, id, label, data_type, p_data, format,
+            is_clamp_input ? p_min : NULL, is_clamp_input ? p_max : NULL);
     }
 
-    // Draw frame
+    // Draw frame (border)
     const ImU32 frame_col = GetColorU32(g.ActiveId == id ? ImGuiCol_FrameBgActive : hovered ? ImGuiCol_FrameBgHovered : ImGuiCol_FrameBg);
     RenderNavHighlight(frame_bb, id);
-
-    //RenderFrame(frame_bb.Min, frame_bb.Max, frame_col, true, g.Style.FrameRounding);
     window->DrawList->AddRect(frame_bb.Min, frame_bb.Max, frame_col, g.Style.FrameRounding);
 
-    // Slider behavior
+    // Create inner frame with gap
+    const float gap = 2.0f; // Adjust this value to control the gap size
+    ImRect inner_bb(
+        ImVec2(frame_bb.Min.x + gap, frame_bb.Min.y + gap),
+        ImVec2(frame_bb.Max.x - gap, frame_bb.Max.y - gap)
+    );
+
+    // Slider behavior (use inner area for interaction)
     ImRect grab_bb;
-    const bool value_changed = SliderBehavior(frame_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
+    const bool value_changed = SliderBehavior(inner_bb, id, data_type, p_data, p_min, p_max, format, flags, &grab_bb);
     if (value_changed)
         MarkItemEdited(id);
 
-    // Render grab
-    if (grab_bb.Max.x > grab_bb.Min.x)    //// FIX
-        RenderFrame(ImVec2(frame_bb.Min.x, frame_bb.Min.y + ((frame_bb.Max.y - frame_bb.Min.y) / 2)) - ImVec2(-2.5, 2.5), ImVec2(grab_bb.Min.x, frame_bb.Max.y - ((frame_bb.Max.y - frame_bb.Min.y) / 2.f)) + ImVec2(1.5, 2.5), GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), false, g.Style.GrabRounding);
-        //window->DrawList->AddRectFilled(grab_bb.Min, grab_bb.Max, GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab), style.GrabRounding);
+    // Render trail (filled part of the slider)
+    const float grab_height = inner_bb.GetHeight() * 0.8f;
+    const float grab_y_center = inner_bb.Min.y + inner_bb.GetHeight() * 0.5f;
 
-    // Display value using user-provided display format so user can add prefix/suffix/decorations to the value.
+    if (grab_bb.Max.x > grab_bb.Min.x)
+    {
+        // Draw the trail from the start to the grab position
+        window->DrawList->AddRectFilled(
+            ImVec2(inner_bb.Min.x, grab_y_center - grab_height * 0.5f),
+            ImVec2(grab_bb.Max.x, grab_y_center + grab_height * 0.5f),
+            GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab),
+            style.GrabRounding
+        );
+
+        // Draw the grab
+        window->DrawList->AddRectFilled(
+            ImVec2(grab_bb.Min.x - 2.0f, grab_y_center - grab_height * 0.5f),
+            ImVec2(grab_bb.Max.x + 2.0f, grab_y_center + grab_height * 0.5f),
+            GetColorU32(g.ActiveId == id ? ImGuiCol_SliderGrabActive : ImGuiCol_SliderGrab),
+            style.GrabRounding
+        );
+    }
+
+    // Display value using user-provided display format
     char value_buf[64];
     const char* value_buf_end = value_buf + DataTypeFormatString(value_buf, IM_ARRAYSIZE(value_buf), data_type, p_data, format);
     if (g.LogEnabled)
         LogSetNextTextDecoration("{", "}");
 
-    RenderTextClipped(ImVec2(frame_bb.Max.x - CalcTextSize(value_buf).x, frame_bb.Min.y - CalcTextSize(value_buf).y - 2), frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.0f, 0.0f));
+    // Render value text
+    const ImVec2 value_text_pos(
+        frame_bb.Max.x - CalcTextSize(value_buf).x,
+        total_bb.Min.y
+    );
+    RenderTextClipped(value_text_pos, frame_bb.Max, value_buf, value_buf_end, NULL, ImVec2(0.0f, 0.0f));
 
+    // Render label
     if (label_size.x > 0.0f)
-        RenderText(ImVec2(frame_bb.Min.x, frame_bb.Min.y - CalcTextSize(label).y - 2), label);
+        RenderText(ImVec2(frame_bb.Min.x, total_bb.Min.y), label);
 
     IMGUI_TEST_ENGINE_ITEM_INFO(id, label, g.LastItemData.StatusFlags | (temp_input_allowed ? ImGuiItemStatusFlags_Inputable : 0));
     return value_changed;

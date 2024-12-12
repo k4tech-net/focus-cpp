@@ -1,3 +1,5 @@
+#define PERCENT(x) (static_cast<float>(x) / 100.0f)
+
 #include "dxgi.hpp"
 
 //Engine en;
@@ -258,7 +260,7 @@ void DXGI::aimbot() {
 
     while (!globals.shutdown) {
 
-        if (settings.aimbotData.type == 1 && !settings.aimbotData.enabled) {
+        if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
                 inferencer.reset();
                 aimbotInit = false;
@@ -319,11 +321,13 @@ void DXGI::aimbot() {
             }
 
             // put potato mode check here specifically for aimbot
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            if (settings.aimbotData.limitDetectorFps) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
         else if (settings.aimbotData.type == 1 && settings.aimbotData.enabled) {
             if (!aimbotInit) {
-                if (settings.aimbotData.provider == 1) {
+                if (settings.aimbotData.aiAimbotSettings.provider == 1) {
                     provider = xorstr_("CUDA");
                 }
                 else {
@@ -363,13 +367,13 @@ void DXGI::aimbot() {
                 continue;
             }
 
-            std::vector<Detection> detections = inferencer->infer(croppedImage, static_cast<float>(settings.aimbotData.confidence) / 100.0f, 0.5);
+            std::vector<Detection> detections = inferencer->infer(croppedImage, PERCENT(settings.aimbotData.aiAimbotSettings.confidence), 0.5);
 
             if (detections.empty()) {
                 continue;
             }
 
-            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.hitbox, settings.fov, settings.aimbotData.forceHitbox);
+            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
 
             settings.aimbotData.correctionX = corrections[0];
             settings.aimbotData.correctionY = corrections[1];
@@ -839,8 +843,8 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     };
     static std::vector<SmoothTarget> trackedTargets;
     static int frameCount = 0;
-    const int maxTrackAge = 2;  // Maximum frames to keep tracking a disappeared target
-    const float smoothingFactor = 0.f;  // Higher = more smoothing, range 0-1
+    const int maxTrackAge = settings.aimbotData.colourAimbotSettings.maxTrackAge;  // Maximum frames to keep tracking a disappeared target
+    const float smoothingFactor = PERCENT(settings.aimbotData.colourAimbotSettings.trackSmoothingFactor);  // Higher = more smoothing, range 0-1
 
     frameCount++;
 
@@ -1036,7 +1040,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         int area = stats.at<int>(label, cv::CC_STAT_AREA);
 
         // Basic filtering for obviously invalid components
-        if (area < 5 || area >(src.rows * src.cols / 4)) {
+        if (area < settings.aimbotData.colourAimbotSettings.minArea || area >(src.rows * src.cols / 4)) {
             continue;
         }
 
@@ -1046,7 +1050,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         int y = stats.at<int>(label, cv::CC_STAT_TOP);
 
         float density = static_cast<float>(area) / (width * height);
-        if (density < 0.1f) continue;  // Filter very sparse components
+        if (density < PERCENT(settings.aimbotData.colourAimbotSettings.minDensity)) continue;  // Filter very sparse components
 
         Component comp;
         comp.center = cv::Point2f(centroids.at<double>(label, 0), centroids.at<double>(label, 1));
@@ -1058,7 +1062,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     }
 
     // Improved clustering with density-based merging
-    const float minClusterDist = downsampledSrc.cols * 0.15f;  // Minimum distance between clusters
+    const float minClusterDist = downsampledSrc.cols * PERCENT(settings.aimbotData.colourAimbotSettings.maxClusterDistance);  // Minimum distance between clusters
     std::vector<Component> clusters;
     std::vector<bool> used(validComponents.size(), false);
 
@@ -1079,7 +1083,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
             // Check if components are close enough and have similar density
             if (dist < minClusterDist &&
-                std::abs(cluster.density - validComponents[j].density) < 0.8f) {
+                std::abs(cluster.density - validComponents[j].density) < PERCENT(settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential)) {
                 clusterIndices.push_back(j);
                 used[j] = true;
             }
@@ -1117,7 +1121,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     // Update existing tracks
     for (const auto& track : trackedTargets) {
         bool matched = false;
-        float bestDist = downsampledSrc.cols * 0.15f;  // Maximum tracking distance
+        float bestDist = downsampledSrc.cols * PERCENT(settings.aimbotData.colourAimbotSettings.maxClusterDistance);  // Maximum tracking distance
         int bestIdx = -1;
 
         // Find the closest unmatched cluster
@@ -1144,13 +1148,13 @@ void DXGI::overwatchDetector(cv::Mat& src) {
             newTrack.area = track.area * smoothingFactor +
                 clusters[bestIdx].area * (1.0f - smoothingFactor);
             newTrack.lastSeen = frameCount;
-            newTrack.confidence = std::min(1.0f, track.confidence + 0.2f);
+            newTrack.confidence = std::min(1.0f, track.confidence + PERCENT(settings.aimbotData.colourAimbotSettings.trackConfidenceRate));
             newTrackedTargets.push_back(newTrack);
         }
         else if (frameCount - track.lastSeen < maxTrackAge) {
             // Keep track alive but reduce confidence
             SmoothTarget newTrack = track;
-            newTrack.confidence = std::max(0.0f, track.confidence - 0.2f);
+            newTrack.confidence = std::max(0.0f, track.confidence - PERCENT(settings.aimbotData.colourAimbotSettings.trackConfidenceRate));
             newTrackedTargets.push_back(newTrack);
         }
     }

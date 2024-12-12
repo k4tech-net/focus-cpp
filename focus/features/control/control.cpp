@@ -77,7 +77,7 @@ void Control::driveMouse() {
 		bool l_mouse = currwpn.rapidfire ? globals.mouseinfo.l_mouse_down.load() : (GetAsyncKeyState(VK_LBUTTON) != 0);
 		bool r_mouse = currwpn.rapidfire ? globals.mouseinfo.r_mouse_down.load() : (GetAsyncKeyState(VK_RBUTTON) != 0);
 
-		switch (settings.extras.recoilKeyMode) {
+		switch (settings.misc.recoilKeyMode) {
 		case 0: // Both buttons
 			mouseCondition = l_mouse && r_mouse;
 			break;
@@ -88,7 +88,7 @@ void Control::driveMouse() {
 			mouseCondition = r_mouse;
 			break;
 		case 3: // Custom key
-			mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::RecoilKey);
+			mouseCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::RecoilKey);
 			break;
 		}
 
@@ -138,7 +138,7 @@ void Control::driveMouse() {
 					l_mouse = currwpn.rapidfire ? globals.mouseinfo.l_mouse_down.load() : (GetAsyncKeyState(VK_LBUTTON) != 0);
 					r_mouse = currwpn.rapidfire ? globals.mouseinfo.r_mouse_down.load() : (GetAsyncKeyState(VK_RBUTTON) != 0);
 
-					switch (settings.extras.recoilKeyMode) {
+					switch (settings.misc.recoilKeyMode) {
 					case 0:
 						mouseCondition = l_mouse && r_mouse;
 						break;
@@ -149,7 +149,7 @@ void Control::driveMouse() {
 						mouseCondition = r_mouse;
 						break;
 					case 3: // Custom key
-						mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::RecoilKey);
+						mouseCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::RecoilKey);
 						break;
 					}
 				}
@@ -219,36 +219,8 @@ void Control::driveAimbot() {
 	pidX.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
 	pidY.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
 
-	//while (settings.test && GetAsyncKeyState(VK_RCONTROL)) {
-		//	// Calculate PID corrections directly from the raw corrections
-		//	float pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
-		//	float pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
-
-		//	float totalDistance = std::sqrt(
-		//		settings.aimbotData.correctionX * settings.aimbotData.correctionX +
-		//		settings.aimbotData.correctionY * settings.aimbotData.correctionY
-		//	);
-
-		//	// Round to integer movements
-		//	int xMove = static_cast<int>(std::round(pidCorrectionX));
-		//	int yMove = static_cast<int>(std::round(pidCorrectionY));
-
-		//	xMove = std::clamp(xMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
-		//	yMove = std::clamp(yMove, -settings.aimbotData.maxDistance, settings.aimbotData.maxDistance);
-
-		//	// Move mouse if there's any movement
-		//	if (xMove != 0 || yMove != 0) {
-		//		ms.moveR(xMove, yMove);
-		//	}
-
-		//	/*if (totalDistance < 15.f) {
-		//		pressMouse1(true);
-		//		std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		//		pressMouse1(false);
-		//	}*/
-
-		//	std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		//}
+	std::chrono::steady_clock::time_point lastTriggerTime = std::chrono::steady_clock::now();
+	bool canTrigger = true;
 
 	while (!globals.shutdown) {
 		if (settings.pidDataChanged) {
@@ -260,55 +232,86 @@ void Control::driveAimbot() {
 		}
 
 		// Check activation conditions based on keymode
-		bool mouseCondition = false;
+		bool aimbotCondition = false;
+		bool triggerBotCondition = false;
 		bool l_mouse = globals.mouseinfo.l_mouse_down.load();
 		bool r_mouse = globals.mouseinfo.r_mouse_down.load();
 
-		switch (settings.extras.aimKeyMode) {
+		switch (settings.misc.aimKeyMode) {
 		case 0: // Both buttons
-			mouseCondition = l_mouse && r_mouse;
+			aimbotCondition = l_mouse && r_mouse;
 			break;
 		case 1: // Left button only
-			mouseCondition = l_mouse;
+			aimbotCondition = l_mouse;
 			break;
 		case 2: // Right button only
-			mouseCondition = r_mouse;
+			aimbotCondition = r_mouse;
 			break;
 		case 3: // Custom key
-			mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::AimKey);
+			aimbotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::AimKey);
 			break;
 		}
 
+		triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
+		if (!triggerBotCondition) {
+			canTrigger = true;
+		}
+
 		// Main aimbot loop
-		while (mouseCondition && !settings.weaponOffOverride) {
+		while ((aimbotCondition || triggerBotCondition) && !settings.weaponOffOverride) {
 			// Calculate PID corrections
 			float pidCorrectionX = 0;
 			float pidCorrectionY = 0;
 
+			// Check if enough time has passed since last trigger
+			auto currentTime = std::chrono::steady_clock::now();
+			auto timeSinceLastTrigger = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTriggerTime).count();
+			if (timeSinceLastTrigger >= settings.aimbotData.triggerSleep) {
+				canTrigger = true;
+			}
+
 			// Only calculate corrections if we have valid tracking data
 			if (settings.aimbotData.correctionX != 0 || settings.aimbotData.correctionY != 0) {
 
-				const float fovPercentage = settings.aimbotData.fov / 50.f;
-				const int fovPixelsX = static_cast<int>(fovPercentage * globals.capture.desktopWidth);
-				const int fovPixelsY = static_cast<int>(fovPercentage * globals.capture.desktopHeight);
+				// Triggerbot FOV Check
+				if (triggerBotCondition && canTrigger) {
+					const float triggerbotFovPercentage = settings.aimbotData.triggerFov / 50.f;
+					const int triggerbotFovPixelsX = static_cast<int>(triggerbotFovPercentage * globals.capture.desktopWidth);
+					const int triggerbotFovPixelsY = static_cast<int>(triggerbotFovPercentage * globals.capture.desktopHeight);
+					bool withinTriggerbotFov = std::abs(settings.aimbotData.correctionX) < triggerbotFovPixelsX && std::abs(settings.aimbotData.correctionY) < triggerbotFovPixelsY;
 
-				bool withinFov = std::abs(settings.aimbotData.correctionX) < fovPixelsX && std::abs(settings.aimbotData.correctionY) < fovPixelsY;
-
-				if (withinFov) {
-					// Calculate PID corrections only if within FOV
-					pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
-
-					if (settings.game == xorstr_("Overwatch")) {
-						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
-					}
-					else {
-						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
+					if (withinTriggerbotFov) {
+						pressMouse1(true);
+						std::this_thread::sleep_for(std::chrono::milliseconds(1));
+						pressMouse1(false);
+						lastTriggerTime = currentTime;
+						canTrigger = false;
 					}
 				}
-				else {
-					// Outside FOV - reset corrections
-					settings.aimbotData.correctionX = 0;
-					settings.aimbotData.correctionY = 0;
+
+				// Aimbot FOV Check
+				if (aimbotCondition) {
+					const float aimbotFovPercentage = settings.aimbotData.aimFov / 50.f;
+					const int aimbotFovPixelsX = static_cast<int>(aimbotFovPercentage * globals.capture.desktopWidth);
+					const int aimbotFovPixelsY = static_cast<int>(aimbotFovPercentage * globals.capture.desktopHeight);
+					bool withinAimbotFov = std::abs(settings.aimbotData.correctionX) < aimbotFovPixelsX && std::abs(settings.aimbotData.correctionY) < aimbotFovPixelsY;
+
+					if (withinAimbotFov) {
+						// Calculate PID corrections only if within FOV
+						pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+
+						if (settings.game == xorstr_("Overwatch")) {
+							pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
+						}
+						else {
+							pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
+						}
+					}
+					else {
+						// Outside FOV - reset corrections
+						settings.aimbotData.correctionX = 0;
+						settings.aimbotData.correctionY = 0;
+					}
 				}
 			}
 
@@ -328,24 +331,29 @@ void Control::driveAimbot() {
 			l_mouse = globals.mouseinfo.l_mouse_down.load();
 			r_mouse = globals.mouseinfo.r_mouse_down.load();
 
-			switch (settings.extras.aimKeyMode) {
+			switch (settings.misc.aimKeyMode) {
 			case 0:
-				mouseCondition = l_mouse && r_mouse;
+				aimbotCondition = l_mouse && r_mouse;
 				break;
 			case 1:
-				mouseCondition = l_mouse;
+				aimbotCondition = l_mouse;
 				break;
 			case 2:
-				mouseCondition = r_mouse;
+				aimbotCondition = r_mouse;
 				break;
 			case 3:
-				mouseCondition = settings.hotkeys.IsActive(HotkeyIndex::AimKey);
+				aimbotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::AimKey);
 				break;
+			}
+
+			triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
+			if (!triggerBotCondition) {
+				canTrigger = true; // Reset canTrigger
 			}
 		}
 
 		// Reset PID controllers when not active
-		if (!mouseCondition) {
+		if (!aimbotCondition) {
 			pidX.reset();
 			pidY.reset();
 		}
@@ -384,7 +392,7 @@ void Control::driveKeyboard() {
 	nb.initForR6();
 
 	while (!globals.shutdown) {
-		if (settings.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
 
 			if (init) {
 				// Going Left
@@ -416,7 +424,7 @@ void Control::driveKeyboard() {
 			// Was going left, now right
 			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
 				kb.keyboard_press(KeyboardKey::e);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
 				kb.keyboard_press(KeyboardKey::q);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 				kb.keyboard_release();
@@ -433,7 +441,7 @@ void Control::driveKeyboard() {
 			// Was going right, now left
 			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
 				kb.keyboard_press(KeyboardKey::q);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
 				kb.keyboard_press(KeyboardKey::e);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 				kb.keyboard_release();
@@ -447,8 +455,8 @@ void Control::driveKeyboard() {
 				moved = false;
 			}
 		}
-		else if (settings.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
-			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
+		else if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
+			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
 
 			if (init) {
 				// Going Left
@@ -481,7 +489,7 @@ void Control::driveKeyboard() {
 			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
 				pressAndReleaseKey(proneKey);
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
 
 				pressAndReleaseKey(proneKey);
 
@@ -498,7 +506,7 @@ void Control::driveKeyboard() {
 			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
 				pressAndReleaseKey(proneKey);
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.quickPeekDelay));
+				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
 
 				pressAndReleaseKey(proneKey);
 
@@ -517,12 +525,12 @@ void Control::driveKeyboard() {
 			init = true;
 		}
 
-		if (settings.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
 			
 			ms.moveR(50000, 1000);
 		}
 
-		if (settings.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
 			if (!nb.isCurrentlyBlocking()) {
 				nb.enableBlocking();
 			}

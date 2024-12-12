@@ -120,8 +120,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
 			newSettings.potato = true;
-			newSettings.aimbotData = { 0, 0, false, 0, 0, 10, 0, 10, false, 10, { 0, 0.f, 0.f, 0.f, 0.f } }; // Default aimbot settings
-			newSettings.extras = { 0 };
+			newSettings.aimbotData = { 0, 0, false, 0, 10, 10, 1, 200, true, { 0, 0.02f, 0.2f, 0.008f, 1.f }, { 0, 3, 0, 20, 10, 80, 10, 5 }, { 0, 0, 10, false } }; // Default aimbot settings
 
 			// Pre-fill with example values based on mode and game
 			if (newSettings.mode == xorstr_("Generic")) {
@@ -771,7 +770,7 @@ std::vector<float> calculateSensitivityModifierOverwatch() {
 // Function to parse keybinds and update global struct
 void keybindManager() {
 
-	settings.hotkeys.Update();
+	settings.misc.hotkeys.Update();
 
 	if (settings.mode == xorstr_("Generic")) {
 		settings.isPrimaryActive = true;
@@ -1433,37 +1432,6 @@ void Menu::gui()
 
 					ImGui::EndTabItem();
 				}
-
-				if (ImGui::BeginTabItem(xorstr_("Scripts"))) {
-
-					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-
-					if (settings.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
-
-					if (settings.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					
-					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
-						globals.filesystem.unsavedChanges = true;
-					}
-
-					if (settings.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-
-					if (settings.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
-
-					ImGui::EndTabItem();
-				}
 			}
 			else if (settings.game == xorstr_("Rust")) {
 				if (ImGui::BeginTabItem(xorstr_("Game"))) {
@@ -1628,15 +1596,13 @@ void Menu::gui()
 					if (ImGui::Checkbox(xorstr_("Colour Aimbot"), &settings.aimbotData.enabled)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-
-					// colour aimbot settings here
 				}
 				else {
 					settings.aimbotData.type = 1;
 
 					if (!settings.aimbotData.enabled) {
 						std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
-						if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.provider, providers.data(), (int)providers.size())) {
+						if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.aiAimbotSettings.provider, providers.data(), (int)providers.size())) {
 							globals.filesystem.unsavedChanges = true;
 						}
 						tooltip(xorstr_("CPU is recommended for most systems (Unless you have a 4080/4090)"));
@@ -1681,18 +1647,22 @@ void Menu::gui()
 							globals.filesystem.unsavedChanges = true;
 							settings.pidDataChanged = true;
 						}
+						tooltip(xorstr_("How quickly the aimbot moves"));
 						if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
 							globals.filesystem.unsavedChanges = true;
 							settings.pidDataChanged = true;
 						}
+						tooltip(xorstr_("How quickly the aimbot changes direction"));
 						if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
 							globals.filesystem.unsavedChanges = true;
 							settings.pidDataChanged = true;
 						}
+						tooltip(xorstr_("How far ahead in time the aimbot looks"));
 						if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
 							globals.filesystem.unsavedChanges = true;
 							settings.pidDataChanged = true;
 						}
+						tooltip(xorstr_("The amount of time it takes to reach the full PID value (Starts from 0)"));
 					}
 
 					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
@@ -1700,24 +1670,86 @@ void Menu::gui()
 					}
 					tooltip(xorstr_("The farthest a single aimbot movement can travel"));
 
-					if (ImGui::SliderInt(xorstr_("Aimbot FOV"), &settings.aimbotData.fov, 0, 50, xorstr_("%d%%"))) {
+					if (ImGui::SliderInt(xorstr_("Aimbot FOV"), &settings.aimbotData.aimFov, 0, 50, xorstr_("%d%%"))) {
 						globals.filesystem.unsavedChanges = true;
 					}
 					tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
 
-					if (settings.aimbotData.type == 1) {
-						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.confidence, 1, 100, xorstr_("%d%%"))) {
+					if (ImGui::SliderInt(xorstr_("Triggerbot FOV"), &settings.aimbotData.triggerFov, 0, 50, xorstr_("%d%%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("The percentage of the screen that the Triggerbot will fire within (Within the centre 50% of your screen)"));
+
+					if (ImGui::SliderInt(xorstr_("Triggerbot Sleep"), &settings.aimbotData.triggerSleep, 0, 2000, xorstr_("%dms%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("How long the Triggerbot will wait between shots"));
+
+					if (ImGui::Checkbox(xorstr_("Limit Detector FPS"), &settings.aimbotData.limitDetectorFps)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("Locks the aimbot detector to 64 FPS, this reduces CPU usage but will reduce accuracy"));
+					
+					if (settings.aimbotData.type == 0) {
+						std::vector<const char*> colourAimbotPreset = { xorstr_("Default"), xorstr_("Custom") };
+						if (ImGui::Combo(xorstr_("Colour Aimbot Detection Preset"), &settings.aimbotData.colourAimbotSettings.detectionPreset, colourAimbotPreset.data(), (int)colourAimbotPreset.size())) {
+							globals.filesystem.unsavedChanges = true;
+
+							if (settings.aimbotData.colourAimbotSettings.detectionPreset == 0) {
+								settings.aimbotData.colourAimbotSettings.maxTrackAge = 3;
+								settings.aimbotData.colourAimbotSettings.trackSmoothingFactor = 0;
+								settings.aimbotData.colourAimbotSettings.trackConfidenceRate = 20;
+								settings.aimbotData.colourAimbotSettings.maxClusterDistance = 10;
+								settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential = 80;
+								settings.aimbotData.colourAimbotSettings.minDensity = 10;
+								settings.aimbotData.colourAimbotSettings.minArea = 5;
+							}
+						}
+
+						if (settings.aimbotData.colourAimbotSettings.detectionPreset == 1) {
+							if (ImGui::InputInt(xorstr_("Max Tracking Age"), &settings.aimbotData.colourAimbotSettings.maxTrackAge, 0, 0)) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How long a point is preserved after losing tracking (Measured in frames)"));
+							if (ImGui::SliderInt(xorstr_("Tracking Smoothing Factor"), &settings.aimbotData.colourAimbotSettings.trackSmoothingFactor, 1, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How strongly past positions are favoured in tracking"));
+							if (ImGui::SliderInt(xorstr_("Tracking Confidence Rate"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 1, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How fast confidence in a detection is gained or lost"));
+							if (ImGui::SliderInt(xorstr_("Max Cluster Distance"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 1, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How far apart points can be, to be classified as a single cluster"));
+							if (ImGui::SliderInt(xorstr_("Max Cluster Density Differential"), &settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential, 1, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How similar the density of clusters must be, in order to be joined"));
+							if (ImGui::SliderInt(xorstr_("Minimum Cluster Density"), &settings.aimbotData.colourAimbotSettings.minDensity, 1, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How dense a cluster must be to be considered valid"));
+							if (ImGui::InputInt(xorstr_("Minimum Cluster Area"), &settings.aimbotData.colourAimbotSettings.minArea, 0, 0)) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("How large a cluster must be to be considered valid"));
+						}
+					}
+					else if (settings.aimbotData.type == 1) {
+						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.aiAimbotSettings.confidence, 1, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges = true;
 						}
 						tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
 
-						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.forceHitbox)) {
+						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.aiAimbotSettings.forceHitbox)) {
 							globals.filesystem.unsavedChanges = true;
 						}
 						tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
 
 						std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
+						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.aiAimbotSettings.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
 							globals.filesystem.unsavedChanges = true;
 						}
 					}
@@ -1728,27 +1760,55 @@ void Menu::gui()
 		}
 
 		if (settings.mode == xorstr_("Character") || settings.game == xorstr_("Siege") || settings.game == xorstr_("Rust") || settings.mode == xorstr_("Generic") || settings.game == xorstr_("Overwatch")) {
-
-			if (ImGui::BeginTabItem(xorstr_("Extras"))) {
+			if (ImGui::BeginTabItem(xorstr_("Misc"))) {
 				std::vector<const char*> keysSettings = { xorstr_("Require Both"), xorstr_("Just Left Mouse"), xorstr_("Just Right Mouse"), xorstr_("Custom Key") };
-				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.extras.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
+
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
 					globals.filesystem.unsavedChanges = true;
 				}
 
-				if (settings.extras.aimKeyMode == 3) {
-					if (settings.hotkeys.RenderHotkey(xorstr_("Custom Aimbot Key"), HotkeyIndex::AimKey)) {
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
+
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
+
+				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.misc.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				if (settings.misc.aimKeyMode == 3) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Custom Aimbot Key"), HotkeyIndex::AimKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 				}
 
-				if (ImGui::Combo(xorstr_("Recoil Mouse Buttons"), &settings.extras.recoilKeyMode, keysSettings.data(), (int)keysSettings.size())) {
+				if (ImGui::Combo(xorstr_("Recoil Mouse Buttons"), &settings.misc.recoilKeyMode, keysSettings.data(), (int)keysSettings.size())) {
 					globals.filesystem.unsavedChanges = true;
 				}
-
-				if (settings.extras.recoilKeyMode == 3) {
-					if (settings.hotkeys.RenderHotkey(xorstr_("Custom Recoil Key"), HotkeyIndex::RecoilKey)) {
+				if (settings.misc.recoilKeyMode == 3) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Custom Recoil Key"), HotkeyIndex::RecoilKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
+				}
+
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Triggerbot Key"), HotkeyIndex::TriggerKey)) {
+					globals.filesystem.unsavedChanges = true;
 				}
 
 				ImGui::EndTabItem();

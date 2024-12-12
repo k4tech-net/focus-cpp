@@ -36,12 +36,11 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::istringstream ss(value);
             std::string item;
             std::getline(ss, item, ','); aimbotData.type = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.provider = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.hitbox = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.confidence = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.forceHitbox = item == xorstr_("1");
-			std::getline(ss, item, ','); aimbotData.fov = std::stoi(item);
+			std::getline(ss, item, ','); aimbotData.aimFov = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerFov = std::stoi(item);
+			std::getline(ss, item, ','); aimbotData.triggerSleep = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.limitDetectorFps = item == xorstr_("1");
         }
         else if (key == xorstr_("PidSettings")) {
 			std::istringstream ss(value);
@@ -52,11 +51,32 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
 			std::getline(ss, item, ','); aimbotData.pidSettings.derivative = std::stof(item);
             std::getline(ss, item, ','); aimbotData.pidSettings.rampUpTime = std::stof(item);
         }
-        else if (key == xorstr_("Extras")) {
+        else if (key == xorstr_("ColourAimbotSettings")) {
 			std::istringstream ss(value);
 			std::string item;
-            std::getline(ss, item, ','); extras.aimKeyMode = std::stoi(item);
-            std::getline(ss, item, ','); extras.recoilKeyMode = std::stoi(item);
+			std::getline(ss, item, ','); aimbotData.colourAimbotSettings.detectionPreset = std::stoi(item);
+			std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxTrackAge = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.trackSmoothingFactor = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.trackConfidenceRate = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxClusterDistance = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxClusterDensityDifferential = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.minDensity = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.minArea = std::stoi(item);
+        }
+        else if (key == xorstr_("AiAimbotSettings")) {
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); aimbotData.aiAimbotSettings.provider = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.aiAimbotSettings.hitbox = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.aiAimbotSettings.confidence = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.aiAimbotSettings.forceHitbox = item == xorstr_("1");
+        }
+        else if (key == xorstr_("Misc")) {
+			std::istringstream ss(value);
+			std::string item;
+            std::getline(ss, item, ','); misc.aimKeyMode = std::stoi(item);
+            std::getline(ss, item, ','); misc.recoilKeyMode = std::stoi(item);
+            std::getline(ss, item, ','); misc.quickPeekDelay = std::stoi(item);
         }
         else if (key == xorstr_("WeaponKeybinds")) {
             wpn_keybinds.clear();
@@ -157,9 +177,6 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         else if (key == xorstr_("Fov")) {
             fov = std::stoi(value);
         }
-        else if (key == xorstr_("QuickPeekDelay")) {
-			quickPeekDelay = std::stoi(value);
-		}
 
         if (key.substr(0, 6) == "Hotkey") {
             int index = std::stoi(key.substr(6));
@@ -173,9 +190,9 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
                 }
 
                 if (hotkeyData.size() >= 3) {
-                    hotkeys.hotkeys[index].type.store(static_cast<InputType>(hotkeyData[0]));
-                    hotkeys.hotkeys[index].vKey.store(hotkeyData[1]);
-                    hotkeys.hotkeys[index].mode.store(static_cast<HotkeyMode>(hotkeyData[2]));
+                    misc.hotkeys.hotkeys[index].type.store(static_cast<InputType>(hotkeyData[0]));
+                    misc.hotkeys.hotkeys[index].vKey.store(hotkeyData[1]);
+                    misc.hotkeys.hotkeys[index].mode.store(static_cast<HotkeyMode>(hotkeyData[2]));
                 }
             }
         }
@@ -211,17 +228,16 @@ void Settings::saveSettings(const std::string& filename) {
 
     file << xorstr_("Mode=") << mode << xorstr_("\n");
     file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.provider << xorstr_(",")
-        << aimbotData.maxDistance << xorstr_(",") << aimbotData.hitbox << xorstr_(",") << aimbotData.confidence
-        << xorstr_(",") << (aimbotData.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.fov << xorstr_("\n");
-    file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",")
-        << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative
-        << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
-    file << xorstr_("Extras=") << extras.aimKeyMode << xorstr_(",") << extras.recoilKeyMode << xorstr_("\n");
+    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.maxDistance << xorstr_(",") << aimbotData.aimFov << xorstr_(",") << aimbotData.triggerFov << xorstr_(",") << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.triggerSleep << xorstr_("\n");
+    file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",") << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
+	file << xorstr_("ColourAimbotSettings=") << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") << aimbotData.colourAimbotSettings.trackConfidenceRate
+        << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") << aimbotData.colourAimbotSettings.minArea << xorstr_("\n");
+    file << xorstr_("AiAimbotSettings=") << aimbotData.aiAimbotSettings.provider << xorstr_(",") << aimbotData.aiAimbotSettings.hitbox << xorstr_(",") << aimbotData.aiAimbotSettings.confidence << xorstr_(",") << (aimbotData.aiAimbotSettings.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    file << xorstr_("Misc=") << misc.aimKeyMode << xorstr_(",") << misc.recoilKeyMode << xorstr_(",") << misc.quickPeekDelay << xorstr_("\n");
 
     // Save hotkeys in matching format
     for (size_t i = 0; i < static_cast<size_t>(HotkeyIndex::COUNT); i++) {
-        const Hotkey& hotkey = hotkeys.hotkeys[i];
+        const Hotkey& hotkey = misc.hotkeys.hotkeys[i];
         file << "Hotkey" << i << "=" <<
             static_cast<int>(hotkey.type.load()) << "," <<
             hotkey.vKey.load() << "," <<
@@ -291,7 +307,6 @@ void Settings::saveSettings(const std::string& filename) {
 
             file << xorstr_("AspectRatio=") << aspect_ratio << xorstr_("\n");
             file << xorstr_("Fov=") << fov << xorstr_("\n");
-			file << xorstr_("QuickPeekDelay=") << quickPeekDelay << xorstr_("\n");
 
             for (const auto& character : characters) {
                 file << xorstr_("Character=") << character.charactername << xorstr_("\n");

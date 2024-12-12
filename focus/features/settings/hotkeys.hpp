@@ -33,6 +33,7 @@ enum class HotkeyIndex {
     ProneKey,
     AimKey,
     RecoilKey,
+    TriggerKey,
     DimXKey,
     COUNT
 };

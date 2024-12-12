@@ -51,23 +51,44 @@ struct pidSettings {
     float rampUpTime = 0.0f;
 };
 
+struct colourAimbotSettings {
+    int detectionPreset = 0;
+    int maxTrackAge = 0;
+    int trackSmoothingFactor = 0;
+    int trackConfidenceRate = 0;
+    int maxClusterDistance = 0;
+    int maxClusterDensityDifferential = 0;
+    int minDensity = 0;
+    int minArea = 0;
+};
+
+struct aiAimbotSettings {
+    int provider = 0;
+    int hitbox = 0;
+    int confidence = 0;
+    bool forceHitbox = false;
+};
+
 struct aimbotData {
 	int correctionX = 0;
 	int correctionY = 0;
 	bool enabled = false;
     int type = 0;
-    int provider = 0;
     int maxDistance = 0;
-    int hitbox = 0;
-    int confidence = 10;
-    bool forceHitbox = false;
-    int fov = 0;
+    int aimFov = 0;
+    int triggerFov = 0;
+    int triggerSleep = 0;
+    bool limitDetectorFps = false;
     pidSettings pidSettings;
+    colourAimbotSettings colourAimbotSettings;
+	aiAimbotSettings aiAimbotSettings;
 };
 
-struct extraSettings {
+struct miscSettings {
     int aimKeyMode = 0;
     int recoilKeyMode = 0;
+    int quickPeekDelay = 0;
+    HotkeySystem hotkeys;
 };
 
 class Settings 
@@ -82,8 +103,6 @@ public:
     std::vector<std::string> wpn_keybinds;
     std::vector<std::string> aux_keybinds;
 
-    HotkeySystem hotkeys;
-
     // Game mode settings
     std::string game = "";
     std::vector<float> sensitivity;
@@ -91,7 +110,6 @@ public:
     int aspect_ratio = 0;
     float fov = 0;
     float fovSensitivityModifier = 1.f;
-    int quickPeekDelay = 0;
 
     // Character data
     std::vector<characterData> characters;
@@ -105,7 +123,7 @@ public:
     std::vector<float> sensMultiplier = { 1.0f, 1.0f };
 
     // Misc Settings
-	extraSettings extras;
+	miscSettings misc;
 
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
