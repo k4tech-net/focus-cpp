@@ -272,11 +272,6 @@ void DXGI::aimbot() {
         }
 
         if (settings.aimbotData.type == 0 && settings.aimbotData.enabled && settings.game == xorstr_("Overwatch")) {
-            // FPS tracking variables
-            static int frameCount = 0;
-            static auto lastFpsTime = std::chrono::high_resolution_clock::now();
-            static float currentFps = 0.0f;
-
             if (globals.capture.desktopMat.empty()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
                 continue;
@@ -306,21 +301,6 @@ void DXGI::aimbot() {
 
             overwatchDetector(croppedImage);
 
-            // Only increment frame count after successful processing
-            frameCount++;
-
-            auto currentTime = std::chrono::high_resolution_clock::now();
-            auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastFpsTime).count();
-
-            // Update FPS every 500ms for smoother readings
-            if (elapsed >= 500) {
-                currentFps = (frameCount * 1000.0f) / elapsed;  // Convert to per-second rate
-                printf("FPS: %.2f\n", currentFps);  // Format to 2 decimal places
-                frameCount = 0;
-                lastFpsTime = currentTime;
-            }
-
-            // put potato mode check here specifically for aimbot
             if (settings.aimbotData.limitDetectorFps) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
@@ -377,6 +357,10 @@ void DXGI::aimbot() {
 
             settings.aimbotData.correctionX = corrections[0];
             settings.aimbotData.correctionY = corrections[1];
+
+            if (settings.aimbotData.limitDetectorFps) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            }
         }
     }
 }
@@ -833,6 +817,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     static bool simdInitialized = false;
     static bool hasAVX512 = false;
     static bool hasAVX2 = false;
+    static bool destroyed = true;
 
     // Temporal smoothing
     struct SmoothTarget {
@@ -1187,14 +1172,16 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
         if (distance < minDistance) {
             minDistance = distance;
-            targetPoint = cv::Point2f(track.pos.x, track.pos.y);
+            targetPoint = cv::Point2f(track.pos.x, track.pos.y - settings.aimbotData.colourAimbotSettings.aimHeight);
             targetFound = true;
         }
 
-       /// cv::Scalar color(0, 255 * track.confidence, 255 * (1.0f - track.confidence));
-       // int radius = std::max(3, static_cast<int>(std::sqrt(track.area) * 0.5f));
-       // cv::circle(downsampledSrc, track.pos, radius, color, 1);
-       //cv::circle(downsampledSrc, track.pos, 2, color, -1);
+        if (settings.aimbotData.colourAimbotSettings.debugView) {
+            cv::Scalar color(0, 255 * track.confidence, 255 * (1.0f - track.confidence));
+            int radius = std::max(3, static_cast<int>(std::sqrt(track.area) * 0.5f));
+            cv::circle(downsampledSrc, track.pos, radius, color, 1);
+            cv::circle(downsampledSrc, track.pos, 2, color, -1);
+        }
     }
 
     if (targetFound) {
@@ -1208,14 +1195,23 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
         settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
 
-        //cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);
+        if (settings.aimbotData.colourAimbotSettings.debugView) {
+            cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);
+        }
     }
     else {
         settings.aimbotData.correctionX = 0;
         settings.aimbotData.correctionY = 0;
     }
 
-    //cv::imshow("Source", downsampledSrc);
-    //cv::imshow("Mask", mask);
-    //cv::waitKey(1);
+    if (settings.aimbotData.colourAimbotSettings.debugView) {
+        cv::imshow("Source", downsampledSrc);
+        //cv::imshow("Mask", mask);
+        cv::waitKey(1);
+        destroyed = false;
+    } else if (!destroyed && !settings.aimbotData.colourAimbotSettings.debugView) {
+		cv::destroyWindow("Source");
+		//cv::destroyWindow("Mask");
+		destroyed = true;
+	}
 }

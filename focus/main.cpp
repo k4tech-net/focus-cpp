@@ -170,6 +170,19 @@ int main()
 			CreateRenderTarget();
 		}
 
+		HWND mainWindow = (HWND)ImGui::GetMainViewport()->PlatformHandle;
+		if (mainWindow) {
+			::ShowWindow(mainWindow, settings.misc.hotkeys.IsActive(HotkeyIndex::HideUiKey) ? SW_HIDE : SW_SHOW);
+		}
+
+		// Handle additional viewports (child windows)
+		for (int i = 1; i < ImGui::GetPlatformIO().Viewports.Size; i++) {
+			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[i];
+			if (viewport && viewport->PlatformHandle) {
+				::ShowWindow((HWND)viewport->PlatformHandle, settings.misc.hotkeys.IsActive(HotkeyIndex::HideUiKey) ? SW_HIDE : SW_SHOW);
+			}
+		}
+
 		// Start the Dear ImGui frame
 		ImGui_ImplDX11_NewFrame();
 		ImGui_ImplWin32_NewFrame();

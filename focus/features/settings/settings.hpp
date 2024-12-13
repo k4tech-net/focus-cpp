@@ -60,6 +60,8 @@ struct colourAimbotSettings {
     int maxClusterDensityDifferential = 0;
     int minDensity = 0;
     int minArea = 0;
+    int aimHeight = 0;
+    bool debugView = false;
 };
 
 struct aiAimbotSettings {
@@ -76,7 +78,7 @@ struct aimbotData {
     int type = 0;
     int maxDistance = 0;
     int aimFov = 0;
-    int triggerFov = 0;
+    float triggerFov = 0;
     int triggerSleep = 0;
     bool limitDetectorFps = false;
     pidSettings pidSettings;
@@ -106,7 +108,6 @@ public:
     // Game mode settings
     std::string game = "";
     std::vector<float> sensitivity;
-    std::string crouch_keybind;
     int aspect_ratio = 0;
     float fov = 0;
     float fovSensitivityModifier = 1.f;

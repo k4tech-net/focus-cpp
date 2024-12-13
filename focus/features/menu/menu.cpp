@@ -196,7 +196,6 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 					rustChar.selectedweapon = { 0, 0 };
 					newSettings.characters.push_back(rustChar);
 					newSettings.sensitivity = { 0.5f, 1.0f };
-					newSettings.crouch_keybind = xorstr_("0x11");  // Default to Ctrl key
 				}
 				else if (newSettings.game == xorstr_("Overwatch")) {
 					characterData owChar;
@@ -751,7 +750,7 @@ std::vector<float> calculateSensitivityModifierRust() {
 
 	float standingModifier = 1.f;
 
-	if (GetAsyncKeyState(std::stoi(settings.crouch_keybind, nullptr, 0))) {
+	if (settings.misc.hotkeys.IsActive(HotkeyIndex::CrouchKey)) {
 		standingModifier = 0.5f;
 	}
 
@@ -1675,10 +1674,10 @@ void Menu::gui()
 					}
 					tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
 
-					if (ImGui::SliderInt(xorstr_("Triggerbot FOV"), &settings.aimbotData.triggerFov, 0, 50, xorstr_("%d%%"))) {
+					if (ImGui::SliderFloat(xorstr_("Triggerbot FOV"), &settings.aimbotData.triggerFov, 0, 10, xorstr_("%.1f%%"), 0.1f)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-					tooltip(xorstr_("The percentage of the screen that the Triggerbot will fire within (Within the centre 50% of your screen)"));
+					tooltip(xorstr_("The percentage of the screen that the Triggerbot will fire within (Within the centre 10% of your screen)"));
 
 					if (ImGui::SliderInt(xorstr_("Triggerbot Sleep"), &settings.aimbotData.triggerSleep, 0, 2000, xorstr_("%dms%"))) {
 						globals.filesystem.unsavedChanges = true;
@@ -1688,7 +1687,7 @@ void Menu::gui()
 					if (ImGui::Checkbox(xorstr_("Limit Detector FPS"), &settings.aimbotData.limitDetectorFps)) {
 						globals.filesystem.unsavedChanges = true;
 					}
-					tooltip(xorstr_("Locks the aimbot detector to 64 FPS, this reduces CPU usage but will reduce accuracy"));
+					tooltip(xorstr_("Locks the aimbot detector to 66 FPS, this reduces CPU usage but will reduce accuracy"));
 					
 					if (settings.aimbotData.type == 0) {
 						std::vector<const char*> colourAimbotPreset = { xorstr_("Default"), xorstr_("Custom") };
@@ -1703,6 +1702,7 @@ void Menu::gui()
 								settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential = 80;
 								settings.aimbotData.colourAimbotSettings.minDensity = 10;
 								settings.aimbotData.colourAimbotSettings.minArea = 5;
+								settings.aimbotData.colourAimbotSettings.aimHeight = -5;
 							}
 						}
 
@@ -1711,23 +1711,23 @@ void Menu::gui()
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How long a point is preserved after losing tracking (Measured in frames)"));
-							if (ImGui::SliderInt(xorstr_("Tracking Smoothing Factor"), &settings.aimbotData.colourAimbotSettings.trackSmoothingFactor, 1, 100, xorstr_("%d%%"))) {
+							if (ImGui::SliderInt(xorstr_("Tracking Smoothing Factor"), &settings.aimbotData.colourAimbotSettings.trackSmoothingFactor, 0, 100, xorstr_("%d%%"))) {
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How strongly past positions are favoured in tracking"));
-							if (ImGui::SliderInt(xorstr_("Tracking Confidence Rate"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 1, 100, xorstr_("%d%%"))) {
+							if (ImGui::SliderInt(xorstr_("Tracking Confidence Rate"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How fast confidence in a detection is gained or lost"));
-							if (ImGui::SliderInt(xorstr_("Max Cluster Distance"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 1, 100, xorstr_("%d%%"))) {
+							if (ImGui::SliderInt(xorstr_("Max Cluster Distance"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How far apart points can be, to be classified as a single cluster"));
-							if (ImGui::SliderInt(xorstr_("Max Cluster Density Differential"), &settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential, 1, 100, xorstr_("%d%%"))) {
+							if (ImGui::SliderInt(xorstr_("Max Cluster Density Differential"), &settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential, 0, 100, xorstr_("%d%%"))) {
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How similar the density of clusters must be, in order to be joined"));
-							if (ImGui::SliderInt(xorstr_("Minimum Cluster Density"), &settings.aimbotData.colourAimbotSettings.minDensity, 1, 100, xorstr_("%d%%"))) {
+							if (ImGui::SliderInt(xorstr_("Minimum Cluster Density"), &settings.aimbotData.colourAimbotSettings.minDensity, 0, 100, xorstr_("%d%%"))) {
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How dense a cluster must be to be considered valid"));
@@ -1735,6 +1735,14 @@ void Menu::gui()
 								globals.filesystem.unsavedChanges = true;
 							}
 							tooltip(xorstr_("How large a cluster must be to be considered valid"));
+							if (ImGui::SliderInt(xorstr_("Target Height Correction"), &settings.aimbotData.colourAimbotSettings.aimHeight, -100, 100, xorstr_("%d%%"))) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("Vertical correction above or below the original aim point"));
+							if (ImGui::Checkbox(xorstr_("Enable Debug View"), &settings.aimbotData.colourAimbotSettings.debugView)) {
+								globals.filesystem.unsavedChanges = true;
+							}
+							tooltip(xorstr_("Allows you to visualise the detection pipeline but severely impacts performance"));
 						}
 					}
 					else if (settings.aimbotData.type == 1) {
@@ -1763,31 +1771,33 @@ void Menu::gui()
 			if (ImGui::BeginTabItem(xorstr_("Misc"))) {
 				std::vector<const char*> keysSettings = { xorstr_("Require Both"), xorstr_("Just Left Mouse"), xorstr_("Just Right Mouse"), xorstr_("Custom Key") };
 
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
-					globals.filesystem.unsavedChanges = true;
-				}
+				if (settings.game == xorstr_("Siege")) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
-					globals.filesystem.unsavedChanges = true;
-				}
-				tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Hashom Peek"), HotkeyIndex::AutoHashomPeek)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
 
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
-					globals.filesystem.unsavedChanges = true;
-				}
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
-				if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
-					globals.filesystem.unsavedChanges = true;
-				}
+					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
-					globals.filesystem.unsavedChanges = true;
-				}
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
+						globals.filesystem.unsavedChanges = true;
+					}
 
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
-					globals.filesystem.unsavedChanges = true;
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
 				}
-				tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
 
 				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.misc.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
 					globals.filesystem.unsavedChanges = true;
@@ -1811,13 +1821,16 @@ void Menu::gui()
 					globals.filesystem.unsavedChanges = true;
 				}
 
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Hide UI Key"), HotkeyIndex::HideUiKey)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
 				ImGui::EndTabItem();
 			}
 
 			if (ImGui::BeginTabItem(xorstr_("Config Editor")))
 			{
 				static bool editingPattern = false;
-				static std::vector<std::vector<float>> tempPattern;
 
 				ImGui::Columns(2, xorstr_("ConfigEditorColumns"), false);
 
@@ -2143,7 +2156,9 @@ void Menu::gui()
 				ImGui::Spacing();
 				ImGui::SeparatorText(xorstr_("Recoil Pattern Management"));
 
-				if (ImGui::Checkbox(xorstr_("Edit Recoil Pattern"), &editingPattern))
+				ImGui::Checkbox(xorstr_("Edit Recoil Pattern"), &editingPattern);
+
+				if (editingPattern)
 				{
 					std::vector<weaponData>* currentWeaponData = nullptr;
 					if (settings.mode == xorstr_("Generic") || settings.game == xorstr_("Rust") || settings.game == xorstr_("Overwatch"))
@@ -2167,44 +2182,35 @@ void Menu::gui()
 						selectedWeaponIndex = std::min(selectedWeaponIndex, static_cast<int>(currentWeaponData->size()) - 1);
 
 						auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
-						if (editingPattern)
+
+						if (ImGui::Button(xorstr_("Add Point")))
 						{
-							tempPattern = weapon.values;
-						}
-						else
-						{
-							weapon.values = tempPattern;
+							weapon.values.push_back({ 0.0f, 0.0f, 1.0f });
 							globals.filesystem.unsavedChanges = true;
 							settings.weaponDataChanged = true;
 						}
-					}
-				}
 
-				if (editingPattern)
-				{
-					if (ImGui::Button(xorstr_("Add Point")))
-					{
-						tempPattern.push_back({ 0.0f, 0.0f, 1.0f });
-					}
-
-					ImGui::BeginChild(xorstr_("PatternEditor"), ImVec2(0, 0), true);
-					for (size_t i = 0; i < tempPattern.size(); i++)
-					{
-						ImGui::PushID(static_cast<int>(i));
-						if (ImGui::InputFloat3("", tempPattern[i].data()))
+						ImGui::BeginChild(xorstr_("PatternEditor"), ImVec2(0, 0), true);
+						for (size_t i = 0; i < weapon.values.size(); i++)
 						{
-							globals.filesystem.unsavedChanges = true;
+							ImGui::PushID(static_cast<int>(i));
+							if (ImGui::InputFloat3("", weapon.values[i].data()))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							ImGui::SameLine();
+							if (ImGui::Button(xorstr_("Remove")))
+							{
+								weapon.values.erase(weapon.values.begin() + i);
+								i--;
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							ImGui::PopID();
 						}
-						ImGui::SameLine();
-						if (ImGui::Button(xorstr_("Remove")))
-						{
-							tempPattern.erase(tempPattern.begin() + i);
-							i--;
-							globals.filesystem.unsavedChanges = true;
-						}
-						ImGui::PopID();
+						ImGui::EndChild();
 					}
-					ImGui::EndChild();
 				}
 
 				ImGui::EndChild();
@@ -2236,7 +2242,7 @@ void Menu::gui()
 					selectedWeaponIndex = std::min(selectedWeaponIndex, static_cast<int>(currentWeaponData->size()) - 1);
 
 					auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
-					DrawRecoilPattern(editingPattern ? tempPattern : weapon.values);
+					DrawRecoilPattern(weapon.values);
 				}
 				else
 				{
