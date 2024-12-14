@@ -1205,12 +1205,12 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     }
 
     if (settings.aimbotData.colourAimbotSettings.debugView) {
-        cv::imshow("Source", downsampledSrc);
+        cv::imshow(xorstr_("Source"), downsampledSrc);
         //cv::imshow("Mask", mask);
         cv::waitKey(1);
         destroyed = false;
     } else if (!destroyed && !settings.aimbotData.colourAimbotSettings.debugView) {
-		cv::destroyWindow("Source");
+		cv::destroyWindow(xorstr_("Source"));
 		//cv::destroyWindow("Mask");
 		destroyed = true;
 	}
