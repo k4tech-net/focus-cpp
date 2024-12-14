@@ -1,10 +1,10 @@
 Mode=Game
 Potato=1
-AimAssist=0,10,10,1.5,0,500
+AimAssist=0,10,10,1,500,0
 PidSettings=1,0.02,0.2,0.008,1
 ColourAimbotSettings=0,3,0,20,10,80,10,5,0,0
 AiAimbotSettings=0,0,0,0
-Misc=0,0,0
+Misc=1,1,0
 Hotkey0=0,0,1
 Hotkey1=0,0,1
 Hotkey2=0,0,1
