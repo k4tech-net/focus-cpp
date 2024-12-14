@@ -103,12 +103,12 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 		ImGui::OpenPopup(xorstr_("NewConfigPopup"));
 	}
 
-	const char* games[] = { xorstr_("Siege"), xorstr_("Rust"), xorstr_("Overwatch") };
+	const char* games[] = { "Siege", "Rust", "Overwatch" };
 
 	if (ImGui::BeginPopup(xorstr_("NewConfigPopup"))) {
 		ImGui::InputText(xorstr_("Config Name"), newConfigName, 256);
 
-		const char* modes[] = { xorstr_("Generic"), xorstr_("Character"), xorstr_("Game") };
+		const char* modes[] = { "Generic", "Character", "Game" };
 		ImGui::Combo(xorstr_("Mode"), &selectedMode, modes, IM_ARRAYSIZE(modes));
 
 		if (selectedMode == 2) {  // If "Game" mode is selected

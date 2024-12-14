@@ -227,7 +227,7 @@ void Settings::saveSettings(const std::string& filename) {
 
     file << xorstr_("Mode=") << mode << xorstr_("\n");
     file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.maxDistance << xorstr_(",") << aimbotData.aimFov << xorstr_(",") << aimbotData.triggerFov << xorstr_(",") << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.triggerSleep << xorstr_("\n");
+    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.maxDistance << xorstr_(",") << aimbotData.aimFov << xorstr_(",") << aimbotData.triggerFov << xorstr_(",") << aimbotData.triggerSleep << xorstr_(",") << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
     file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",") << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
 	file << xorstr_("ColourAimbotSettings=") << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") << aimbotData.colourAimbotSettings.trackConfidenceRate
         << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") << aimbotData.colourAimbotSettings.minArea << xorstr_(",")
