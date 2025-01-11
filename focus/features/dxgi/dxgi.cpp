@@ -787,6 +787,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         if (weaponIndex != -1) {
             settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
             settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
+            settings.weaponDataChanged = true;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;

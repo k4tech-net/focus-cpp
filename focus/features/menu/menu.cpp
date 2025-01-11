@@ -675,23 +675,28 @@ std::vector<float> calculateSensitivityModifierR6() {
 }
 
 std::vector<float> calculateSensitivityModifierRust() {
-	float oldBaseSens = 0.509f;
-	float oldADSSens = 1;
-	float oldFov = 90.f;
+	// Predefined constants
+	constexpr float oldBaseSens = 0.509f;
+	constexpr float oldADSSens = 1.0f;
+	constexpr float oldFov = 90.f;
+	constexpr float quadratic_coef = 0.0001787f;
+	constexpr float linear_coef = -0.0107192f;
+
+	// Weapons with 1.5x holo modifier
+	constexpr std::array<std::string_view, 12> specialHoloWeapons = {
+		"High Caliber Revolver", "Python Revolver", "Handmade SMG", "Semi-Automatic Pistol",
+		"Thompson", "Custom SMG", "M39", "M4 Shotgun",
+		"M92 Pistol", "Prototype 17", "Spas-12 Shotgun"
+	};
 
 	float newBaseSens = settings.sensitivity[0];
 	float newADSSens = settings.sensitivity[1];
 	float newFov = settings.fov;
-
-	float sightXEffect = 1.0f;
-	float sightYEffect = 1.0f;
-
-	float barrelXEffect = 1.0f;
-	float barrelYEffect = 1.0f;
+	float sightEffect = 1.0f;
+	float gripEffect = 1.0f;
+	float barrelEffect = 1.0f;
 
 	float fovDifference = newFov - oldFov;
-	float quadratic_coef = 0.0001787f;
-	float linear_coef = -0.0107192f;
 	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
 		(linear_coef * fovDifference);
 
@@ -699,65 +704,63 @@ std::vector<float> calculateSensitivityModifierRust() {
 
 	if (settings.selectedCharacterIndex < settings.characters.size() &&
 		!settings.characters[settings.selectedCharacterIndex].weapondata.empty()) {
-		int weaponIndex = settings.characters[settings.selectedCharacterIndex].selectedweapon[0];
-		weaponIndex = std::min(weaponIndex, static_cast<int>(settings.characters[settings.selectedCharacterIndex].weapondata.size()) - 1);
 
-		const auto& weapon = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex];
+		const auto& character = settings.characters[settings.selectedCharacterIndex];
+		int weaponIndex = std::min(character.selectedweapon[0], static_cast<int>(character.weapondata.size()) - 1);
+		const auto& weapon = character.weapondata[weaponIndex];
 
 		if (weapon.attachments.size() >= 3) {
 			switch (weapon.attachments[0]) {
 			case 0:
-				sightXEffect = 1.0f;
-				sightYEffect = 1.0f;
+				sightEffect = 1.0f;
 				break;
 			case 1:
-				sightXEffect = 0.8f;
-				sightYEffect = 0.8f;
+				sightEffect = 0.8f;
 				break;
 			case 2:
-				sightXEffect = 1.25f;
-				sightYEffect = 1.25f;
+				sightEffect = (std::find(specialHoloWeapons.begin(),
+					specialHoloWeapons.end(),
+					weapon.weaponname) != specialHoloWeapons.end()) ? 1.5f : 1.25f;
 				break;
 			case 3:
-				sightXEffect = 7.25f;
-				sightYEffect = 7.25f;
+				sightEffect = 7.25f;
 				break;
 			case 4:
-				sightXEffect = 14.5f;
-				sightYEffect = 14.5f;
+				sightEffect = 14.5f;
+				break;
+			}
+
+			switch (weapon.attachments[1]) {
+			case 0:
+				gripEffect = 1.0f;
+				break;
+			case 1:
+				gripEffect = 0.9f;
 				break;
 			}
 
 			switch (weapon.attachments[2]) {
 			case 0:
-				barrelXEffect = 1.0f;
-				barrelYEffect = 1.0f;
+				barrelEffect = 1.0f;
 				break;
 			case 1:
-				barrelXEffect = 0.5f;
-				barrelYEffect = 0.5f;
+				barrelEffect = 0.5f;
 				break;
 			case 2:
-				barrelXEffect = 1.1f;
-				barrelYEffect = 1.1f;
+				barrelEffect = 1.1f;
 				break;
 			}
 		}
 	}
 
-	float totalAttachXEffect = sightXEffect * barrelXEffect;
-	float totalAttachYEffect = sightYEffect * barrelYEffect;
+	float totalAttachEffect = sightEffect * gripEffect * barrelEffect;
+	float standingModifier = settings.misc.hotkeys.IsActive(HotkeyIndex::CrouchKey) ? 0.5f : 1.0f;
 
-	float standingModifier = 1.f;
+	float movingModifier = (GetAsyncKeyState(0x57) || GetAsyncKeyState(0x41) || GetAsyncKeyState(0x53) || GetAsyncKeyState(0x44)) ? 1.2f : 1.0f;
 
-	if (settings.misc.hotkeys.IsActive(HotkeyIndex::CrouchKey)) {
-		standingModifier = 0.5f;
-	}
+	float sensModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachEffect * (standingModifier * movingModifier)) * fovModifier;
 
-	float newSensXModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachXEffect * standingModifier) * fovModifier;
-	float newSensYModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachYEffect * standingModifier) * fovModifier;
-
-	return std::vector<float>{ newSensXModifier, newSensYModifier };
+	return std::vector<float>{ sensModifier, sensModifier };
 }
 
 std::vector<float> calculateSensitivityModifierOverwatch() {
@@ -1442,6 +1445,7 @@ void Menu::gui()
 						ImGui::Text(xorstr_("Game: %s"), settings.game.c_str());
 
 						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
+						const char* Grips[] = { xorstr_("None"), xorstr_("Gas Compression Overdrive") };
 						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
 
 						if (comboBoxWep(xorstr_("Weapon"), settings.selectedCharacterIndex, settings.characters[settings.selectedCharacterIndex].selectedweapon[0], settings.characters)) {
@@ -1452,6 +1456,10 @@ void Menu::gui()
 							globals.filesystem.unsavedChanges = true;
 						}
 						if (comboBoxGen(xorstr_("Sight"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 5)) {
+							settings.weaponDataChanged = true;
+							globals.filesystem.unsavedChanges = true;
+						}
+						if (comboBoxGen(xorstr_("Grip"), &settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].attachments[1], Grips, 2)) {
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}
@@ -1798,6 +1806,11 @@ void Menu::gui()
 					}
 					tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
 				}
+				else if (settings.game == xorstr_("Rust")) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Crouch Key"), HotkeyIndex::CrouchKey)) {
+						globals.filesystem.unsavedChanges = true;
+					}
+				}
 
 				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.misc.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
 					globals.filesystem.unsavedChanges = true;
@@ -1928,8 +1941,11 @@ void Menu::gui()
 
 							if (ImGui::InputText(xorstr_("Character Name"), characterNameBuffer, sizeof(characterNameBuffer)))
 							{
-								settings.characters[settings.selectedCharacterIndex].charactername = characterNameBuffer;
-								globals.filesystem.unsavedChanges = true;
+								if (strlen(characterNameBuffer) > 0)
+								{
+									settings.characters[settings.selectedCharacterIndex].charactername = characterNameBuffer;
+									globals.filesystem.unsavedChanges = true;
+								}
 							}
 						}
 
@@ -1966,7 +1982,11 @@ void Menu::gui()
 								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] == i :
 								settings.characters[settings.selectedCharacterIndex].selectedweapon[1] == i);
 
-							if (ImGui::Selectable((*currentWeaponData)[i].weaponname.c_str(), is_selected))
+							const char* displayName = (*currentWeaponData)[i].weaponname.empty() ?
+								xorstr_("Unnamed Weapon") :
+								(*currentWeaponData)[i].weaponname.c_str();
+
+							if (ImGui::Selectable(displayName, is_selected))
 							{
 								if (settings.isPrimaryActive)
 									settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = i;
@@ -2085,8 +2105,11 @@ void Menu::gui()
 
 						if (ImGui::InputText(xorstr_("Weapon Name"), weaponNameBuffer, sizeof(weaponNameBuffer)))
 						{
-							weapon.weaponname = weaponNameBuffer;
-							globals.filesystem.unsavedChanges = true;
+							if (strlen(weaponNameBuffer) > 0)
+							{
+								weapon.weaponname = weaponNameBuffer;
+								globals.filesystem.unsavedChanges = true;
+							}
 						}
 
 						ImGui::Spacing();
@@ -2132,6 +2155,7 @@ void Menu::gui()
 							ImGui::Text(xorstr_("Attachments"));
 
 							const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
+							const char* Grips[] = { xorstr_("None"), xorstr_("Gas Compression Overdrive") };
 							const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
 
 							// Ensure the attachment vector has the correct size
@@ -2139,6 +2163,11 @@ void Menu::gui()
 								weapon.attachments.resize(3, 0);
 
 							if (ImGui::Combo(xorstr_("Sight"), &weapon.attachments[0], Sights, IM_ARRAYSIZE(Sights)))
+							{
+								globals.filesystem.unsavedChanges = true;
+								settings.weaponDataChanged = true;
+							}
+							if (ImGui::Combo(xorstr_("Grip"), &weapon.attachments[1], Grips, IM_ARRAYSIZE(Grips)))
 							{
 								globals.filesystem.unsavedChanges = true;
 								settings.weaponDataChanged = true;
