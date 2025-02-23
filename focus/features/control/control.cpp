@@ -369,15 +369,18 @@ void pressAndReleaseKey(KeyboardKey key, int pressDuration = 50) {
 }
 
 void resetLean() {
-	pressAndReleaseKey(KeyboardKey::q, 20);
+	KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
+	KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
+
+	pressAndReleaseKey(leftLeanKey, 20);
 
 	std::this_thread::sleep_for(std::chrono::microseconds(20));
 
-	pressAndReleaseKey(KeyboardKey::e, 20);
+	pressAndReleaseKey(rightLeanKey, 20);
 
 	std::this_thread::sleep_for(std::chrono::microseconds(20));
 
-	pressAndReleaseKey(KeyboardKey::e, 20);
+	pressAndReleaseKey(rightLeanKey, 20);
 
 	std::this_thread::sleep_for(std::chrono::microseconds(20));
 }
