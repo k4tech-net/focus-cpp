@@ -1381,6 +1381,7 @@ void Menu::gui()
 						tooltip(xorstr_("Settings -> Display -> Field of View"));
 
 						ImGui::Spacing();
+						ImGui::Spacing();
 						ImGui::SeparatorText(xorstr_("Extra Data"));
 
 						if (ImGui::SliderFloat(xorstr_("X Base Sensitivity"), &settings.sensitivity[0], 0.0f, 100.0f, xorstr_("%.0f"))) {
@@ -1780,6 +1781,7 @@ void Menu::gui()
 				std::vector<const char*> keysSettings = { xorstr_("Require Both"), xorstr_("Just Left Mouse"), xorstr_("Just Right Mouse"), xorstr_("Custom Key") };
 
 				if (settings.game == xorstr_("Siege")) {
+					ImGui::SeparatorText(xorstr_("Quick-peek"));
 					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Auto Quick-Peek"), HotkeyIndex::AutoQuickPeek)) {
 						globals.filesystem.unsavedChanges = true;
 					}
@@ -1788,30 +1790,42 @@ void Menu::gui()
 						globals.filesystem.unsavedChanges = true;
 					}
 					tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
+					
+					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("How long it takes to reset the lean while quick-peeking"));
 
+					ImGui::Spacing();
+					ImGui::Spacing();
+					ImGui::SeparatorText(xorstr_("In-Game Binds"));
 					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Prone Key"), HotkeyIndex::ProneKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 
-					if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Left Lean Key"), HotkeyIndex::LeanLeftKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 
-					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
+					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Right Lean Key"), HotkeyIndex::LeanRightKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 
-					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
-						globals.filesystem.unsavedChanges = true;
-					}
-					tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
+					//if (settings.misc.hotkeys.RenderHotkey(xorstr_("Dim X Key"), HotkeyIndex::DimXKey)) {
+					//	globals.filesystem.unsavedChanges = true;
+					//}
+					//tooltip(xorstr_("Stops internet traffic to/from Siege\nAllows you to clip through some objects and peek without being seen server-side"));
 				}
 				else if (settings.game == xorstr_("Rust")) {
+					ImGui::SeparatorText(xorstr_("In-Game Binds"));
 					if (settings.misc.hotkeys.RenderHotkey(xorstr_("Crouch Key"), HotkeyIndex::CrouchKey)) {
 						globals.filesystem.unsavedChanges = true;
 					}
 				}
 
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::SeparatorText(xorstr_("Aimbot Controls"));
 				if (ImGui::Combo(xorstr_("Aimbot Mouse Buttons"), &settings.misc.aimKeyMode, keysSettings.data(), (int)keysSettings.size())) {
 					globals.filesystem.unsavedChanges = true;
 				}
@@ -1831,6 +1845,13 @@ void Menu::gui()
 				}
 
 				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Triggerbot Key"), HotkeyIndex::TriggerKey)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::SeparatorText(xorstr_("Misc"));
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
 					globals.filesystem.unsavedChanges = true;
 				}
 
@@ -2066,12 +2087,32 @@ void Menu::gui()
 
 						if (currentWeaponData && currentWeaponData->size() > 1) // Ensure there's always at least one weapon
 						{
-							int& selectedWeaponIndex = settings.isPrimaryActive ?
-								settings.characters[settings.selectedCharacterIndex].selectedweapon[0] :
-								settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+							int& selectedPrimaryIndex = settings.characters[settings.selectedCharacterIndex].selectedweapon[0];
+							int& selectedSecondaryIndex = settings.characters[settings.selectedCharacterIndex].selectedweapon[1];
+							int indexToRemove = settings.isPrimaryActive ? selectedPrimaryIndex : selectedSecondaryIndex;
 
-							currentWeaponData->erase(currentWeaponData->begin() + selectedWeaponIndex);
-							selectedWeaponIndex = std::max(0, static_cast<int>(currentWeaponData->size()) - 1);
+							// Remove the weapon
+							currentWeaponData->erase(currentWeaponData->begin() + indexToRemove);
+
+							// After deletion, validate and adjust both primary and secondary indices
+							size_t maxWeaponIndex = currentWeaponData->size() - 1;
+
+							// Adjust indices that were above the deleted index
+							if (selectedPrimaryIndex > indexToRemove) {
+								selectedPrimaryIndex--;
+							}
+							if (selectedSecondaryIndex > indexToRemove) {
+								selectedSecondaryIndex--;
+							}
+
+							// Validate both indices are within bounds
+							if (selectedPrimaryIndex > maxWeaponIndex) {
+								selectedPrimaryIndex = maxWeaponIndex;
+							}
+							if (selectedSecondaryIndex > maxWeaponIndex) {
+								selectedSecondaryIndex = maxWeaponIndex;
+							}
+
 							settings.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges = true;
 						}

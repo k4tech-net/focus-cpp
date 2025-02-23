@@ -37,6 +37,8 @@ enum class HotkeyIndex {
     TriggerKey,
     DimXKey,
     HideUiKey,
+    LeanLeftKey,
+	LeanRightKey,
     COUNT
 };
 
@@ -229,27 +231,21 @@ public:
         float verticalOffset = (buttonHeight - textHeight) * 0.5f;
 
         ImGui::BeginGroup();
-    
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + verticalOffset);
-
-        if (hotkey.state.load()) {
-            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
-        }
-
-        ImGui::Text(xorstr_("%s"), label);
-
-        if (hotkey.state.load()) {
-            ImGui::PopStyleColor();
-        }
-
-        ImGui::SameLine();
-
-        ImGui::SetCursorPosY(ImGui::GetCursorPosY() - verticalOffset);
-
+        // First render the button
         if (ImGui::Button(GetKeyName(hotkey), ImVec2(100, buttonHeight))) {
             ImGui::OpenPopup(xorstr_("Change Hotkey"));
         }
 
+        // Then render the text
+        ImGui::SameLine();
+        ImGui::SetCursorPosY(ImGui::GetCursorPosY() + verticalOffset);
+        if (hotkey.state.load()) {
+            ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(0.0f, 1.0f, 0.0f, 1.0f));
+        }
+        ImGui::Text(xorstr_("%s"), label);
+        if (hotkey.state.load()) {
+            ImGui::PopStyleColor();
+        }
         ImGui::EndGroup();
 
         if (ImGui::BeginPopupContextItem(xorstr_("ModeMenu"))) {

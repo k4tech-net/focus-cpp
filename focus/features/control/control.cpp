@@ -387,12 +387,14 @@ void Control::driveKeyboard() {
 	static int direction = 0;
 	static bool init = true;
 
-	NetworkBlocker nb;
+	//NetworkBlocker nb;
 
-	nb.initForR6();
+	//nb.initForR6();
 
 	while (!globals.shutdown) {
 		if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
+			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
+			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
 
 			if (init) {
 				// Going Left
@@ -401,7 +403,7 @@ void Control::driveKeyboard() {
 					direction = 1;
 					init = false;
 
-					pressAndReleaseKey(KeyboardKey::q);
+					pressAndReleaseKey(leftLeanKey);
 
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
@@ -410,7 +412,7 @@ void Control::driveKeyboard() {
 					direction = 2;
 					init = false;
 
-					pressAndReleaseKey(KeyboardKey::e);
+					pressAndReleaseKey(rightLeanKey);
 
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
@@ -423,9 +425,9 @@ void Control::driveKeyboard() {
 
 			// Was going left, now right
 			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				kb.keyboard_press(KeyboardKey::e);
+				kb.keyboard_press(rightLeanKey);
 				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(KeyboardKey::q);
+				kb.keyboard_press(leftLeanKey);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 				kb.keyboard_release();
 
@@ -440,9 +442,9 @@ void Control::driveKeyboard() {
 
 			// Was going right, now left
 			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				kb.keyboard_press(KeyboardKey::q);
+				kb.keyboard_press(leftLeanKey);
 				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(KeyboardKey::e);
+				kb.keyboard_press(rightLeanKey);
 				std::this_thread::sleep_for(std::chrono::microseconds(10));
 				kb.keyboard_release();
 
@@ -457,6 +459,8 @@ void Control::driveKeyboard() {
 		}
 		else if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
 			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
+			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
+			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
 
 			if (init) {
 				// Going Left
@@ -465,7 +469,7 @@ void Control::driveKeyboard() {
 					direction = 1;
 					init = false;
 
-					pressAndReleaseKey(KeyboardKey::q);
+					pressAndReleaseKey(leftLeanKey);
 
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
@@ -474,7 +478,7 @@ void Control::driveKeyboard() {
 					direction = 2;
 					init = false;
 
-					pressAndReleaseKey(KeyboardKey::e);
+					pressAndReleaseKey(rightLeanKey);
 
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
@@ -530,14 +534,14 @@ void Control::driveKeyboard() {
 			ms.moveR(50000, 1000);
 		}
 
-		if (settings.misc.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
+		/*if (settings.misc.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
 			if (!nb.isCurrentlyBlocking()) {
 				nb.enableBlocking();
 			}
 		}
 		else if (nb.isCurrentlyBlocking()) {
 			nb.disableBlocking();
-		}
+		}*/
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}

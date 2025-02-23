@@ -37,25 +37,25 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::string item;
             std::getline(ss, item, ','); aimbotData.type = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
-			std::getline(ss, item, ','); aimbotData.aimFov = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.aimFov = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.triggerFov = std::stoi(item);
-			std::getline(ss, item, ','); aimbotData.triggerSleep = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSleep = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.limitDetectorFps = item == xorstr_("1");
         }
         else if (key == xorstr_("PidSettings")) {
-			std::istringstream ss(value);
-			std::string item;
+            std::istringstream ss(value);
+            std::string item;
             std::getline(ss, item, ','); aimbotData.pidSettings.pidPreset = std::stoi(item);
-			std::getline(ss, item, ','); aimbotData.pidSettings.proportional = std::stof(item);
-			std::getline(ss, item, ','); aimbotData.pidSettings.integral = std::stof(item);
-			std::getline(ss, item, ','); aimbotData.pidSettings.derivative = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.pidSettings.proportional = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.pidSettings.integral = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.pidSettings.derivative = std::stof(item);
             std::getline(ss, item, ','); aimbotData.pidSettings.rampUpTime = std::stof(item);
         }
         else if (key == xorstr_("ColourAimbotSettings")) {
-			std::istringstream ss(value);
-			std::string item;
-			std::getline(ss, item, ','); aimbotData.colourAimbotSettings.detectionPreset = std::stoi(item);
-			std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxTrackAge = std::stoi(item);
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.detectionPreset = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxTrackAge = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.trackSmoothingFactor = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.trackConfidenceRate = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.maxClusterDistance = std::stoi(item);
@@ -63,7 +63,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.minDensity = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.minArea = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.colourAimbotSettings.aimHeight = std::stoi(item);
-			std::getline(ss, item, ','); aimbotData.colourAimbotSettings.debugView = item == xorstr_("1");
+            std::getline(ss, item, ','); aimbotData.colourAimbotSettings.debugView = item == xorstr_("1");
         }
         else if (key == xorstr_("AiAimbotSettings")) {
             std::istringstream ss(value);
@@ -74,8 +74,8 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.forceHitbox = item == xorstr_("1");
         }
         else if (key == xorstr_("Misc")) {
-			std::istringstream ss(value);
-			std::string item;
+            std::istringstream ss(value);
+            std::string item;
             std::getline(ss, item, ','); misc.aimKeyMode = std::stoi(item);
             std::getline(ss, item, ','); misc.recoilKeyMode = std::stoi(item);
             std::getline(ss, item, ','); misc.quickPeekDelay = std::stoi(item);
@@ -101,6 +101,16 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
                 if (!currentWeapon.weaponname.empty()) {
                     currentCharacter.weapondata.push_back(currentWeapon);
                     currentWeapon = weaponData();
+                }
+                // Validate selected weapon indices before adding the character
+                if (!currentCharacter.weapondata.empty()) {
+                    size_t maxWeaponIndex = currentCharacter.weapondata.size() - 1;
+                    if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
+                        currentCharacter.selectedweapon[0] = 0;
+                    }
+                    if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
+                        currentCharacter.selectedweapon[1] = 0;
+                    }
                 }
                 characters.push_back(currentCharacter);
                 currentCharacter = characterData();
@@ -171,13 +181,12 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             }
         }
         else if (key == xorstr_("AspectRatio")) {
-			aspect_ratio = std::stoi(value);
-		}
+            aspect_ratio = std::stoi(value);
+        }
         else if (key == xorstr_("Fov")) {
             fov = std::stoi(value);
         }
-
-        if (key.substr(0, 6) == "Hotkey") {
+        else if (key.substr(0, 6) == "Hotkey") {
             int index = std::stoi(key.substr(6));
             if (index >= 0 && index < static_cast<size_t>(HotkeyIndex::COUNT)) {
                 std::vector<int> hotkeyData;
@@ -203,7 +212,16 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         weaponCount++;
     }
     if (!currentCharacter.charactername.empty() || mode == xorstr_("Generic") || game == xorstr_("Rust") || game == xorstr_("Overwatch")) {
-        // Set selectedPrimary and selectedSecondary based on defaultweapon
+        // Validate selected weapon indices for the last character
+        if (!currentCharacter.weapondata.empty()) {
+            size_t maxWeaponIndex = currentCharacter.weapondata.size() - 1;
+            if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
+                currentCharacter.selectedweapon[0] = 0;
+            }
+            if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
+                currentCharacter.selectedweapon[1] = 0;
+            }
+        }
         characters.push_back(currentCharacter);
     }
 
