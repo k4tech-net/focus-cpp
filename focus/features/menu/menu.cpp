@@ -100,20 +100,26 @@ void tooltip(const char* desc, bool showOnHover = true) {
 
 void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& selectedGame) {
 	if (trigger) {
-		ImGui::OpenPopup(xorstr_("NewConfigPopup"));
+		ImGuiViewport* viewport = ImGui::GetWindowViewport();
+		ImVec2 center = viewport->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		ImGui::OpenPopup(xorstr_("New Config"));
 	}
 
-	const char* games[] = { "Siege", "Rust", "Overwatch" };
+	ImGuiWindowFlags popup_flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_Modal;
 
-	if (ImGui::BeginPopup(xorstr_("NewConfigPopup"))) {
+	if (ImGui::BeginPopupModal(xorstr_("New Config"), NULL, popup_flags)) {
 		ImGui::InputText(xorstr_("Config Name"), newConfigName, 256);
 
 		const char* modes[] = { "Generic", "Character", "Game" };
 		ImGui::Combo(xorstr_("Mode"), &selectedMode, modes, IM_ARRAYSIZE(modes));
 
+		const char* games[] = { "Siege", "Rust", "Overwatch" };
 		if (selectedMode == 2) {  // If "Game" mode is selected
 			ImGui::Combo(xorstr_("Game"), &selectedGame, games, IM_ARRAYSIZE(games));
 		}
+
+		ImGui::Separator();
 
 		if (ImGui::Button(xorstr_("Create"))) {
 			std::string newFileName = std::string(newConfigName) + xorstr_(".focus");
@@ -237,10 +243,13 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 
 void renameConfigPopup(bool& trigger, static char renameBuffer[256]) {
 	if (trigger) {
-		ImGui::OpenPopup(xorstr_("RenamePopup"));
+		ImGuiViewport* viewport = ImGui::GetWindowViewport();
+		ImVec2 center = viewport->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
+		ImGui::OpenPopup(xorstr_("Rename Config"));
 	}
 
-	if (ImGui::BeginPopupModal(xorstr_("RenamePopup"), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
+	if (ImGui::BeginPopupModal(xorstr_("Rename Config"), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
 		ImGui::Text(xorstr_("Rename config:"));
 		ImGui::Text(xorstr_("%s"), globals.filesystem.configFiles[globals.filesystem.activeFileIndex].c_str());
 		ImGui::InputText(xorstr_("New Name"), renameBuffer, IM_ARRAYSIZE(renameBuffer));
@@ -290,6 +299,9 @@ void Menu::popup(bool& trigger, int type) {
 	}
 
 	if (trigger) {
+		ImGuiViewport* viewport = ImGui::GetWindowViewport();
+		ImVec2 center = viewport->GetCenter();
+		ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
 		ImGui::OpenPopup(chartype);
 	}
 
