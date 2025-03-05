@@ -1,4 +1,5 @@
 #pragma once
+#define NOMINMAX
 
 #include <onnxruntime_cxx_api.h>
 #include <opencv2/opencv.hpp>
@@ -6,6 +7,9 @@
 #include <vector>
 #include <regex>
 #include <xorstr.hpp>
+#include <algorithm>
+#include "cuda_runtime.h"
+#include "../features/settings/settings.hpp"
 
 struct Detection {
     cv::Rect box;
@@ -49,6 +53,9 @@ private:
 
     cv::Size cvSize_;
     cv::Size rawImgSize_;
+
+    cudaStream_t priorityStream = nullptr;
+    int leastPriority, greatestPriority;
 
     enum class SIMDSupport {
         UNINITIALIZED,
@@ -196,5 +203,30 @@ private:
         clip_boxes(scaledCoords, img0_shape);
 
         return scaledCoords;
+    }
+
+    bool setupPriorityStream() {
+        // Get the range of priorities supported by the device
+        cudaError_t err = cudaDeviceGetStreamPriorityRange(&leastPriority, &greatestPriority);
+        if (err != cudaSuccess) {
+            std::cerr << xorstr_("Failed to get stream priority range: ") << cudaGetErrorString(err) << std::endl;
+            return false;
+        }
+
+        // Create a high-priority stream
+        err = cudaStreamCreateWithPriority(&priorityStream, cudaStreamNonBlocking, greatestPriority);
+        if (err != cudaSuccess) {
+            std::cerr << xorstr_("Failed to create priority stream: ") << cudaGetErrorString(err) << std::endl;
+            return false;
+        }
+
+        // Set device scheduling mode to yield - may help with interleaved operations
+        //err = cudaSetDeviceFlags(cudaDeviceScheduleYield);
+        //if (err != cudaSuccess) {
+        //    std::cerr << "Failed to set device flags: " << cudaGetErrorString(err) << std::endl;
+        //    // Not fatal, continue
+        //}
+
+        return true;
     }
 };

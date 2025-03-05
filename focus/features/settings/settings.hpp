@@ -169,6 +169,8 @@ struct Globals
 		int desktopCenterY = 0;
         bool initDims = false;
     } capture;
+
+    std::atomic<float> inferenceTimeMs{ 0.0f };
 };
 
 struct Constants {

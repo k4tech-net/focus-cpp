@@ -5,9 +5,27 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
 
     // Set session options
     Ort::SessionOptions sessionOptions;
+
+    sessionOptions.SetGraphOptimizationLevel(GraphOptimizationLevel::ORT_ENABLE_ALL);
+    sessionOptions.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
+    sessionOptions.EnableMemPattern();
+
     if (strcmp(provider, xorstr_("CUDA")) == 0) {
-        OrtCUDAProviderOptions cudaOption;
-        sessionOptions.AppendExecutionProvider_CUDA(cudaOption);
+        setupPriorityStream();
+
+        OrtCUDAProviderOptions cudaOptions;
+
+        cudaOptions.has_user_compute_stream = 1;
+        cudaOptions.user_compute_stream = priorityStream;
+
+        cudaOptions.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchExhaustive;
+
+        cudaOptions.do_copy_in_default_stream = 1;
+        cudaOptions.arena_extend_strategy = 1;
+
+        //cudaOptions.gpu_mem_limit = 2 * 1024 * 1024 * 1024; //2GB
+
+        sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
     }
     session_ = Ort::Session(env_, modelPath.c_str(), sessionOptions);
 
@@ -147,6 +165,9 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
 
 // Destructor for the class
 YoloInferencer::~YoloInferencer() {
+    if (priorityStream != nullptr) {
+        cudaStreamDestroy(priorityStream);
+    }
     // The Ort::Session and other Ort:: objects will automatically release resources upon destruction
     // due to their RAII design.
 }
@@ -427,12 +448,28 @@ std::vector<Detection> YoloInferencer::postprocess(std::vector<Ort::Value>& outp
 
 // This function does the whole inference, and is publicly accessible, acting as a main
 std::vector<Detection> YoloInferencer::infer(cv::Mat& frame, float conf_threshold, float iou_threshold) {
+    // Single measurement for entire operation
+    auto start_time = std::chrono::high_resolution_clock::now();
 
+    // Run the inference pipeline
     std::vector<Ort::Value> inputTensors = preprocess(frame);
-
     std::vector<Ort::Value> outputTensors = forward(inputTensors);
-
     std::vector<Detection> detections = postprocess(outputTensors, conf_threshold, iou_threshold);
+
+    // Measure total time
+    auto end_time = std::chrono::high_resolution_clock::now();
+    float elapsed_ms = std::chrono::duration<float, std::milli>(end_time - start_time).count();
+
+    // Simple moving average to avoid jumpy display (80% old, 20% new)
+    static float smoothed_time = elapsed_ms;
+    smoothed_time = smoothed_time * 0.8f + elapsed_ms * 0.2f;
+
+    // Update global value occasionally to minimize overhead
+    static int update_counter = 0;
+    if (++update_counter >= 5) {
+        globals.inferenceTimeMs.store(smoothed_time);
+        update_counter = 0;
+    }
 
     return detections;
 }

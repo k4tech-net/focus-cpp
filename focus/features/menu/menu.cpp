@@ -1781,6 +1781,21 @@ void Menu::gui()
 						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.aiAimbotSettings.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
 							globals.filesystem.unsavedChanges = true;
 						}
+
+						float ms = globals.inferenceTimeMs.load();
+						ImVec4 timeColor;
+						if (ms <= 10.0f)
+							timeColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for fast
+						else if (ms <= 30.0f)
+							timeColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for medium
+						else if (ms <= 50.0f)
+							timeColor = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for slow
+						else
+							timeColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for very slow
+
+						ImGui::PushStyleColor(ImGuiCol_Text, timeColor);
+						ImGui::Text("Inference: %.1f ms", ms);
+						ImGui::PopStyleColor();
 					}
 				}
 
