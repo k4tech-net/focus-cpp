@@ -222,6 +222,9 @@ void Control::driveAimbot() {
 	std::chrono::steady_clock::time_point lastTriggerTime = std::chrono::steady_clock::now();
 	bool canTrigger = true;
 
+	bool burstActive = false;
+	std::chrono::steady_clock::time_point burstStartTime;
+
 	while (!globals.shutdown) {
 		if (settings.pidDataChanged) {
 			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
@@ -255,6 +258,12 @@ void Control::driveAimbot() {
 		triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
 		if (!triggerBotCondition) {
 			canTrigger = true;
+
+			// End burst if triggerbot key is released
+			if (burstActive) {
+				pressMouse1(false);
+				burstActive = false;
+			}
 		}
 
 		// Main aimbot loop
@@ -263,8 +272,20 @@ void Control::driveAimbot() {
 			float pidCorrectionX = 0;
 			float pidCorrectionY = 0;
 
-			// Check if enough time has passed since last trigger
+			// Check if burst is active and should be terminated
 			auto currentTime = std::chrono::steady_clock::now();
+			if (burstActive) {
+				auto burstElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - burstStartTime).count();
+				if (burstElapsed >= settings.aimbotData.triggerBurstDuration) {
+					// Only release if we initiated the press (don't interfere with user holding mouse1)
+					if (!l_mouse) {
+						pressMouse1(false);
+					}
+					burstActive = false;
+				}
+			}
+
+			// Check if enough time has passed since last trigger
 			auto timeSinceLastTrigger = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTriggerTime).count();
 			if (timeSinceLastTrigger >= settings.aimbotData.triggerSleep) {
 				canTrigger = true;
@@ -281,9 +302,29 @@ void Control::driveAimbot() {
 					bool withinTriggerbotFov = std::abs(settings.aimbotData.correctionX) < triggerbotFovPixelsX && std::abs(settings.aimbotData.correctionY) < triggerbotFovPixelsY;
 
 					if (withinTriggerbotFov) {
-						pressMouse1(true);
-						std::this_thread::sleep_for(std::chrono::milliseconds(1));
-						pressMouse1(false);
+						// Check if mouse1 is already being held down
+						bool mouseAlreadyDown = globals.mouseinfo.l_mouse_down.load(std::memory_order_relaxed);
+
+						// Handle burst mode vs. single click mode
+						if (settings.aimbotData.triggerBurstDuration > 0) {
+							// Burst mode
+							if (!mouseAlreadyDown && !burstActive) {
+								// Start burst only if user isn't already holding mouse1 and no burst is active
+								pressMouse1(true);
+								burstActive = true;
+								burstStartTime = currentTime;
+							}
+						}
+						else {
+							// Single click mode
+							if (!mouseAlreadyDown) {
+								// Only do a click if the user isn't already holding the button
+								pressMouse1(true);
+								std::this_thread::sleep_for(std::chrono::milliseconds(1));
+								pressMouse1(false);
+							}
+						}
+
 						lastTriggerTime = currentTime;
 						canTrigger = false;
 					}
@@ -300,12 +341,7 @@ void Control::driveAimbot() {
 						// Calculate PID corrections only if within FOV
 						pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
 
-						if (settings.game == xorstr_("Overwatch")) {
-							pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0);
-						}
-						else {
-							pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * 0.25f;
-						}
+						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * PERCENT(settings.aimbotData.verticalCorrection);
 					}
 					else {
 						// Outside FOV - reset corrections
@@ -348,7 +384,13 @@ void Control::driveAimbot() {
 
 			triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
 			if (!triggerBotCondition) {
-				canTrigger = true; // Reset canTrigger
+				canTrigger = true;
+
+				// End burst if triggerbot key is released
+				if (burstActive) {
+					pressMouse1(false);
+					burstActive = false;
+				}
 			}
 		}
 
@@ -356,6 +398,12 @@ void Control::driveAimbot() {
 		if (!aimbotCondition) {
 			pidX.reset();
 			pidY.reset();
+		}
+
+		// Ensure burst is canceled if we exit the aimbot loop
+		if (burstActive && !triggerBotCondition) {
+			pressMouse1(false);
+			burstActive = false;
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));

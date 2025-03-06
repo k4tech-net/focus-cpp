@@ -126,7 +126,7 @@ void newConfigPopup(bool trigger, char* newConfigName, int& selectedMode, int& s
 			Settings newSettings;
 			newSettings.mode = modes[selectedMode];
 			newSettings.potato = true;
-			newSettings.aimbotData = { 0, 0, false, 0, 10, 10, 1, 200, true, { 0, 0.02f, 0.2f, 0.008f, 1.f }, { 0, 3, 0, 20, 10, 80, 10, 5 }, { 0, 0, 10, false } }; // Default aimbot settings
+			newSettings.aimbotData = { 0, 0, false, 0, 10, 10, 1, 200, true, 0, 20, { 0, 0.02f, 0.2f, 0.008f, 1.f }, { 0, 3, 0, 20, 10, 80, 10, 5 }, { 0, 0, 10, false } }; // Default aimbot settings
 
 			// Pre-fill with example values based on mode and game
 			if (newSettings.mode == xorstr_("Generic")) {
@@ -1704,6 +1704,16 @@ void Menu::gui()
 						globals.filesystem.unsavedChanges = true;
 					}
 					tooltip(xorstr_("How long the Triggerbot will wait between shots"));
+
+					if (ImGui::SliderInt(xorstr_("Triggerbot Burst Duration"), &settings.aimbotData.triggerBurstDuration, 0, 500, xorstr_("%dms%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
+
+					if (ImGui::SliderInt(xorstr_("Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
+						globals.filesystem.unsavedChanges = true;
+					}
+					tooltip(xorstr_("How much of the vertical aimbot correction is actually applied"));
 
 					if (ImGui::Checkbox(xorstr_("Limit Detector FPS"), &settings.aimbotData.limitDetectorFps)) {
 						globals.filesystem.unsavedChanges = true;

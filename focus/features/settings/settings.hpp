@@ -81,6 +81,8 @@ struct aimbotData {
     float triggerFov = 0;
     int triggerSleep = 0;
     bool limitDetectorFps = false;
+    int triggerBurstDuration = 0;
+    int verticalCorrection = 0;
     pidSettings pidSettings;
     colourAimbotSettings colourAimbotSettings;
 	aiAimbotSettings aiAimbotSettings;

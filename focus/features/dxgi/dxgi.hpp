@@ -23,6 +23,8 @@
 
 #include <onnxruntime_cxx_api.h>
 
+#define PERCENT(x) (static_cast<float>(x) / 100.0f)
+
 class DXGI
 {
 public:

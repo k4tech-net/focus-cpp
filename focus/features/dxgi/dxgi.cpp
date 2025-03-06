@@ -1,5 +1,3 @@
-#define PERCENT(x) (static_cast<float>(x) / 100.0f)
-
 #include "dxgi.hpp"
 
 //Engine en;
@@ -329,15 +327,19 @@ void DXGI::aimbot() {
                     continue;
                 }
 
-                // Calculate ROI directly from desktop dimensions
-                const int screenWidth = globals.capture.desktopMat.cols;
+                // Calculate square ROI based on height
                 const int screenHeight = globals.capture.desktopMat.rows;
-                const cv::Rect roi(
-                    static_cast<int>(cropRatioX * screenWidth),
-                    static_cast<int>(cropRatioY * screenHeight),
-                    static_cast<int>(cropRatioWidth * screenWidth),
-                    static_cast<int>(cropRatioHeight * screenHeight)
-                );
+                const int roiHeight = static_cast<int>(cropRatioHeight * screenHeight);
+
+                // Make the width equal to the height to create a square
+                const int roiWidth = roiHeight;
+
+                // Center the square in the screen horizontally
+                const int screenWidth = globals.capture.desktopMat.cols;
+                const int roiX = (screenWidth - roiWidth) / 2;
+                const int roiY = static_cast<int>(cropRatioY * screenHeight);
+
+                const cv::Rect roi(roiX, roiY, roiWidth, roiHeight);
 
                 // Convert BGRA to BGR during the crop operation
                 cv::cvtColor(globals.capture.desktopMat(roi), croppedImage, cv::COLOR_BGRA2BGR);
@@ -350,6 +352,8 @@ void DXGI::aimbot() {
             std::vector<Detection> detections = inferencer->infer(croppedImage, PERCENT(settings.aimbotData.aiAimbotSettings.confidence), 0.5);
 
             if (detections.empty()) {
+                settings.aimbotData.correctionX = 0;
+                settings.aimbotData.correctionY = 0;
                 continue;
             }
 
