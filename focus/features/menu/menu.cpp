@@ -1710,7 +1710,7 @@ void Menu::gui()
 					}
 					tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
 
-					if (ImGui::SliderInt(xorstr_("Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
+					if (ImGui::SliderInt(xorstr_("Aimbot Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
 						globals.filesystem.unsavedChanges = true;
 					}
 					tooltip(xorstr_("How much of the vertical aimbot correction is actually applied"));
