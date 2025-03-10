@@ -25,7 +25,7 @@ using json = nlohmann::json;
 struct weaponData {
     std::string weaponname = "";
     bool rapidfire = false;
-    std::vector<int> attachments = { 0, 0, 0 };
+    std::vector<int> attachments;
     std::vector<std::vector<float>> values;
 
     bool operator==(const weaponData& other) const {
@@ -39,8 +39,8 @@ struct weaponData {
 struct characterData {
     std::string charactername = "";
     std::vector<weaponData> weapondata;
-    std::vector<bool> options = { false, false, false, false, false };
-    std::vector<int> selectedweapon = { 0, 0 };
+    std::vector<bool> options;
+    std::vector<int> selectedweapon;
 };
 
 struct pidSettings {
@@ -88,6 +88,18 @@ struct aimbotData {
 	aiAimbotSettings aiAimbotSettings;
 };
 
+struct globalSettings {
+    bool potato = false;
+    int sensitivityCalculator = 0;
+    std::vector<bool> characterDetectors = { false };
+    std::vector<bool> weaponDetectors = { false, false };
+
+    std::vector<float> sensitivity = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, };
+    int aspect_ratio = 0;
+    float fov = 0;
+    float fovSensitivityModifier = 1.f;
+};
+
 struct miscSettings {
     int aimKeyMode = 0;
     int recoilKeyMode = 0;
@@ -95,39 +107,36 @@ struct miscSettings {
     HotkeySystem hotkeys;
 };
 
+struct activeState {
+	int selectedCharacterIndex = 0;
+	bool isPrimaryActive = true;
+	bool weaponOffOverride = false;
+	bool weaponDataChanged = false;
+	bool pidDataChanged = false;
+	std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+};
+
 class Settings 
 {
 public:
     // Global settings
-    std::string mode = "";
-    bool potato = false;
+    globalSettings globalSettings;
+
+	// Aimbot data
     aimbotData aimbotData;
-
-    // Character mode settings
-    std::vector<std::string> wpn_keybinds;
-    std::vector<std::string> aux_keybinds;
-
-    // Game mode settings
-    std::string game = "";
-    std::vector<float> sensitivity;
-    int aspect_ratio = 0;
-    float fov = 0;
-    float fovSensitivityModifier = 1.f;
 
     // Character data
     std::vector<characterData> characters;
 
-    // Active state
-    int selectedCharacterIndex = 0;
-    bool isPrimaryActive = true;
-    bool weaponOffOverride = false;
-    bool weaponDataChanged = false;
-    bool pidDataChanged = false;
-    std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+	// Active state
+	activeState activeState;
 
     // Misc Settings
 	miscSettings misc;
 
+    std::vector<std::string> convertAllLegacyConfigs();
+    bool isLegacyConfig(const std::string& filename);
+    void convertLegacyConfig(const std::string& filename);
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
 };

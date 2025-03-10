@@ -181,17 +181,27 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
 	float mouseY = 0.0f;
 
     // Convert angles to mouse input where 7274 = 360 degrees
-    if (settings.mode == xorstr_("Game") && settings.game == xorstr_("Rust")) {
-        mouseX = (angleX / 360.0f) * constants.RUST360DIST;
-        mouseY = (angleY / 360.0f) * constants.RUST360DIST;
-    }
-    else {
-        mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
-        mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+    switch (settings.globalSettings.sensitivityCalculator) {
+    case 0:
+		mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
+		mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+		break;
+	case 1:
+		mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
+		mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+		break;
+	case 2:
+		mouseX = (angleX / 360.0f) * constants.RUST360DIST;
+		mouseY = (angleY / 360.0f) * constants.RUST360DIST;
+		break;
+	case 3:
+		mouseX = (angleX / 360.0f) * constants.OW360DIST;
+		mouseY = (angleY / 360.0f) * constants.OW360DIST;
+		break;
     }
 
-    mouseX *= settings.fovSensitivityModifier;
-    mouseY *= settings.fovSensitivityModifier;
+    mouseX *= settings.globalSettings.fovSensitivityModifier;
+    mouseY *= settings.globalSettings.fovSensitivityModifier;
 
     return { mouseX, mouseY };
 }
@@ -269,7 +279,7 @@ void DXGI::aimbot() {
             continue;
         }
 
-        if (settings.aimbotData.type == 0 && settings.aimbotData.enabled && settings.game == xorstr_("Overwatch")) {
+        if (settings.aimbotData.type == 0 && settings.aimbotData.enabled) {
             if (globals.capture.desktopMat.empty()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
                 continue;
@@ -357,7 +367,7 @@ void DXGI::aimbot() {
                 continue;
             }
 
-            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
+            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.globalSettings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
 
             settings.aimbotData.correctionX = corrections[0];
             settings.aimbotData.correctionY = corrections[1];
@@ -492,8 +502,14 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
 
     int activeROI = 0;
 
-    if (((settings.mode == xorstr_("Character") && settings.characters[settings.selectedCharacterIndex].options[4]) ||
-        (settings.mode == xorstr_("Game") && settings.game == xorstr_("Siege") && settings.characters[settings.selectedCharacterIndex].options[1])) &&
+    if (settings.activeState.selectedCharacterIndex >= settings.characters.size() ||
+        settings.characters.empty()) {
+        settings.activeState.weaponOffOverride = true;
+        return;
+    }
+
+    if ((settings.characters[settings.activeState.selectedCharacterIndex].options.size() > 0) &&
+        settings.characters[settings.activeState.selectedCharacterIndex].options[0] &&
         primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
     
         if (totalBrightness2 > minActiveAreaThreshold && totalBrightness2 > totalBrightness3) {
@@ -523,18 +539,18 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     // Print the index of the active ROI or indicate neither if both are not active
     if (activeROI == 0 || activeROI == 1) {
         //std::cout << "Neither ROI is active" << std::endl;
-        settings.weaponOffOverride = true;
+        settings.activeState.weaponOffOverride = true;
     }
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
-        settings.weaponOffOverride = false;
+        settings.activeState.weaponOffOverride = false;
         if (activeROI == 2) {
-            settings.isPrimaryActive = true;
-            settings.weaponDataChanged = true;
+            settings.activeState.isPrimaryActive = true;
+            settings.activeState.weaponDataChanged = true;
         }
         else if (activeROI == 3) {
-            settings.isPrimaryActive = false;
-            settings.weaponDataChanged = true;
+            settings.activeState.isPrimaryActive = false;
+            settings.activeState.weaponDataChanged = true;
         }
     }
 }
@@ -605,8 +621,8 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     if (operatorFound) {
         int characterIndex = utils.findCharacterIndex(detectedOperator);
         if (characterIndex != -1) {
-            settings.selectedCharacterIndex = characterIndex;
-            settings.weaponDataChanged = true;
+            settings.activeState.selectedCharacterIndex = characterIndex;
+            settings.activeState.weaponDataChanged = true;
 			return true;
         }
     }
@@ -772,7 +788,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
     if (activeBoxIndex != -1 && maxColorScore >= MIN_WEIGHTED_SCORE) {
         std::string detectedWeapon = detectWeaponTypeWithMask(activeWeaponIcon);
 
-        settings.weaponOffOverride = false;
+        settings.activeState.weaponOffOverride = false;
 
         if (detectedWeapon == xorstr_("Unknown Weapon")) {
             return; // Don't set weapon if it's an unknown weapon
@@ -780,8 +796,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Find the matching weapon in the weapondata vector
         int weaponIndex = -1;
-        for (size_t i = 0; i < settings.characters[settings.selectedCharacterIndex].weapondata.size(); ++i) {
-            if (settings.characters[settings.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
+        for (size_t i = 0; i < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size(); ++i) {
+            if (settings.characters[settings.activeState.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
                 weaponIndex = static_cast<int>(i);
                 break;
             }
@@ -789,9 +805,9 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Set the selectedPrimary if a matching weapon is found
         if (weaponIndex != -1) {
-            settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
-            settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
-            settings.weaponDataChanged = true;
+            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
+            settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
+            settings.activeState.weaponDataChanged = true;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;
@@ -809,7 +825,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         }*/
     }
     else {
-        settings.weaponOffOverride = true;
+        settings.activeState.weaponOffOverride = true;
     }
 }
 
@@ -1191,7 +1207,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
     if (targetFound) {
         static const float fovScale = constants.OW360DIST * 2.0f / 360.0f;
-        const float pixelsPerDegree = static_cast<float>(src.cols) / settings.fov;  // Note: using original size
+        const float pixelsPerDegree = static_cast<float>(src.cols) / settings.globalSettings.fov;  // Note: using original size
 
         // Scale back up to original coordinates
         const float scaledX = (targetPoint.x * 2) - src.cols / 2;

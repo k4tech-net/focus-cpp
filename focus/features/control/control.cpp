@@ -57,19 +57,56 @@ void Control::driveMouse() {
 	static float yAccumulator = 0;
 
 	while (!globals.shutdown) {
-		// Check if the selected weapon has changed
 
-		if (settings.weaponDataChanged) {
-			settings.weaponDataChanged = false;
-			
-			if (settings.isPrimaryActive) {
-				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]];
+		// Check if the selected weapon has changed
+		if (settings.activeState.weaponDataChanged) {
+			settings.activeState.weaponDataChanged = false;
+
+			// Validate character index is within bounds
+			if (settings.activeState.selectedCharacterIndex >= 0 &&
+				settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+
+				// Get reference to current character for readability
+				const auto& character = settings.characters[settings.activeState.selectedCharacterIndex];
+
+				// Validate that the character has weapons data
+				if (!character.weapondata.empty()) {
+					// Ensure weapon indices are valid
+					int primaryIndex = 0;
+					int secondaryIndex = 0;
+
+					// Validate primary weapon index is within bounds
+					if (character.selectedweapon.size() > 0) {
+						primaryIndex = std::min(character.selectedweapon[0],
+							static_cast<int>(character.weapondata.size()) - 1);
+					}
+
+					// Validate secondary weapon index is within bounds
+					if (character.selectedweapon.size() > 1) {
+						secondaryIndex = std::min(character.selectedweapon[1],
+							static_cast<int>(character.weapondata.size()) - 1);
+					}
+
+					// Select the appropriate weapon based on active state
+					if (settings.activeState.isPrimaryActive) {
+						currwpn = character.weapondata[primaryIndex];
+					}
+					else {
+						currwpn = character.weapondata[secondaryIndex];
+					}
+
+					// Update max instructions for the weapon
+					maxInstructions = currwpn.values.size();
+				}
+				else {
+					// Handle case where character has no weapons
+					maxInstructions = 0;
+				}
 			}
 			else {
-				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+				// Handle case where character index is invalid
+				maxInstructions = 0;
 			}
-
-			maxInstructions = currwpn.values.size();
 		}
 
 		// Check mouse button states based on keymode
@@ -92,7 +129,7 @@ void Control::driveMouse() {
 			break;
 		}
 
-		while (mouseCondition && !complete && !settings.weaponOffOverride) {
+		while (mouseCondition && !complete && !settings.activeState.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
 				float x = instruction[0];
@@ -108,7 +145,7 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					std::vector<float> sens = settings.sensMultiplier;
+					std::vector<float> sens = settings.activeState.sensMultiplier;
 					xAccumulator += x * sens[0];
 					yAccumulator += y * sens[1];
 
@@ -127,7 +164,7 @@ void Control::driveMouse() {
 
 					cycles++;
 
-					if (settings.potato) {
+					if (settings.globalSettings.potato) {
 						std::this_thread::sleep_until(nextExecution);
 					}
 					else {
@@ -205,7 +242,7 @@ void Control::driveMouse() {
 			//}
 		}
 
-		if (settings.potato) {
+		if (settings.globalSettings.potato) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 		//ut.preciseSleepFor(0.0005); // uses too much resources
@@ -226,12 +263,12 @@ void Control::driveAimbot() {
 	std::chrono::steady_clock::time_point burstStartTime;
 
 	while (!globals.shutdown) {
-		if (settings.pidDataChanged) {
+		if (settings.activeState.pidDataChanged) {
 			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
 			pidY.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
 			pidX.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
 			pidY.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
-			settings.pidDataChanged = false;
+			settings.activeState.pidDataChanged = false;
 		}
 
 		// Check activation conditions based on keymode
@@ -267,7 +304,7 @@ void Control::driveAimbot() {
 		}
 
 		// Main aimbot loop
-		while ((aimbotCondition || triggerBotCondition) && !settings.weaponOffOverride) {
+		while ((aimbotCondition || triggerBotCondition) && !settings.activeState.weaponOffOverride) {
 			// Calculate PID corrections
 			float pidCorrectionX = 0;
 			float pidCorrectionY = 0;
