@@ -1206,6 +1206,8 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     }
 
     if (targetFound) {
+        std::vector<float> sens = settings.activeState.sensMultiplier;
+
         static const float fovScale = constants.OW360DIST * 2.0f / 360.0f;
         const float pixelsPerDegree = static_cast<float>(src.cols) / settings.globalSettings.fov;  // Note: using original size
 
@@ -1213,8 +1215,8 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         const float scaledX = (targetPoint.x * 2) - src.cols / 2;
         const float scaledY = (targetPoint.y * 2) - src.rows / 2;
 
-        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
-        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
+        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale * sens[0];
+        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale * sens[1];
 
         if (settings.aimbotData.colourAimbotSettings.debugView) {
             cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);

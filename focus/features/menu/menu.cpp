@@ -1781,6 +1781,10 @@ void Menu::gui()
 
 					// Attachments based on game type
 					switch (settings.globalSettings.sensitivityCalculator) {
+					case 0: // Character
+						{
+							break;
+						}
 					case 1: // Siege
 						{
 							ImGui::Text(xorstr_("Attachments"));
@@ -1829,6 +1833,10 @@ void Menu::gui()
 								globals.filesystem.unsavedChanges = true;
 								settings.activeState.weaponDataChanged = true;
 							}
+							break;
+						}
+					case 3: // Overwatch
+						{
 							break;
 						}
 					}
