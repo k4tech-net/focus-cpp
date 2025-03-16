@@ -32,7 +32,7 @@ std::string clientVerificationKey = xorstr_("4783086bd5eacdea0f09c8fc6fea1642df9
 
 int main()
 {	
-	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	//SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Focus", nullptr };
 	::RegisterClassExW(&wc);

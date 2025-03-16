@@ -72,12 +72,12 @@ struct aiAimbotSettings {
 };
 
 struct triggerBotSettings {
-    int detectionMethod = 0;            // 0=color change, 1=motion, 2=both
-    float sensitivity = 15.0f;          // How much change is needed to trigger
-    int radius = 5;                     // Size of detection area around crosshair
-    bool showDebug = false;             // Visualize the detection area
-    int sleepTime = 200;                // Delay between shots in ms
-    int burstDuration = 0;              // How long to hold button (0 = tap)
+    int detectionMethod = 0;
+    float sensitivity = 0.f;
+    int radius = 0;
+    bool showDebug = false;
+    int sleepTime = 0;
+    int burstDuration = 0;
 };
 
 struct aimbotData {
@@ -120,7 +120,6 @@ struct activeState {
 	bool weaponOffOverride = false;
 	bool weaponDataChanged = false;
 	bool pidDataChanged = false;
-    std::atomic<bool> triggerBotDetected = false;
 
 	std::vector<float> sensMultiplier = { 1.0f, 1.0f };
     std::vector<float> sensMultiplier_SensOnly = { 1.0f, 1.0f };
