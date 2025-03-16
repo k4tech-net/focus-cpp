@@ -57,6 +57,13 @@ private:
     cudaStream_t priorityStream = nullptr;
     int leastPriority, greatestPriority;
 
+    cv::Mat paddedBuffer_;
+    bool buffersInitialized_ = false;
+    int cached_left = 0;
+    int cached_top = 0;
+    int cached_new_width = 0;
+    int cached_new_height = 0;
+
     enum class SIMDSupport {
         UNINITIALIZED,
         NONE,

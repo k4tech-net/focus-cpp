@@ -26,6 +26,7 @@ public:
 	bool initilizeMarker();
 	int findCharacterIndex(const std::string& characterName);
 	int hammingDistance(const IconHash& hash1, const IconHash& hash2);
+	void pressMouse1(bool press);
 
 	void startUpChecksRunner();
 };

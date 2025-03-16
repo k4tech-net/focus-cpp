@@ -71,6 +71,15 @@ struct aiAimbotSettings {
     bool forceHitbox = false;
 };
 
+struct triggerBotSettings {
+    int detectionMethod = 0;            // 0=color change, 1=motion, 2=both
+    float sensitivity = 15.0f;          // How much change is needed to trigger
+    int radius = 5;                     // Size of detection area around crosshair
+    bool showDebug = false;             // Visualize the detection area
+    int sleepTime = 200;                // Delay between shots in ms
+    int burstDuration = 0;              // How long to hold button (0 = tap)
+};
+
 struct aimbotData {
 	int correctionX = 0;
 	int correctionY = 0;
@@ -78,14 +87,13 @@ struct aimbotData {
     int type = 0;
     int maxDistance = 0;
     int aimFov = 0;
-    float triggerFov = 0;
-    int triggerSleep = 0;
     bool limitDetectorFps = false;
-    int triggerBurstDuration = 0;
     int verticalCorrection = 0;
+    
     pidSettings pidSettings;
     colourAimbotSettings colourAimbotSettings;
 	aiAimbotSettings aiAimbotSettings;
+    triggerBotSettings triggerSettings;
 };
 
 struct globalSettings {
@@ -97,7 +105,6 @@ struct globalSettings {
     std::vector<float> sensitivity = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, };
     int aspect_ratio = 0;
     float fov = 0;
-    float fovSensitivityModifier = 1.f;
 };
 
 struct miscSettings {
@@ -113,7 +120,11 @@ struct activeState {
 	bool weaponOffOverride = false;
 	bool weaponDataChanged = false;
 	bool pidDataChanged = false;
+    std::atomic<bool> triggerBotDetected = false;
+
 	std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+    std::vector<float> sensMultiplier_SensOnly = { 1.0f, 1.0f };
+    float fovSensitivityModifier = 1.f;
 };
 
 class Settings 

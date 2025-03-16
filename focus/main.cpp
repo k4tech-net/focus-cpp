@@ -144,10 +144,7 @@ int main()
 	std::thread driveKeyboardThread(&Control::driveKeyboard, &ctr);
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
-
-	//#if !_DEBUG
-	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
-	//#endif
+	std::thread triggerbotThread(&DXGI::triggerbot, &dx);
 
 	while (!globals.done) {
 		MSG msg;
@@ -237,16 +234,13 @@ int main()
 	watchdogThread.join();
 	#endif
 
+	triggerbotThread.join();
 	aimbotThread.join();
 	captureDesktopThread.join();
 	driveKeyboardThread.join();
 	driveAimbotThread.join();
 	driveMouseThread.join();
   
-	//#if !_DEBUG
-	//mouseScrollThread.join();
-	//#endif
-
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
 	::UnregisterClassW(wc.lpszClassName, wc.hInstance);

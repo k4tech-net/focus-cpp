@@ -136,10 +136,11 @@ void newConfigPopup(bool trigger, char* newConfigName) {
 			newSettings.globalSettings.sensitivity[5] = 0.02f; // Multiplier
 
 			// Default aimbot settings
-			newSettings.aimbotData = { 0, 0, false, 0, 10, 10, 1, 200, true, 0, 20,
+			newSettings.aimbotData = { 0, 0, false, 0, 10, 10, true, 80,
 				{ 0, 0.02f, 0.2f, 0.008f, 1.f },
 				{ 0, 3, 0, 20, 10, 80, 10, 5, -5, false },
-				{ 0, 0, 10, false }
+				{ 0, 0, 10, false },
+				{ 0, 15.0f, 5, false, 200, 100 }
 			};
 
 			// Create a default character
@@ -466,7 +467,7 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
 		(linear_coef * fovDifference);
 
-	settings.globalSettings.fovSensitivityModifier = fovModifier;
+	settings.activeState.fovSensitivityModifier = fovModifier;
 
 	if (settings.activeState.selectedCharacterIndex < settings.characters.size() &&
 		!settings.characters[settings.activeState.selectedCharacterIndex].weapondata.empty()) {
@@ -545,8 +546,16 @@ std::vector<float> calculateSensitivityModifierR6() {
 		break;
 	}
 
-	float newSensXModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier) * totalAttachXEffect) * fovModifier;
-	float newSensYModifier = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier) * totalAttachYEffect) * fovModifier;
+	// Calculate the sensitivity modifier without attachment effects
+	float sensXModifier_SensOnly = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier)) * fovModifier;
+	float sensYModifier_SensOnly = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier)) * fovModifier;
+
+	// Set the sensMultiplier_SensOnly (without attachment effects)
+	settings.activeState.sensMultiplier_SensOnly = std::vector<float>{ sensXModifier_SensOnly, sensYModifier_SensOnly };
+
+	// Calculate the final sensitivity modifier with attachment effects
+	float newSensXModifier = sensXModifier_SensOnly * totalAttachXEffect;
+	float newSensYModifier = sensYModifier_SensOnly * totalAttachYEffect;
 
 	return std::vector<float>{ newSensXModifier, newSensYModifier };
 }
@@ -577,7 +586,7 @@ std::vector<float> calculateSensitivityModifierRust() {
 	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
 		(linear_coef * fovDifference);
 
-	settings.globalSettings.fovSensitivityModifier = fovModifier;
+	settings.activeState.fovSensitivityModifier = fovModifier;
 
 	if (settings.activeState.selectedCharacterIndex < settings.characters.size() &&
 		!settings.characters[settings.activeState.selectedCharacterIndex].weapondata.empty()) {
@@ -635,14 +644,21 @@ std::vector<float> calculateSensitivityModifierRust() {
 
 	float movingModifier = (GetAsyncKeyState(0x57) || GetAsyncKeyState(0x41) || GetAsyncKeyState(0x53) || GetAsyncKeyState(0x44)) ? 1.2f : 1.0f;
 
-	float sensModifier = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * totalAttachEffect * (standingModifier * movingModifier)) * fovModifier;
+	// Calculate the sensitivity modifier without attachment effects
+	float sensModifier_SensOnly = ((oldBaseSens * oldADSSens) / (newBaseSens * newADSSens) * (standingModifier * movingModifier)) * fovModifier;
+
+	// Set the sensMultiplier_SensOnly (without attachment effects)
+	settings.activeState.sensMultiplier_SensOnly = std::vector<float>{ sensModifier_SensOnly, sensModifier_SensOnly };
+
+	// Calculate the final sensitivity modifier with attachment effects
+	float sensModifier = sensModifier_SensOnly * totalAttachEffect;
 
 	return std::vector<float>{ sensModifier, sensModifier };
 }
 
 std::vector<float> calculateSensitivityModifierOverwatch() {
-	settings.globalSettings.fovSensitivityModifier = 1;
-
+	settings.activeState.fovSensitivityModifier = 1;
+	settings.activeState.sensMultiplier_SensOnly = { 1.f, 1.f };
 	return std::vector<float>{ 1.f, 1.f };
 }
 
@@ -1243,7 +1259,7 @@ void Menu::gui()
 			}
 			else if (settings.aimbotData.type == 1) {
 				if (!settings.aimbotData.enabled) {
-					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA"), xorstr_("TensorRT") };
 					if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.aiAimbotSettings.provider, providers.data(), (int)providers.size())) {
 						globals.filesystem.unsavedChanges = true;
 					}
@@ -1317,30 +1333,10 @@ void Menu::gui()
 				}
 				tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
 
-				if (ImGui::SliderFloat(xorstr_("Triggerbot FOV"), &settings.aimbotData.triggerFov, 0, 10, xorstr_("%.1f%%"), 0.1f)) {
-					globals.filesystem.unsavedChanges = true;
-				}
-				tooltip(xorstr_("The percentage of the screen that the Triggerbot will fire within (Within the centre 10% of your screen)"));
-
-				if (ImGui::SliderInt(xorstr_("Triggerbot Sleep"), &settings.aimbotData.triggerSleep, 0, 2000, xorstr_("%dms%"))) {
-					globals.filesystem.unsavedChanges = true;
-				}
-				tooltip(xorstr_("How long the Triggerbot will wait between shots"));
-
-				if (ImGui::SliderInt(xorstr_("Triggerbot Burst Duration"), &settings.aimbotData.triggerBurstDuration, 0, 500, xorstr_("%dms%"))) {
-					globals.filesystem.unsavedChanges = true;
-				}
-				tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
-
 				if (ImGui::SliderInt(xorstr_("Aimbot Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
 					globals.filesystem.unsavedChanges = true;
 				}
 				tooltip(xorstr_("How much of the vertical aimbot correction is actually applied"));
-
-				if (ImGui::Checkbox(xorstr_("Limit Detector FPS"), &settings.aimbotData.limitDetectorFps)) {
-					globals.filesystem.unsavedChanges = true;
-				}
-				tooltip(xorstr_("Locks the aimbot detector to 66 FPS, this reduces CPU usage but will reduce accuracy"));
 
 				if (settings.aimbotData.type == 0) {
 					std::vector<const char*> colourAimbotPreset = { xorstr_("Default"), xorstr_("Custom") };
@@ -1430,6 +1426,54 @@ void Menu::gui()
 					ImGui::PopStyleColor();
 				}
 			}
+
+			if (ImGui::Checkbox(xorstr_("Limit Detector FPS"), &settings.aimbotData.limitDetectorFps)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Locks the aimbot and triggerbot detector to 66 FPS, this reduces CPU usage but will reduce accuracy"));
+
+			ImGui::Spacing();
+			ImGui::Spacing();
+			ImGui::SeparatorText(xorstr_("TriggerBot Settings"));
+
+			const char* detectionMethods[] = { xorstr_("Color Change"), xorstr_("Motion"), xorstr_("Both") };
+			if (ImGui::Combo(xorstr_("Detection Method"),
+				&settings.aimbotData.triggerSettings.detectionMethod,
+				detectionMethods, 3)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Color Change: Detect average color changes\nMotion: Detect pixel movement\nBoth: Use both methods"));
+
+			if (ImGui::SliderFloat(xorstr_("Detection Sensitivity"),
+				&settings.aimbotData.triggerSettings.sensitivity,
+				1.0f, 50.0f,
+				xorstr_("%.1f"))) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Lower values make the triggerbot more sensitive to changes"));
+
+			if (ImGui::SliderInt(xorstr_("Detection Radius"),
+				&settings.aimbotData.triggerSettings.radius,
+				1, 20)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Size of the area around crosshair to check for changes"));
+
+			if (ImGui::Checkbox(xorstr_("Show Debug View"),
+				&settings.aimbotData.triggerSettings.showDebug)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Visualize the detection area and change values"));
+
+			if (ImGui::SliderInt(xorstr_("Triggerbot Sleep"), &settings.aimbotData.triggerSettings.sleepTime, 0, 2000, xorstr_("%dms%"))) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("How long the Triggerbot will wait between shots"));
+
+			if (ImGui::SliderInt(xorstr_("Triggerbot Burst Duration"), &settings.aimbotData.triggerSettings.burstDuration, 0, 500, xorstr_("%dms%"))) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
 
 			ImGui::EndTabItem();
 		}

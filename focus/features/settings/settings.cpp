@@ -41,17 +41,13 @@ std::vector<std::string> Settings::convertAllLegacyConfigs() {
             tempSettings.globalSettings.sensitivity.resize(6, 0.0f);
             tempSettings.globalSettings.aspect_ratio = 0;
             tempSettings.globalSettings.fov = 82.0f;
-            tempSettings.globalSettings.fovSensitivityModifier = 1.0f;
 
             // Aimbot data defaults
             tempSettings.aimbotData.type = 0;
             tempSettings.aimbotData.enabled = false;
             tempSettings.aimbotData.maxDistance = 10;
             tempSettings.aimbotData.aimFov = 10;
-            tempSettings.aimbotData.triggerFov = 1.0f;
-            tempSettings.aimbotData.triggerSleep = 200;
             tempSettings.aimbotData.limitDetectorFps = true;
-            tempSettings.aimbotData.triggerBurstDuration = 0;
             tempSettings.aimbotData.verticalCorrection = 80;
 
             // PID settings defaults
@@ -78,6 +74,14 @@ std::vector<std::string> Settings::convertAllLegacyConfigs() {
             tempSettings.aimbotData.aiAimbotSettings.hitbox = 0;
             tempSettings.aimbotData.aiAimbotSettings.confidence = 10;
             tempSettings.aimbotData.aiAimbotSettings.forceHitbox = false;
+
+            // Add triggerbot settings defaults
+            tempSettings.aimbotData.triggerSettings.detectionMethod = 0;
+            tempSettings.aimbotData.triggerSettings.sensitivity = 15.0f;
+            tempSettings.aimbotData.triggerSettings.radius = 5;
+            tempSettings.aimbotData.triggerSettings.showDebug = false;
+			tempSettings.aimbotData.triggerSettings.sleepTime = 200;
+			tempSettings.aimbotData.triggerSettings.burstDuration = 100;
 
             // Misc settings defaults
             tempSettings.misc.aimKeyMode = 0;
@@ -229,14 +233,16 @@ std::vector<std::string> Settings::convertAllLegacyConfigs() {
                         tempSettings.aimbotData.type = std::stoi(aimAssistValues[0]);
                         tempSettings.aimbotData.maxDistance = std::stoi(aimAssistValues[1]);
                         tempSettings.aimbotData.aimFov = std::stoi(aimAssistValues[2]);
-                        tempSettings.aimbotData.triggerFov = std::stof(aimAssistValues[3]);
-                        tempSettings.aimbotData.triggerSleep = std::stoi(aimAssistValues[4]);
+
+                        // Move triggerSleep to new location
+                        tempSettings.aimbotData.triggerSettings.sleepTime = std::stoi(aimAssistValues[4]);
 
                         if (aimAssistValues.size() >= 6) {
                             tempSettings.aimbotData.limitDetectorFps = aimAssistValues[5] == xorstr_("1");
                         }
                         if (aimAssistValues.size() >= 7) {
-                            tempSettings.aimbotData.triggerBurstDuration = std::stoi(aimAssistValues[6]);
+                            // Move triggerBurstDuration to new location
+                            tempSettings.aimbotData.triggerSettings.burstDuration = std::stoi(aimAssistValues[6]);
                         }
                         if (aimAssistValues.size() >= 8) {
                             tempSettings.aimbotData.verticalCorrection = std::stoi(aimAssistValues[7]);
@@ -692,10 +698,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.type = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.aimFov = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.triggerFov = std::stof(item);
-            std::getline(ss, item, ','); aimbotData.triggerSleep = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.limitDetectorFps = item == xorstr_("1");
-            std::getline(ss, item, ','); aimbotData.triggerBurstDuration = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.verticalCorrection = std::stoi(item);
         }
         else if (key == xorstr_("PidSettings")) {
@@ -728,6 +731,16 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.hitbox = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.confidence = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.forceHitbox = item == xorstr_("1");
+        }
+        else if (key == xorstr_("TriggerBotSettings")) {
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); aimbotData.triggerSettings.detectionMethod = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.sensitivity = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.radius = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.showDebug = item == xorstr_("1");
+            std::getline(ss, item, ','); aimbotData.triggerSettings.sleepTime = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.burstDuration = std::stoi(item);
         }
         // Misc settings
         else if (key == xorstr_("Misc")) {
@@ -915,13 +928,50 @@ void Settings::saveSettings(const std::string& filename) {
     file << xorstr_("Fov=") << globalSettings.fov << xorstr_("\n");
 
     // Save aimbot settings
-    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.maxDistance << xorstr_(",") << aimbotData.aimFov << xorstr_(",") << aimbotData.triggerFov << xorstr_(",") << aimbotData.triggerSleep << xorstr_(",") << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.triggerBurstDuration << xorstr_(",") << aimbotData.verticalCorrection << xorstr_("\n");
-    file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",") << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
-    file << xorstr_("ColourAimbotSettings=") << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") << aimbotData.colourAimbotSettings.trackConfidenceRate
-        << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") << aimbotData.colourAimbotSettings.minArea << xorstr_(",")
-        << aimbotData.colourAimbotSettings.aimHeight << xorstr_(",") << (aimbotData.colourAimbotSettings.debugView ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AiAimbotSettings=") << aimbotData.aiAimbotSettings.provider << xorstr_(",") << aimbotData.aiAimbotSettings.hitbox << xorstr_(",") << aimbotData.aiAimbotSettings.confidence << xorstr_(",") << (aimbotData.aiAimbotSettings.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("Misc=") << misc.aimKeyMode << xorstr_(",") << misc.recoilKeyMode << xorstr_(",") << misc.quickPeekDelay << xorstr_("\n");
+    file << xorstr_("AimAssist=") 
+        << aimbotData.type << xorstr_(",") 
+        << aimbotData.maxDistance << xorstr_(",") 
+        << aimbotData.aimFov << xorstr_(",") 
+        << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") 
+        << aimbotData.verticalCorrection << xorstr_("\n");
+
+    file << xorstr_("PidSettings=") 
+        << aimbotData.pidSettings.pidPreset << xorstr_(",") 
+        << aimbotData.pidSettings.proportional << xorstr_(",") 
+        << aimbotData.pidSettings.integral << xorstr_(",") 
+        << aimbotData.pidSettings.derivative << xorstr_(",")
+        << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
+
+    file << xorstr_("ColourAimbotSettings=") 
+        << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.trackConfidenceRate << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.minArea << xorstr_(",")
+        << aimbotData.colourAimbotSettings.aimHeight << xorstr_(",") 
+        << (aimbotData.colourAimbotSettings.debugView ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    
+    file << xorstr_("AiAimbotSettings=") 
+        << aimbotData.aiAimbotSettings.provider << xorstr_(",") 
+        << aimbotData.aiAimbotSettings.hitbox << xorstr_(",") 
+        << aimbotData.aiAimbotSettings.confidence << xorstr_(",") 
+        << (aimbotData.aiAimbotSettings.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    
+    file << xorstr_("TriggerBotSettings=")
+        << settings.aimbotData.triggerSettings.detectionMethod << xorstr_(",")
+        << settings.aimbotData.triggerSettings.sensitivity << xorstr_(",")
+        << settings.aimbotData.triggerSettings.radius << xorstr_(",")
+        << (settings.aimbotData.triggerSettings.showDebug ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
+        << settings.aimbotData.triggerSettings.sleepTime << xorstr_(",")
+        << settings.aimbotData.triggerSettings.burstDuration << xorstr_("\n");
+    
+    file << xorstr_("Misc=") 
+        << misc.aimKeyMode << xorstr_(",") 
+        << misc.recoilKeyMode << xorstr_(",") 
+        << misc.quickPeekDelay << xorstr_("\n");
 
     // Save hotkeys in matching format
     for (size_t i = 0; i < static_cast<size_t>(HotkeyIndex::COUNT); i++) {

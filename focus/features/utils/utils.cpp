@@ -175,3 +175,16 @@ int Utils::hammingDistance(const IconHash& hash1, const IconHash& hash2) {
 	return (hash1 ^ hash2).count();
 }
 
+void Utils::pressMouse1(bool press) {
+	INPUT input;
+	input.type = INPUT_MOUSE;
+	input.mi.dx = 0;
+	input.mi.dy = 0;
+	input.mi.mouseData = 0;
+	input.mi.dwFlags = press ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
+	input.mi.time = 0;
+	input.mi.dwExtraInfo = globals.mouseinfo.marker.load(std::memory_order_relaxed);
+
+	SendInput(1, &input, sizeof(INPUT));
+}
+
