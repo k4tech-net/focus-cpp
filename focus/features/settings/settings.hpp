@@ -107,11 +107,20 @@ struct globalSettings {
     float fov = 0;
 };
 
+struct overlaySettings {
+    bool enabled = false;
+    bool showInfo = false;
+
+    float magnifierZoom = 0.f;
+    int magnifierSize = 0;
+};
+
 struct miscSettings {
     int aimKeyMode = 0;
     int recoilKeyMode = 0;
     int quickPeekDelay = 0;
     HotkeySystem hotkeys;
+    overlaySettings overlay;
 };
 
 struct activeState {

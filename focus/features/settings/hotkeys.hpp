@@ -39,6 +39,7 @@ enum class HotkeyIndex {
     HideUiKey,
     LeanLeftKey,
 	LeanRightKey,
+    MagnifierKey,
     COUNT
 };
 

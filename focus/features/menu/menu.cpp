@@ -1444,23 +1444,17 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("Color Change: Detect average color changes\nMotion: Detect pixel movement\nBoth: Use both methods"));
 
-			if (ImGui::SliderFloat(xorstr_("Detection Sensitivity"),
-				&settings.aimbotData.triggerSettings.sensitivity,
-				1.0f, 50.0f,
-				xorstr_("%.1f"))) {
+			if (ImGui::SliderFloat(xorstr_("Detection Sensitivity"), &settings.aimbotData.triggerSettings.sensitivity, 1.0f, 50.0f, xorstr_("%.1f"))) {
 				globals.filesystem.unsavedChanges = true;
 			}
 			tooltip(xorstr_("Lower values make the triggerbot more sensitive to changes"));
 
-			if (ImGui::SliderInt(xorstr_("Detection Radius"),
-				&settings.aimbotData.triggerSettings.radius,
-				1, 20)) {
+			if (ImGui::SliderInt(xorstr_("Detection Radius"), &settings.aimbotData.triggerSettings.radius, 1, 20)) {
 				globals.filesystem.unsavedChanges = true;
 			}
 			tooltip(xorstr_("Size of the area around crosshair to check for changes"));
 
-			if (ImGui::Checkbox(xorstr_("Show Debug View"),
-				&settings.aimbotData.triggerSettings.showDebug)) {
+			if (ImGui::Checkbox(xorstr_("Show Debug View"), &settings.aimbotData.triggerSettings.showDebug)) {
 				globals.filesystem.unsavedChanges = true;
 			}
 			tooltip(xorstr_("Visualize the detection area and change values"));
@@ -1549,6 +1543,35 @@ void Menu::gui()
 
 			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Hide UI Key"), HotkeyIndex::HideUiKey)) {
 				globals.filesystem.unsavedChanges = true;
+			}
+
+			ImGui::Spacing();
+			ImGui::Spacing();
+			ImGui::SeparatorText(xorstr_("Overlay"));
+
+			if (ImGui::Checkbox(xorstr_("Enable Overlay"), &settings.misc.overlay.enabled)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+
+			if (settings.misc.overlay.enabled) {
+				if (ImGui::Checkbox(xorstr_("Show Info"), &settings.misc.overlay.showInfo)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				// Add hotkey for magnifier
+				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Magnifier Key"), HotkeyIndex::MagnifierKey)) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				// Add slider for magnifier zoom
+				if (ImGui::SliderFloat(xorstr_("Zoom Level"), &settings.misc.overlay.magnifierZoom, 1.5f, 10.0f, "%.1fx")) {
+					globals.filesystem.unsavedChanges = true;
+				}
+
+				// Add slider for magnifier size
+				if (ImGui::SliderInt(xorstr_("Size"), &settings.misc.overlay.magnifierSize, 100, 500, "%d px")) {
+					globals.filesystem.unsavedChanges = true;
+				}
 			}
 
 			ImGui::EndTabItem();
@@ -2364,6 +2387,8 @@ void Menu::gui()
 
 	newConfigPopup(NewConfigPopup, newConfigName);
 	renameConfigPopup(RenameConfigPopup, renameBuffer);
+
+	overlay.UpdateState();
 
 	ImGui::End();
 }

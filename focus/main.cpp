@@ -188,12 +188,12 @@ int main()
 		mn.gui();
 
 		//if (GetAsyncKeyState(VK_RSHIFT)) {
-			//if (!globals.desktopMat.empty()) {
-			//	globals.desktopMutex_.lock();
+			//if (!globals.capture.desktopMat.empty()) {
+			//	globals.capture.desktopMutex_.lock();
 			//	cv::Mat desktop;
-			//	cv::resize(globals.desktopMat, desktop, cv::Size(1920, 1080));
+			//	cv::resize(globals.capture.desktopMat, desktop, cv::Size(1920, 1080));
 			//	cv::imshow("output", desktop); // Debug window
-			//	globals.desktopMutex_.unlock();
+			//	globals.capture.desktopMutex_.unlock();
 			//}
 		//}
 

@@ -2,6 +2,7 @@
 
 #include "../../includes.hpp"
 #include "../imgui/plugins/implot.h"
+#include "../overlay/overlay.hpp"
 
 #define STARTUPFLAGS (ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiViewportFlags_NoDecoration | ImGuiWindowFlags_AlwaysAutoResize)
 #define WINDOWFLAGS (ImGuiWindowFlags_NoCollapse)
@@ -18,4 +19,6 @@ public:
 	void startupchecks_gui();
 	void mouseScrollHandler();
 	void gui();
+
+	Overlay overlay;
 };

@@ -769,6 +769,15 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
                 }
             }
         }
+        // Overlay
+        else if (key == xorstr_("Overlay")) {
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); misc.overlay.enabled = item == xorstr_("1");
+            std::getline(ss, item, ','); misc.overlay.showInfo = item == xorstr_("1");
+            std::getline(ss, item, ','); misc.overlay.magnifierZoom = std::stoi(item);
+            std::getline(ss, item, ','); misc.overlay.magnifierSize = std::stoi(item);
+        }
         // Character data
         else if (key == xorstr_("Character")) {
             if (!currentCharacter.charactername.empty()) {
@@ -981,6 +990,12 @@ void Settings::saveSettings(const std::string& filename) {
             hotkey.vKey.load() << "," <<
             static_cast<int>(hotkey.mode.load()) << "\n";
     }
+
+    file << xorstr_("Overlay=")
+        << (misc.overlay.enabled ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
+        << (misc.overlay.showInfo ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
+        << misc.overlay.magnifierZoom << xorstr_(",")
+        << misc.overlay.magnifierSize << xorstr_("\n");
 
     // Save character and weapon data
     for (const auto& character : characters) {
