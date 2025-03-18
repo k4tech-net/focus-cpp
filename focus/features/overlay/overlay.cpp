@@ -151,15 +151,19 @@ void Overlay::RenderThreadProc() {
     MSG msg;
     ZeroMemory(&msg, sizeof(msg));
 
-    // Last drawn positions for dirty rect tracking
-    RECT lastInfoRect = { 0 };
-    RECT lastMagnifierRect = { 0 };
-    bool wasMagnifierActive = false;
+    // State tracking
+    bool isInfoPanelVisible = false;
+    bool isMagnifierVisible = false;
+    RECT infoRect = { 0 };
+    RECT magnifierRect = { 0 };
 
     // Frame timing
-    const int TARGET_FPS = 60; // Lower target FPS to save resources
+    const int TARGET_FPS = 60;
     const auto FRAME_DURATION = std::chrono::milliseconds(1000 / TARGET_FPS);
-    auto lastRedrawTime = std::chrono::steady_clock::now();
+    auto lastFrameTime = std::chrono::steady_clock::now();
+
+    // Keep track of all dirty regions that need to be updated
+    std::vector<RECT> dirtyRects;
 
     while (!shouldExit && msg.message != WM_QUIT) {
         // Process messages
@@ -169,33 +173,25 @@ void Overlay::RenderThreadProc() {
             continue;
         }
 
-        // Check if we need to exit or if settings have changed
-        bool needForceRedraw = false;
-        bool showInfoEnabled = false;
-        bool magnifierActive = false;
-
-        // Get current settings
+        // Check if we need to exit or if settings changed
         if (!settings.misc.overlay.enabled) {
             break;
         }
 
-        showInfoEnabled = settings.misc.overlay.showInfo;
-        magnifierActive = settings.misc.hotkeys.IsActive(HotkeyIndex::MagnifierKey);
+        // Get current settings
+        bool showInfoEnabled = settings.misc.overlay.showInfo;
+        bool magnifierActive = settings.misc.hotkeys.IsActive(HotkeyIndex::MagnifierKey);
 
+        // Check for forced redraw
+        bool needForceRedraw = forceRedraw;
         if (forceRedraw) {
-            needForceRedraw = true;
             forceRedraw = false;
         }
 
-        // Detect magnifier state change
-        bool magnifierStateChanged = (wasMagnifierActive != magnifierActive);
+        // Clear dirty rects for this frame
+        dirtyRects.clear();
 
-        // Limit frame rate
-        auto currentTime = std::chrono::steady_clock::now();
-        auto timeSinceLastFrame = currentTime - lastRedrawTime;
-        bool timeForRedraw = timeSinceLastFrame >= FRAME_DURATION;
-
-        // Need to check for changes in game state that affect overlay info
+        // Update state for game data
         int currentSelectedCharacterIndex = settings.activeState.selectedCharacterIndex;
         bool currentWeaponOffOverride = settings.activeState.weaponOffOverride;
         bool currentIsPrimaryActive = settings.activeState.isPrimaryActive;
@@ -207,122 +203,132 @@ void Overlay::RenderThreadProc() {
             (currentIsPrimaryActive != lastIsPrimaryActive) ||
             (currentAimbotEnabled != lastAimbotEnabled);
 
-        bool needRedraw = needForceRedraw;
+        // Check if info visibility changed
+        bool infoVisibilityChanged = isInfoPanelVisible != showInfoEnabled;
 
-        // Only need to redraw if info panel is enabled and something changed
-        if (showInfoEnabled && (infoChanged || needForceRedraw || lastShowInfo != showInfoEnabled)) {
-            needRedraw = true;
-        }
-
-        // Handle magnifier redraw
-        if (magnifierActive && (timeForRedraw || needForceRedraw || magnifierStateChanged)) {
-            needRedraw = true;
-        }
-
-        // IMPORTANT: Handle magnifier deactivation specially
-        bool needClearMagnifier = wasMagnifierActive && !magnifierActive;
-
-        // Update tracking variables
-        lastShowInfo = showInfoEnabled;
+        // Update state tracking variables
         lastSelectedCharacterIndex = currentSelectedCharacterIndex;
         lastWeaponOffOverride = currentWeaponOffOverride;
         lastIsPrimaryActive = currentIsPrimaryActive;
         lastAimbotEnabled = currentAimbotEnabled;
 
-        // Ensure window stays on top (do this less frequently)
+        // Check if time for a frame update or if change occurred
+        auto currentTime = std::chrono::steady_clock::now();
+        bool timeForFrame = currentTime - lastFrameTime >= FRAME_DURATION;
+
+        // Handle info panel visibility changes
+        if (infoVisibilityChanged) {
+            if (isInfoPanelVisible && !showInfoEnabled) {
+                // Info panel was visible and needs to be hidden - clear the area
+                if (infoRect.right > infoRect.left) {
+                    FillRect(memDC, &infoRect, blackBrush);
+                    dirtyRects.push_back(infoRect);
+                }
+            }
+            isInfoPanelVisible = showInfoEnabled;
+        }
+
+        // Determine if we need to update the info panel
+        bool needInfoUpdate = isInfoPanelVisible && (infoChanged || needForceRedraw || infoVisibilityChanged);
+
+        // Handle magnifier visibility changes
+        bool magnifierVisibilityChanged = isMagnifierVisible != magnifierActive;
+
+        // If magnifier was visible but now should be hidden
+        if (magnifierVisibilityChanged && isMagnifierVisible && !magnifierActive) {
+            // Clear the magnifier area
+            if (magnifierRect.right > magnifierRect.left) {
+                FillRect(memDC, &magnifierRect, blackBrush);
+                dirtyRects.push_back(magnifierRect);
+                magnifierRect = { 0 };
+            }
+        }
+
+        isMagnifierVisible = magnifierActive;
+
+        // Determine if we need to update the magnifier
+        bool needMagnifierUpdate = isMagnifierVisible && (timeForFrame || needForceRedraw || magnifierVisibilityChanged);
+
+        // Update topmost status periodically
         static int topMostCounter = 0;
         if (++topMostCounter >= 30) {
             SetWindowPos(hwnd, HWND_TOPMOST, 0, 0, 0, 0, SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
             topMostCounter = 0;
         }
 
-        // Special handling for clearing the magnifier
-        if (needClearMagnifier && lastMagnifierRect.right > lastMagnifierRect.left) {
-            // Clear the magnifier area and update screen with black
-            RECT clearRect = DrawMagnifier(memDC, true);
-
-            // Update screen with cleared area
-            BitBlt(hdc, clearRect.left, clearRect.top,
-                clearRect.right - clearRect.left,
-                clearRect.bottom - clearRect.top,
-                memDC, clearRect.left, clearRect.top, SRCCOPY);
-
-            // Reset magnifier rect
-            lastMagnifierRect = { 0 };
-
-            // Force another clear on next frame to ensure it's completely gone
-            forceRedraw = true;
-        }
-
-        // Update magnifier active state for next iteration
-        wasMagnifierActive = magnifierActive;
-
-        if (!needRedraw && !needClearMagnifier) {
+        // Skip drawing if nothing changed
+        if (!needInfoUpdate && !needMagnifierUpdate && dirtyRects.empty()) {
             // Sleep less when magnifier is active to be more responsive
             std::this_thread::sleep_for(magnifierActive ? std::chrono::milliseconds(0) : std::chrono::milliseconds(5));
             continue;
         }
 
-        if (timeForRedraw) {
-            lastRedrawTime = currentTime;
+        // If we're going to render in this frame, update the time
+        if (timeForFrame) {
+            lastFrameTime = currentTime;
         }
 
-        // Skip the rest of the drawing if we only needed to clear the magnifier
-        if (needClearMagnifier && !needRedraw) {
-            continue;
-        }
-
-        // Normal rendering path
-        // Clear for redraw
+        // Handle full redraw if needed
         if (needForceRedraw) {
             // Full clear
             FillRect(memDC, &rc, blackBrush);
-            lastInfoRect = { 0 };
-            lastMagnifierRect = { 0 };
-        }
-        else {
-            // Clear only the necessary areas
-            if (lastShowInfo && !showInfoEnabled && lastInfoRect.right > lastInfoRect.left) {
-                FillRect(memDC, &lastInfoRect, blackBrush);
-                lastInfoRect = { 0 };
-            }
 
-            // Clear areas for redraw
-            if (showInfoEnabled && lastInfoRect.right > lastInfoRect.left) {
-                FillRect(memDC, &lastInfoRect, blackBrush);
-            }
+            // Mark entire screen as dirty
+            dirtyRects.push_back(rc);
 
-            if (magnifierActive && lastMagnifierRect.right > lastMagnifierRect.left) {
-                FillRect(memDC, &lastMagnifierRect, blackBrush);
-            }
+            // Reset element rects
+            infoRect = { 0 };
+            magnifierRect = { 0 };
         }
 
-        // Draw info panel if enabled
-        if (showInfoEnabled) {
-            lastInfoRect = DrawInfo(memDC);
+        // Draw info panel if needed
+        if (needInfoUpdate) {
+            // If already showing info, clear the old area first
+            if (infoRect.right > infoRect.left) {
+                FillRect(memDC, &infoRect, blackBrush);
+                dirtyRects.push_back(infoRect);
+            }
 
-            // Update the info area
-            if (lastInfoRect.right > lastInfoRect.left && lastInfoRect.bottom > lastInfoRect.top) {
-                BitBlt(hdc, lastInfoRect.left, lastInfoRect.top,
-                    lastInfoRect.right - lastInfoRect.left,
-                    lastInfoRect.bottom - lastInfoRect.top,
-                    memDC, lastInfoRect.left, lastInfoRect.top, SRCCOPY);
+            // Draw new info panel
+            infoRect = DrawInfo(memDC);
+
+            // Mark as dirty if valid
+            if (infoRect.right > infoRect.left && infoRect.bottom > infoRect.top) {
+                dirtyRects.push_back(infoRect);
             }
         }
 
-        // Draw magnifier if active
-        if (magnifierActive) {
-            lastMagnifierRect = DrawMagnifier(memDC);
+        // Draw magnifier if needed
+        if (needMagnifierUpdate) {
+            // If already showing magnifier, clear the old area first
+            if (magnifierRect.right > magnifierRect.left) {
+                FillRect(memDC, &magnifierRect, blackBrush);
+                dirtyRects.push_back(magnifierRect);
+            }
 
-            // Update the magnifier area
-            if (lastMagnifierRect.right > lastMagnifierRect.left && lastMagnifierRect.bottom > lastMagnifierRect.top) {
-                BitBlt(hdc, lastMagnifierRect.left, lastMagnifierRect.top,
-                    lastMagnifierRect.right - lastMagnifierRect.left,
-                    lastMagnifierRect.bottom - lastMagnifierRect.top,
-                    memDC, lastMagnifierRect.left, lastMagnifierRect.top, SRCCOPY);
+            // Draw new magnifier
+            magnifierRect = DrawMagnifier(memDC);
+
+            // Mark as dirty if valid
+            if (magnifierRect.right > magnifierRect.left && magnifierRect.bottom > magnifierRect.top) {
+                dirtyRects.push_back(magnifierRect);
+            }
+        }
+
+        // Update the screen with all dirty rects
+        for (const auto& rect : dirtyRects) {
+            if (rect.right > rect.left && rect.bottom > rect.top) {
+                BitBlt(hdc, rect.left, rect.top,
+                    rect.right - rect.left,
+                    rect.bottom - rect.top,
+                    memDC, rect.left, rect.top, SRCCOPY);
             }
         }
     }
+
+    // Clear the entire window before closing
+    FillRect(memDC, &rc, blackBrush);
+    BitBlt(hdc, 0, 0, screenWidth, screenHeight, memDC, 0, 0, SRCCOPY);
 
     // Cleanup GDI resources
     SelectObject(memDC, oldFont);
