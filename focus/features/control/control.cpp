@@ -350,164 +350,124 @@ void resetLean() {
 
 void Control::driveKeyboard() {
 	static bool moved = false;
-	static int direction = 0;
 	static bool init = true;
 
-	//NetworkBlocker nb;
-
-	//nb.initForR6();
-
 	while (!globals.shutdown) {
-		if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
+		bool quickPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek);
+		bool hashomPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
+		bool peekActive = quickPeekEnabled || hashomPeekEnabled;
+
+		if (peekActive) {
 			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
 			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
-
-			if (init) {
-				// Going Left
-				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
-					resetLean();
-					direction = 1;
-					init = false;
-
-					pressAndReleaseKey(leftLeanKey);
-
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
-				}
-				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
-					resetLean();
-					direction = 2;
-					init = false;
-
-					pressAndReleaseKey(rightLeanKey);
-
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
-				}
-				else {
-					moved = false;
-					direction = 0;
-					init = true;
-				}
-			}
-
-			// Was going left, now right
-			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				kb.keyboard_press(rightLeanKey);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(leftLeanKey);
-				std::this_thread::sleep_for(std::chrono::microseconds(10));
-				kb.keyboard_release();
-
-				moved = true;
-			}
-
-			// Wait until moving left again
-			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				moved = false;
-			}
-
-			// Was going right, now left
-			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				kb.keyboard_press(leftLeanKey);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(rightLeanKey);
-				std::this_thread::sleep_for(std::chrono::microseconds(10));
-				kb.keyboard_release();
-
-				moved = true;
-			}
-
-			// Wait until moving right again
-			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				moved = false;
-			}
-		}
-		else if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
 			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
-			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
-			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
 
 			if (init) {
-				// Going Left
+				// Initial detection of direction
 				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
+					// Going Left
 					resetLean();
-					direction = 1;
+					settings.activeState.peekDirection = 1;
 					init = false;
 
 					pressAndReleaseKey(leftLeanKey);
-
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
-				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
+				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) {
+					// Going Right
 					resetLean();
-					direction = 2;
+					settings.activeState.peekDirection = 2;
 					init = false;
 
 					pressAndReleaseKey(rightLeanKey);
-
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else {
 					moved = false;
-					direction = 0;
+					settings.activeState.peekDirection = 0;
 					init = true;
 				}
 			}
 
-			// Was going left, now right
-			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				pressAndReleaseKey(proneKey);
+			// Integrated peek logic for both HashomPeek and QuickPeek
+			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x44) && !moved) {
+				// Started going left, now going right
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+				// Execute the integrated sequence
+				if (hashomPeekEnabled) {
+					// First the prone (Hashom part 1)
+					pressAndReleaseKey(proneKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+				}
 
-				pressAndReleaseKey(proneKey);
+				if (quickPeekEnabled) {
+					// Then the counter-lean (Quick peek part)
+					kb.keyboard_press(rightLeanKey);
+					std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					kb.keyboard_press(leftLeanKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+
+				if (hashomPeekEnabled) {
+					// Then the second prone (Hashom part 2)
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					pressAndReleaseKey(proneKey);
+				}
 
 				moved = true;
 			}
 
 			// Wait until moving left again
-			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
+			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x41) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
 			}
 
-			// Was going right, now left
-			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				pressAndReleaseKey(proneKey);
+			// Integrated peek logic for both HashomPeek and QuickPeek
+			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x41) && !moved) {
+				// Started going right, now going left
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+				// Execute the integrated sequence
+				if (hashomPeekEnabled) {
+					// First the prone (Hashom part 1)
+					pressAndReleaseKey(proneKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+				}
 
-				pressAndReleaseKey(proneKey);
+				if (quickPeekEnabled) {
+					// Then the counter-lean (Quick peek part)
+					kb.keyboard_press(leftLeanKey);
+					std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					kb.keyboard_press(rightLeanKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+
+				if (hashomPeekEnabled) {
+					// Then the second prone (Hashom part 2)
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					pressAndReleaseKey(proneKey);
+				}
 
 				moved = true;
 			}
 
 			// Wait until moving right again
-			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
+			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x44) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
 			}
 		}
 		else {
 			moved = false;
-			direction = 0;
+			settings.activeState.peekDirection = 0;
 			init = true;
 		}
 
 		if (settings.misc.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
-			
 			ms.moveR(50000, 1000);
 		}
-
-		/*if (settings.misc.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
-			if (!nb.isCurrentlyBlocking()) {
-				nb.enableBlocking();
-			}
-		}
-		else if (nb.isCurrentlyBlocking()) {
-			nb.disableBlocking();
-		}*/
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}

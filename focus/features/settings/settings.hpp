@@ -15,12 +15,8 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 
-#include <nlohmann/json.hpp>
-
 #include "../imgui/imgui.h"
 #include "hotkeys.hpp"
-
-using json = nlohmann::json;
 
 struct weaponData {
     std::string weaponname = "";
@@ -129,6 +125,7 @@ struct activeState {
 	bool weaponOffOverride = false;
 	bool weaponDataChanged = false;
 	bool pidDataChanged = false;
+    int peekDirection = 0;
 
 	std::vector<float> sensMultiplier = { 1.0f, 1.0f };
     std::vector<float> sensMultiplier_SensOnly = { 1.0f, 1.0f };

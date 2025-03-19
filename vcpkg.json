@@ -1,0 +1,8 @@
+{
+  "dependencies": [
+    "xorstr",
+    "freetype",
+    "opencv4",
+    "openssl"
+  ]
+}

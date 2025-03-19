@@ -1564,12 +1564,12 @@ void Menu::gui()
 				}
 
 				// Add slider for magnifier zoom
-				if (ImGui::SliderFloat(xorstr_("Zoom Level"), &settings.misc.overlay.magnifierZoom, 1.5f, 10.0f, "%.1fx")) {
+				if (ImGui::SliderFloat(xorstr_("Zoom Level"), &settings.misc.overlay.magnifierZoom, 1.0f, 10.0f, "%.1fx")) {
 					globals.filesystem.unsavedChanges = true;
 				}
 
 				// Add slider for magnifier size
-				if (ImGui::SliderInt(xorstr_("Size"), &settings.misc.overlay.magnifierSize, 100, 500, "%d px")) {
+				if (ImGui::SliderInt(xorstr_("Size"), &settings.misc.overlay.magnifierSize, 100, 800, "%d px")) {
 					globals.filesystem.unsavedChanges = true;
 				}
 			}
