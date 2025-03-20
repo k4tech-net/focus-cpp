@@ -57,7 +57,7 @@ void Overlay::Shutdown() {
 
 void Overlay::UpdateState() {
     // Get current settings
-    bool enabled = settings.misc.overlay.enabled;
+    bool enabled = settings.misc.hotkeys.IsActive(HotkeyIndex::OverlayKey);
     bool showInfo = settings.misc.overlay.showInfo;
     bool magnifierActive = settings.misc.hotkeys.IsActive(HotkeyIndex::MagnifierKey);
 
@@ -182,7 +182,7 @@ void Overlay::RenderThreadProc() {
         }
 
         // Check if we need to exit or if settings changed
-        if (!settings.misc.overlay.enabled) {
+        if (!settings.misc.hotkeys.IsActive(HotkeyIndex::OverlayKey)) {
             break;
         }
 

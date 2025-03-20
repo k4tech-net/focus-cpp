@@ -415,6 +415,7 @@ void DXGI::triggerbot() {
     static bool justFired = false;
     static cv::Rect roi;
     static int lastRadius = -1;
+    static bool currentWeaponHasRapidfire = false;
 
     while (!globals.shutdown) {
         // Early exit if trigger key not active
@@ -435,19 +436,62 @@ void DXGI::triggerbot() {
             continue;
         }
 
+        currentWeaponHasRapidfire = false;
+        if (!settings.activeState.weaponOffOverride &&
+            settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+
+            const auto& character = settings.characters[settings.activeState.selectedCharacterIndex];
+            if (!character.weapondata.empty()) {
+                int weaponIndex = settings.activeState.isPrimaryActive ?
+                    character.selectedweapon[0] : character.selectedweapon[1];
+
+                if (weaponIndex < character.weapondata.size()) {
+                    currentWeaponHasRapidfire = character.weapondata[weaponIndex].rapidfire;
+                }
+            }
+        }
+
         // Handle timing and state
         auto currentTime = std::chrono::steady_clock::now();
 
         // Process burst timing
         if (isBurstActive) {
             auto burstElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - burstStartTime).count();
-            if (burstElapsed >= settings.aimbotData.triggerSettings.burstDuration) {
-                utils.pressMouse1(false);
-                isBurstActive = false;
-                justFired = true;
-                firstFrame = true;
+
+            if (currentWeaponHasRapidfire) {
+                // For rapidfire weapons, toggle the mouse state during burst
+                static bool buttonState = true;
+                static std::chrono::steady_clock::time_point lastToggleTime = burstStartTime;
+
+                auto timeSinceToggle = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    currentTime - lastToggleTime).count();
+
+                // Toggle at a fixed rate for semi-auto weapons
+                if (timeSinceToggle >= 30) {  // 30ms between toggles
+                    buttonState = !buttonState;
+                    utils.pressMouse1(buttonState);
+                    lastToggleTime = currentTime;
+                }
+
+                // End burst when duration is reached
+                if (burstElapsed >= settings.aimbotData.triggerSettings.burstDuration) {
+                    utils.pressMouse1(false);
+                    isBurstActive = false;
+                    justFired = true;
+                    firstFrame = true;
+                }
             }
             else {
+                // Standard burst for regular weapons
+                if (burstElapsed >= settings.aimbotData.triggerSettings.burstDuration) {
+                    utils.pressMouse1(false);
+                    isBurstActive = false;
+                    justFired = true;
+                    firstFrame = true;
+                }
+            }
+
+            if (isBurstActive) {
                 std::this_thread::sleep_for(std::chrono::microseconds(200));
                 continue;
             }
@@ -569,11 +613,23 @@ void DXGI::triggerbot() {
             bool mouseAlreadyDown = globals.mouseinfo.l_mouse_down.load(std::memory_order_relaxed);
 
             if (!mouseAlreadyDown && !isBurstActive) {
+                auto preDelayTime = std::chrono::steady_clock::now();
+
+                if (settings.aimbotData.triggerSettings.delay > 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(settings.aimbotData.triggerSettings.delay));
+
+                    // Check if target is still valid after delay (recheck shouldTrigger condition)
+                    if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
+                        // User released trigger key during delay
+                        continue;
+                    }
+                }
+
                 if (settings.aimbotData.triggerSettings.burstDuration > 0) {
                     // Burst mode
                     utils.pressMouse1(true);
                     isBurstActive = true;
-                    burstStartTime = currentTime;
+                    burstStartTime = std::chrono::steady_clock::now();
                 }
                 else {
                     // Single click mode - optimized for minimum latency
@@ -584,7 +640,7 @@ void DXGI::triggerbot() {
                     firstFrame = true;
                 }
 
-                lastTriggerTime = currentTime;
+                lastTriggerTime = preDelayTime;
             }
         }
 

@@ -74,6 +74,7 @@ struct triggerBotSettings {
     bool showDebug = false;
     int sleepTime = 0;
     int burstDuration = 0;
+    int delay = 0;
 };
 
 struct aimbotData {
@@ -104,7 +105,6 @@ struct globalSettings {
 };
 
 struct overlaySettings {
-    bool enabled = false;
     bool showInfo = false;
 
     float magnifierZoom = 0.f;
@@ -150,9 +150,7 @@ public:
     // Misc Settings
 	miscSettings misc;
 
-    std::vector<std::string> convertAllLegacyConfigs();
     bool isLegacyConfig(const std::string& filename);
-    void convertLegacyConfig(const std::string& filename);
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
 };

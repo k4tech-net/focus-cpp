@@ -1469,6 +1469,11 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
 
+			if (ImGui::SliderInt(xorstr_("Triggerbot Fire Delay"), &settings.aimbotData.triggerSettings.delay, 0, 500, xorstr_("%dms%"))) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("How long to wait before firing after target detection (0 = disabled)"));
+
 			ImGui::EndTabItem();
 		}
 
@@ -1540,38 +1545,41 @@ void Menu::gui()
 			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Fake Spinbot"), HotkeyIndex::FakeSpinBot)) {
 				globals.filesystem.unsavedChanges = true;
 			}
+			tooltip(xorstr_("Hold to spin really fast"));
 
 			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Hide UI Key"), HotkeyIndex::HideUiKey)) {
 				globals.filesystem.unsavedChanges = true;
 			}
+			tooltip(xorstr_("Hide the focus UI"));
 
 			ImGui::Spacing();
 			ImGui::Spacing();
 			ImGui::SeparatorText(xorstr_("Overlay"));
+			
+			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Overlay"), HotkeyIndex::OverlayKey)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Show the FOCUS overlay (Required for magnifier)"));
 
-			if (ImGui::Checkbox(xorstr_("Enable Overlay"), &settings.misc.overlay.enabled)) {
+			if (ImGui::Checkbox(xorstr_("Draw status to overlay"), &settings.misc.overlay.showInfo)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Shows many different settings and states in the overlay"));
+
+			// Add hotkey for magnifier
+			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Magnifier Key"), HotkeyIndex::MagnifierKey)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Zoom in on your crosshair"));
+
+			// Add slider for magnifier zoom
+			if (ImGui::SliderFloat(xorstr_("Zoom Level"), &settings.misc.overlay.magnifierZoom, 1.0f, 10.0f, "%.1fx")) {
 				globals.filesystem.unsavedChanges = true;
 			}
 
-			if (settings.misc.overlay.enabled) {
-				if (ImGui::Checkbox(xorstr_("Show Info"), &settings.misc.overlay.showInfo)) {
-					globals.filesystem.unsavedChanges = true;
-				}
-
-				// Add hotkey for magnifier
-				if (settings.misc.hotkeys.RenderHotkey(xorstr_("Magnifier Key"), HotkeyIndex::MagnifierKey)) {
-					globals.filesystem.unsavedChanges = true;
-				}
-
-				// Add slider for magnifier zoom
-				if (ImGui::SliderFloat(xorstr_("Zoom Level"), &settings.misc.overlay.magnifierZoom, 1.0f, 10.0f, "%.1fx")) {
-					globals.filesystem.unsavedChanges = true;
-				}
-
-				// Add slider for magnifier size
-				if (ImGui::SliderInt(xorstr_("Size"), &settings.misc.overlay.magnifierSize, 100, 800, "%d px")) {
-					globals.filesystem.unsavedChanges = true;
-				}
+			// Add slider for magnifier size
+			if (ImGui::SliderInt(xorstr_("Size"), &settings.misc.overlay.magnifierSize, 100, 800, "%d px")) {
+				globals.filesystem.unsavedChanges = true;
 			}
 
 			ImGui::EndTabItem();
@@ -2301,50 +2309,6 @@ void Menu::gui()
 				if (globals.filesystem.activeFileIndex >= 0 && globals.filesystem.activeFileIndex < globals.filesystem.configFiles.size()) {
 					RenameConfigPopup = true;
 				}
-			}
-
-			ImGui::SameLine();
-
-			// Add Convert Legacy Configs button
-			if (ImGui::Button(xorstr_("Convert Legacy Configs"))) {
-				convertedFiles = settings.convertAllLegacyConfigs();
-				globals.filesystem.configFiles = ut.scanCurrentDirectoryForConfigFiles();
-				if (!convertedFiles.empty()) {
-					ImGui::OpenPopup(xorstr_("Legacy Configs Converted"));
-				}
-				else {
-					ImGui::OpenPopup(xorstr_("No Legacy Configs Found"));
-				}
-			}
-			tooltip(xorstr_("Convert all legacy configs to the new format"));
-
-			// Add popups for legacy config handling
-			if (ImGui::BeginPopupModal(xorstr_("Legacy Configs Converted"), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::Text(xorstr_("The following legacy configs were converted:"));
-				for (const auto& file : convertedFiles) {
-					ImGui::Text(xorstr_("%s"), file.c_str());
-				}
-				if (ImGui::Button(xorstr_("OK"), ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
-			}
-
-			if (ImGui::BeginPopupModal(xorstr_("No Legacy Configs Found"), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::Text(xorstr_("No legacy configs were found to convert."));
-				if (ImGui::Button(xorstr_("OK"), ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
-			}
-
-			if (ImGui::BeginPopupModal(xorstr_("Cannot Load Legacy Config"), NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-				ImGui::Text(xorstr_("Legacy configs cannot be loaded directly."));
-				ImGui::Text(xorstr_("Please use the 'Convert Legacy Configs' button first."));
-				if (ImGui::Button(xorstr_("OK"), ImVec2(120, 0))) {
-					ImGui::CloseCurrentPopup();
-				}
-				ImGui::EndPopup();
 			}
 
 			ImGui::NextColumn();
