@@ -351,10 +351,12 @@ void resetLean() {
 void Control::driveKeyboard() {
 	static bool moved = false;
 	static bool init = true;
+	static bool quickPeekTapFired = false;
 
 	while (!globals.shutdown) {
 		bool quickPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek);
 		bool hashomPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
+		bool quickPeekTapEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::QuickPeekTapKey);
 		bool peekActive = quickPeekEnabled || hashomPeekEnabled;
 
 		if (peekActive) {
@@ -369,6 +371,7 @@ void Control::driveKeyboard() {
 					resetLean();
 					settings.activeState.peekDirection = 1;
 					init = false;
+					quickPeekTapFired = false;
 
 					pressAndReleaseKey(leftLeanKey);
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -378,6 +381,7 @@ void Control::driveKeyboard() {
 					resetLean();
 					settings.activeState.peekDirection = 2;
 					init = false;
+					quickPeekTapFired = false;
 
 					pressAndReleaseKey(rightLeanKey);
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
@@ -392,6 +396,13 @@ void Control::driveKeyboard() {
 			// Integrated peek logic for both HashomPeek and QuickPeek
 			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x44) && !moved) {
 				// Started going left, now going right
+
+				if (quickPeekTapEnabled && !quickPeekTapFired) {
+					ut.pressMouse1(true);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					ut.pressMouse1(false);
+					quickPeekTapFired = true;
+				}
 
 				// Execute the integrated sequence
 				if (hashomPeekEnabled) {
@@ -422,11 +433,19 @@ void Control::driveKeyboard() {
 			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x41) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
+				quickPeekTapFired = false;
 			}
 
 			// Integrated peek logic for both HashomPeek and QuickPeek
 			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x41) && !moved) {
 				// Started going right, now going left
+
+				if (quickPeekTapEnabled && !quickPeekTapFired) {
+					ut.pressMouse1(true);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					ut.pressMouse1(false);
+					quickPeekTapFired = true;
+				}
 
 				// Execute the integrated sequence
 				if (hashomPeekEnabled) {
@@ -457,12 +476,14 @@ void Control::driveKeyboard() {
 			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x44) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
+				quickPeekTapFired = false;
 			}
 		}
 		else {
 			moved = false;
 			settings.activeState.peekDirection = 0;
 			init = true;
+			quickPeekTapFired = false;
 		}
 
 		if (settings.misc.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {

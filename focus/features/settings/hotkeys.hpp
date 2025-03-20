@@ -41,6 +41,7 @@ enum class HotkeyIndex {
 	LeanRightKey,
     MagnifierKey,
     OverlayKey,
+    QuickPeekTapKey,
     COUNT
 };
 

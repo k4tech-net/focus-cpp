@@ -140,7 +140,7 @@ void newConfigPopup(bool trigger, char* newConfigName) {
 				{ 0, 0.02f, 0.2f, 0.008f, 1.f },
 				{ 0, 3, 0, 20, 10, 80, 10, 5, -5, false },
 				{ 0, 0, 10, false },
-				{ 0, 15.0f, 5, false, 200, 100 }
+				{ 0, 15.0f, 5, false }
 			};
 
 			// Create a default character
@@ -1130,6 +1130,16 @@ void Menu::gui()
 					break;
 				}
 
+				if (ImGui::SliderInt(xorstr_("Primary Triggerbot Burst"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].triggerBurstDuration, 0, 500, xorstr_("%dms%"))) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
+
+				if (ImGui::SliderInt(xorstr_("Primary Triggerbot Delay"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].triggerFireDelay, 0, 500, xorstr_("%dms%"))) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("How long to wait before firing after target detection (0 = disabled)"));
+
 				ImGui::Spacing();
 				ImGui::Spacing();
 
@@ -1203,6 +1213,16 @@ void Menu::gui()
 					// No attachments
 					break;
 				}
+
+				if (ImGui::SliderInt(xorstr_("Seconday Triggerbot Burst"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].triggerBurstDuration, 0, 500, xorstr_("%dms%"))) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
+
+				if (ImGui::SliderInt(xorstr_("Secondary Triggerbot Delay"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].triggerFireDelay, 0, 500, xorstr_("%dms%"))) {
+					globals.filesystem.unsavedChanges = true;
+				}
+				tooltip(xorstr_("How long to wait before firing after target detection (0 = disabled)"));
 
 				ImGui::Spacing();
 				ImGui::Spacing();
@@ -1464,16 +1484,6 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("How long the Triggerbot will wait between shots"));
 
-			if (ImGui::SliderInt(xorstr_("Triggerbot Burst Duration"), &settings.aimbotData.triggerSettings.burstDuration, 0, 500, xorstr_("%dms%"))) {
-				globals.filesystem.unsavedChanges = true;
-			}
-			tooltip(xorstr_("How long to hold mouse button down (0 = disabled)"));
-
-			if (ImGui::SliderInt(xorstr_("Triggerbot Fire Delay"), &settings.aimbotData.triggerSettings.delay, 0, 500, xorstr_("%dms%"))) {
-				globals.filesystem.unsavedChanges = true;
-			}
-			tooltip(xorstr_("How long to wait before firing after target detection (0 = disabled)"));
-
 			ImGui::EndTabItem();
 		}
 
@@ -1489,6 +1499,11 @@ void Menu::gui()
 				globals.filesystem.unsavedChanges = true;
 			}
 			tooltip(xorstr_("Prone peeking\nMake sure the Prone Key is bound"));
+
+			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Quick-Peek Tap"), HotkeyIndex::QuickPeekTapKey)) {
+				globals.filesystem.unsavedChanges = true;
+			}
+			tooltip(xorstr_("Shoot once when counter-strafing during a quickpeek"));
 
 			if (ImGui::SliderInt(xorstr_("Auto Quick-Peek Delay"), &settings.misc.quickPeekDelay, 0, 200, xorstr_("%dms%"))) {
 				globals.filesystem.unsavedChanges = true;

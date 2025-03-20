@@ -436,20 +436,15 @@ void DXGI::triggerbot() {
             continue;
         }
 
-        currentWeaponHasRapidfire = false;
-        if (!settings.activeState.weaponOffOverride &&
-            settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+        // Cache weapon details once per iteration for performance
+        const characterData& currentCharacter = settings.characters[settings.activeState.selectedCharacterIndex];
+        const bool isPrimaryActive = settings.activeState.isPrimaryActive;
+        const int weaponIndex = isPrimaryActive ?
+            currentCharacter.selectedweapon[0] :
+            currentCharacter.selectedweapon[1];
+        const weaponData& currentWeapon = currentCharacter.weapondata[weaponIndex];
 
-            const auto& character = settings.characters[settings.activeState.selectedCharacterIndex];
-            if (!character.weapondata.empty()) {
-                int weaponIndex = settings.activeState.isPrimaryActive ?
-                    character.selectedweapon[0] : character.selectedweapon[1];
-
-                if (weaponIndex < character.weapondata.size()) {
-                    currentWeaponHasRapidfire = character.weapondata[weaponIndex].rapidfire;
-                }
-            }
-        }
+        currentWeaponHasRapidfire = currentWeapon.rapidfire;
 
         // Handle timing and state
         auto currentTime = std::chrono::steady_clock::now();
@@ -474,7 +469,7 @@ void DXGI::triggerbot() {
                 }
 
                 // End burst when duration is reached
-                if (burstElapsed >= settings.aimbotData.triggerSettings.burstDuration) {
+                if (burstElapsed >= currentWeapon.triggerBurstDuration) {
                     utils.pressMouse1(false);
                     isBurstActive = false;
                     justFired = true;
@@ -483,7 +478,7 @@ void DXGI::triggerbot() {
             }
             else {
                 // Standard burst for regular weapons
-                if (burstElapsed >= settings.aimbotData.triggerSettings.burstDuration) {
+                if (burstElapsed >= currentWeapon.triggerBurstDuration) {
                     utils.pressMouse1(false);
                     isBurstActive = false;
                     justFired = true;
@@ -615,8 +610,8 @@ void DXGI::triggerbot() {
             if (!mouseAlreadyDown && !isBurstActive) {
                 auto preDelayTime = std::chrono::steady_clock::now();
 
-                if (settings.aimbotData.triggerSettings.delay > 0) {
-                    std::this_thread::sleep_for(std::chrono::milliseconds(settings.aimbotData.triggerSettings.delay));
+                if (currentWeapon.triggerFireDelay > 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(currentWeapon.triggerFireDelay));
 
                     // Check if target is still valid after delay (recheck shouldTrigger condition)
                     if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
@@ -625,7 +620,7 @@ void DXGI::triggerbot() {
                     }
                 }
 
-                if (settings.aimbotData.triggerSettings.burstDuration > 0) {
+                if (currentWeapon.triggerBurstDuration > 0) {
                     // Burst mode
                     utils.pressMouse1(true);
                     isBurstActive = true;

@@ -139,8 +139,6 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.triggerSettings.radius = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.triggerSettings.showDebug = item == xorstr_("1");
             std::getline(ss, item, ','); aimbotData.triggerSettings.sleepTime = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.triggerSettings.burstDuration = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.triggerSettings.delay = std::stoi(item);
         }
         // Misc settings
         else if (key == xorstr_("Misc")) {
@@ -236,6 +234,12 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         else if (key == xorstr_("RapidFire")) {
             currentWeapon.rapidfire = (value == xorstr_("1"));
         }
+        else if (key == xorstr_("TriggerBurstDuration")) {
+            currentWeapon.triggerBurstDuration = std::stoi(value);
+    }
+        else if (key == xorstr_("TriggerFireDelay")) {
+            currentWeapon.triggerFireDelay = std::stoi(value);
+            }
         else if (key == xorstr_("Attachments")) {
             currentWeapon.attachments.clear();
             std::istringstream ss(value);
@@ -373,9 +377,7 @@ void Settings::saveSettings(const std::string& filename) {
         << settings.aimbotData.triggerSettings.sensitivity << xorstr_(",")
         << settings.aimbotData.triggerSettings.radius << xorstr_(",")
         << (settings.aimbotData.triggerSettings.showDebug ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
-        << settings.aimbotData.triggerSettings.sleepTime << xorstr_(",")
-        << settings.aimbotData.triggerSettings.burstDuration << xorstr_(",")
-        << settings.aimbotData.triggerSettings.delay << xorstr_("\n");
+        << settings.aimbotData.triggerSettings.sleepTime << xorstr_("\n");
     
     file << xorstr_("Misc=") 
         << misc.aimKeyMode << xorstr_(",") 
@@ -431,6 +433,9 @@ void Settings::saveSettings(const std::string& filename) {
                 file << xorstr_(";");
             }
             file << xorstr_("\n");
+
+            file << xorstr_("TriggerBurstDuration=") << weapon.triggerBurstDuration << xorstr_("\n");
+            file << xorstr_("TriggerFireDelay=") << weapon.triggerFireDelay << xorstr_("\n");
         }
     }
 }

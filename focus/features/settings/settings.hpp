@@ -24,11 +24,16 @@ struct weaponData {
     std::vector<int> attachments;
     std::vector<std::vector<float>> values;
 
+    int triggerBurstDuration = 0;
+	int triggerFireDelay = 0;
+
     bool operator==(const weaponData& other) const {
         return weaponname == other.weaponname &&
             rapidfire == other.rapidfire &&
 			attachments == other.attachments &&
-            values == other.values;
+            values == other.values &&
+            triggerBurstDuration == other.triggerBurstDuration &&
+            triggerFireDelay == other.triggerFireDelay;
     }
 };
 
@@ -73,8 +78,6 @@ struct triggerBotSettings {
     int radius = 0;
     bool showDebug = false;
     int sleepTime = 0;
-    int burstDuration = 0;
-    int delay = 0;
 };
 
 struct aimbotData {
