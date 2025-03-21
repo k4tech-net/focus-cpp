@@ -1,4 +1,4 @@
-#include "dxgi.hpp"
+﻿#include "dxgi.hpp"
 
 //Engine en;
 Utils utils;
@@ -42,7 +42,7 @@ bool DXGI::InitDXGI() {
 
 void DXGI::CaptureDesktopDXGI() {
 
-    while (!globals.shutdown) {
+    while (!globals.shutdown.load()) {
 
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
@@ -98,12 +98,12 @@ void DXGI::CaptureDesktopDXGI() {
         globals.capture.desktopMat = desktopImage;
         globals.capture.desktopMutex_.unlock();
 
-        if (!globals.capture.initDims) {
-			globals.capture.initDims = true;
-			globals.capture.desktopWidth = desktopImage.cols;
-			globals.capture.desktopHeight = desktopImage.rows;
-            globals.capture.desktopCenterX = globals.capture.desktopWidth / 2.0f;
-			globals.capture.desktopCenterY = globals.capture.desktopHeight / 2.0f;
+        if (!globals.capture.initDims.load()) {
+			globals.capture.initDims.store(true);
+			globals.capture.desktopWidth.store(desktopImage.cols);
+			globals.capture.desktopHeight.store(desktopImage.rows);
+            globals.capture.desktopCenterX.store(desktopImage.cols / 2.0f);
+			globals.capture.desktopCenterY.store(desktopImage.rows / 2.0f);
         }
 
         //imshow("output", frameCopy); // Debug window
@@ -181,17 +181,27 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
 	float mouseY = 0.0f;
 
     // Convert angles to mouse input where 7274 = 360 degrees
-    if (settings.mode == xorstr_("Game") && settings.game == xorstr_("Rust")) {
-        mouseX = (angleX / 360.0f) * constants.RUST360DIST;
-        mouseY = (angleY / 360.0f) * constants.RUST360DIST;
-    }
-    else {
-        mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
-        mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+    switch (settings.globalSettings.sensitivityCalculator) {
+    case 0:
+		mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
+		mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+		break;
+	case 1:
+		mouseX = (angleX / 360.0f) * constants.SIEGE360DIST;
+		mouseY = (angleY / 360.0f) * constants.SIEGE360DIST;
+		break;
+	case 2:
+		mouseX = (angleX / 360.0f) * constants.RUST360DIST;
+		mouseY = (angleY / 360.0f) * constants.RUST360DIST;
+		break;
+	case 3:
+		mouseX = (angleX / 360.0f) * constants.OW360DIST;
+		mouseY = (angleY / 360.0f) * constants.OW360DIST;
+		break;
     }
 
-    mouseX *= settings.fovSensitivityModifier;
-    mouseY *= settings.fovSensitivityModifier;
+    mouseX *= settings.activeState.fovSensitivityModifier;
+    mouseY *= settings.activeState.fovSensitivityModifier;
 
     return { mouseX, mouseY };
 }
@@ -248,19 +258,22 @@ void DXGI::aimbot() {
 
     bool aimbotInit = false;
 
-    // Pre-calculate ROI values
-    const float cropRatioX = 0.25f;
-    const float cropRatioY = 0.25f;
-    const float cropRatioWidth = 0.5f;
-    const float cropRatioHeight = 0.5f;
+    const float cropRatioHeight = 0.33f;
 
     std::unique_ptr<YoloInferencer> inferencer;
 
-    while (!globals.shutdown) {
+    while (!globals.shutdown.load()) {
 
         if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
                 inferencer.reset();
+
+                if (cudaDeviceReset() != cudaSuccess) {
+                    std::cerr << xorstr_("Warning: Failed to reset CUDA device") << std::endl;
+                }
+
+                std::this_thread::sleep_for(std::chrono::milliseconds(50));
+
                 aimbotInit = false;
             }
             settings.aimbotData.correctionX = 0;
@@ -269,7 +282,7 @@ void DXGI::aimbot() {
             continue;
         }
 
-        if (settings.aimbotData.type == 0 && settings.aimbotData.enabled && settings.game == xorstr_("Overwatch")) {
+        if (settings.aimbotData.type == 0 && settings.aimbotData.enabled) {
             if (globals.capture.desktopMat.empty()) {
                 std::this_thread::sleep_for(std::chrono::microseconds(100));
                 continue;
@@ -279,15 +292,21 @@ void DXGI::aimbot() {
             {
                 std::lock_guard<std::mutex> lock(globals.capture.desktopMutex_);
 
-                // Calculate ROI directly from desktop dimensions
+                // Calculate square ROI based on height (33%)
                 const int screenWidth = globals.capture.desktopMat.cols;
                 const int screenHeight = globals.capture.desktopMat.rows;
-                const cv::Rect roi(
-                    static_cast<int>(cropRatioX * screenWidth),
-                    static_cast<int>(cropRatioY * screenHeight),
-                    static_cast<int>(cropRatioWidth * screenWidth),
-                    static_cast<int>(cropRatioHeight * screenHeight)
-                );
+
+                // Height is 33% of screen height
+                const int roiHeight = static_cast<int>(cropRatioHeight * screenHeight);
+
+                // Width equals height for square aspect ratio
+                const int roiWidth = roiHeight;
+
+                // Center the square in the screen
+                const int roiX = (screenWidth - roiWidth) / 2;
+                const int roiY = (screenHeight - roiHeight) / 2;
+
+                const cv::Rect roi(roiX, roiY, roiWidth, roiHeight);
 
                 // Actually crop the image (this was missing in original code)
                 croppedImage = globals.capture.desktopMat(roi).clone();
@@ -305,11 +324,16 @@ void DXGI::aimbot() {
         }
         else if (settings.aimbotData.type == 1 && settings.aimbotData.enabled) {
             if (!aimbotInit) {
-                if (settings.aimbotData.aiAimbotSettings.provider == 1) {
-                    provider = xorstr_("CUDA");
-                }
-                else {
-                    provider = xorstr_("CPU");
+                switch (settings.aimbotData.aiAimbotSettings.provider) {
+                    case 0:
+                        provider = xorstr_("CPU");
+                        break;
+                    case 1:
+                        provider = xorstr_("CUDA");
+                        break;
+                    default:
+                        provider = xorstr_("TensorRT");
+                        break;
                 }
 
                 inferencer = std::make_unique<YoloInferencer>(modelPath, logid, provider);
@@ -327,17 +351,19 @@ void DXGI::aimbot() {
                     continue;
                 }
 
-                // Calculate square ROI based on height
+                // Calculate square ROI based on height (33%)
+                const int screenWidth = globals.capture.desktopMat.cols;
                 const int screenHeight = globals.capture.desktopMat.rows;
+
+                // Height is 33% of screen height
                 const int roiHeight = static_cast<int>(cropRatioHeight * screenHeight);
 
-                // Make the width equal to the height to create a square
+                // Width equals height for square aspect ratio
                 const int roiWidth = roiHeight;
 
-                // Center the square in the screen horizontally
-                const int screenWidth = globals.capture.desktopMat.cols;
+                // Center the square in the screen
                 const int roiX = (screenWidth - roiWidth) / 2;
-                const int roiY = static_cast<int>(cropRatioY * screenHeight);
+                const int roiY = (screenHeight - roiHeight) / 2;
 
                 const cv::Rect roi(roiX, roiY, roiWidth, roiHeight);
 
@@ -357,14 +383,291 @@ void DXGI::aimbot() {
                 continue;
             }
 
-            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
+            // draw detections on the image
+			for (const auto& detection : detections) {
+				cv::rectangle(croppedImage, detection.box, cv::Scalar(0, 255, 0), 2);
+			}
 
-            settings.aimbotData.correctionX = corrections[0];
-            settings.aimbotData.correctionY = corrections[1];
+            std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.globalSettings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
+
+            settings.aimbotData.correctionX = corrections[0] * settings.activeState.sensMultiplier_SensOnly[0];
+            settings.aimbotData.correctionY = corrections[1] * settings.activeState.sensMultiplier_SensOnly[1];
 
             if (settings.aimbotData.limitDetectorFps) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
             }
+        }
+    }
+
+    // Ensure clean shutdown
+    inferencer.reset();
+    cudaDeviceReset();
+}
+
+void DXGI::triggerbot() {
+    // Static buffers to avoid reallocations
+    static cv::Mat prevFrame, currentFrame, diffFrame;
+    static bool firstFrame = true;
+    static std::chrono::steady_clock::time_point lastTriggerTime = std::chrono::steady_clock::now();
+    static bool isBurstActive = false;
+    static std::chrono::steady_clock::time_point burstStartTime;
+    static bool debugWindowCreated = false;
+    static bool justFired = false;
+    static cv::Rect roi;
+    static int lastRadius = -1;
+    static bool currentWeaponHasRapidfire = false;
+
+    while (!globals.shutdown.load()) {
+        // Early exit if trigger key not active
+        if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
+            if (debugWindowCreated) {
+                cv::destroyWindow(xorstr_("TriggerBot Detection"));
+                debugWindowCreated = false;
+            }
+
+            if (isBurstActive) {
+                utils.pressMouse1(false);
+                isBurstActive = false;
+            }
+
+            firstFrame = true;
+            justFired = false;
+            std::this_thread::sleep_for(std::chrono::milliseconds(5));
+            continue;
+        }
+
+        // Cache weapon details once per iteration for performance
+        const characterData& currentCharacter = settings.characters[settings.activeState.selectedCharacterIndex];
+        const bool isPrimaryActive = settings.activeState.isPrimaryActive;
+        const int weaponIndex = isPrimaryActive ?
+            currentCharacter.selectedweapon[0] :
+            currentCharacter.selectedweapon[1];
+        const weaponData& currentWeapon = currentCharacter.weapondata[weaponIndex];
+
+        currentWeaponHasRapidfire = currentWeapon.rapidfire;
+
+        // Handle timing and state
+        auto currentTime = std::chrono::steady_clock::now();
+
+        // Process burst timing
+        if (isBurstActive) {
+            auto burstElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - burstStartTime).count();
+
+            if (currentWeaponHasRapidfire) {
+                // For rapidfire weapons, toggle the mouse state during burst
+                static bool buttonState = true;
+                static std::chrono::steady_clock::time_point lastToggleTime = burstStartTime;
+
+                auto timeSinceToggle = std::chrono::duration_cast<std::chrono::milliseconds>(
+                    currentTime - lastToggleTime).count();
+
+                // Toggle at a fixed rate for semi-auto weapons
+                if (timeSinceToggle >= 30) {  // 30ms between toggles
+                    buttonState = !buttonState;
+                    utils.pressMouse1(buttonState);
+                    lastToggleTime = currentTime;
+                }
+
+                // End burst when duration is reached
+                if (burstElapsed >= currentWeapon.triggerBurstDuration) {
+                    utils.pressMouse1(false);
+                    isBurstActive = false;
+                    justFired = true;
+                    firstFrame = true;
+                }
+            }
+            else {
+                // Standard burst for regular weapons
+                if (burstElapsed >= currentWeapon.triggerBurstDuration) {
+                    utils.pressMouse1(false);
+                    isBurstActive = false;
+                    justFired = true;
+                    firstFrame = true;
+                }
+            }
+
+            if (isBurstActive) {
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
+                continue;
+            }
+        }
+
+        // Check cooldown state
+        auto timeSinceLastTrigger = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTriggerTime).count();
+        bool inCooldown = timeSinceLastTrigger < settings.aimbotData.triggerSettings.sleepTime;
+
+        // Reset after cooldown
+        if (justFired && !inCooldown) {
+            firstFrame = true;
+            justFired = false;
+        }
+
+        // Skip processing during cooldown
+        if (inCooldown) {
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            continue;
+        }
+
+        // Get trigger settings (outside of lock)
+        const int radius = settings.aimbotData.triggerSettings.radius;
+        const float sensitivity = settings.aimbotData.triggerSettings.sensitivity;
+        const int detectionMethod = settings.aimbotData.triggerSettings.detectionMethod;
+
+        // Only recalculate ROI if radius changed
+        int desktopWidth = globals.capture.desktopWidth.load();
+        int desktopHeight = globals.capture.desktopHeight.load();
+
+        if (lastRadius != radius) {
+            const int centerX = desktopWidth / 2;
+            const int centerY = desktopHeight / 2;
+            roi = cv::Rect(
+                std::max(0, centerX - radius),
+                std::max(0, centerY - radius),
+                std::min(radius * 2, desktopWidth - (centerX - radius)),
+                std::min(radius * 2, desktopHeight - (centerY - radius))
+            );
+            lastRadius = radius;
+        }
+
+        // Capture with minimal lock time
+        {
+            std::lock_guard<std::mutex> lock(globals.capture.desktopMutex_);
+            if (globals.capture.desktopMat.empty()) {
+                std::this_thread::sleep_for(std::chrono::microseconds(200));
+                continue;
+            }
+
+            // Extract ROI directly to our static buffer
+            globals.capture.desktopMat(roi).copyTo(currentFrame);
+        }
+
+        if (currentFrame.empty()) {
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            continue;
+        }
+
+        // Minimal color conversion only if needed
+        if (currentFrame.channels() == 4) {
+            cv::cvtColor(currentFrame, currentFrame, cv::COLOR_BGRA2BGR);
+        }
+
+        // First frame initialization
+        if (firstFrame) {
+            currentFrame.copyTo(prevFrame);
+            firstFrame = false;
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            continue;
+        }
+
+        // Ensure correct size for comparison
+        if (prevFrame.size() != currentFrame.size()) {
+            currentFrame.copyTo(prevFrame);
+            std::this_thread::sleep_for(std::chrono::microseconds(200));
+            continue;
+        }
+
+        // Fast detection with early stopping
+        bool shouldTrigger = false;
+        double change = 0.0;
+
+        // Optimize detection order: start with the fastest method first
+        // Early stopping: if one detection method succeeds, skip others
+        if (detectionMethod == 0 || detectionMethod == 2) { // Color change
+            cv::Scalar prevMean = cv::mean(prevFrame);
+            cv::Scalar currentMean = cv::mean(currentFrame);
+
+            double colorChange = 0.0;
+            for (int i = 0; i < 3; i++) {
+                colorChange += std::abs(currentMean[i] - prevMean[i]);
+            }
+            colorChange /= 3.0;
+            change = colorChange;
+
+            // Early detection success
+            if (change > sensitivity) {
+                shouldTrigger = true;
+                // Skip motion detection if we've already detected change
+                if (detectionMethod == 0) {
+                    goto triggerDecision;
+                }
+            }
+        }
+
+        if (!shouldTrigger && (detectionMethod == 1 || detectionMethod == 2)) { // Motion detection
+            cv::absdiff(currentFrame, prevFrame, diffFrame);
+            cv::Scalar diffMean = cv::mean(diffFrame);
+
+            double motionChange = (diffMean[0] + diffMean[1] + diffMean[2]) / 3.0;
+            change = std::max(change, motionChange);
+
+            if (change > sensitivity) {
+                shouldTrigger = true;
+            }
+        }
+
+    triggerDecision:
+        // Trigger decision with minimal branching
+        if (shouldTrigger && !inCooldown && !justFired) {
+            bool mouseAlreadyDown = globals.mouseinfo.l_mouse_down.load(std::memory_order_relaxed);
+
+            if (!mouseAlreadyDown && !isBurstActive) {
+                auto preDelayTime = std::chrono::steady_clock::now();
+
+                if (currentWeapon.triggerFireDelay > 0) {
+                    std::this_thread::sleep_for(std::chrono::milliseconds(currentWeapon.triggerFireDelay));
+
+                    // Check if target is still valid after delay (recheck shouldTrigger condition)
+                    if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
+                        // User released trigger key during delay
+                        continue;
+                    }
+                }
+
+                if (currentWeapon.triggerBurstDuration > 0) {
+                    // Burst mode
+                    utils.pressMouse1(true);
+                    isBurstActive = true;
+                    burstStartTime = std::chrono::steady_clock::now();
+                }
+                else {
+                    // Single click mode - optimized for minimum latency
+                    utils.pressMouse1(true);
+                    std::this_thread::sleep_for(std::chrono::microseconds(300));
+                    utils.pressMouse1(false);
+                    justFired = true;
+                    firstFrame = true;
+                }
+
+                lastTriggerTime = preDelayTime;
+            }
+        }
+
+        // Debug visualization (only if enabled)
+        if (settings.aimbotData.triggerSettings.showDebug) {
+            cv::Mat debugFrame = currentFrame.clone();
+
+            std::string changeText = xorstr_("Change: ") + std::to_string(change);
+            cv::putText(debugFrame, changeText, cv::Point(5, 15), cv::FONT_HERSHEY_SIMPLEX, 0.5,
+                change > sensitivity ? cv::Scalar(0, 0, 255) : cv::Scalar(0, 255, 0), 1);
+
+            cv::imshow(xorstr_("TriggerBot Detection"), debugFrame);
+            cv::waitKey(1);
+            debugWindowCreated = true;
+        }
+        else if (debugWindowCreated) {
+            cv::destroyWindow(xorstr_("TriggerBot Detection"));
+            debugWindowCreated = false;
+        }
+
+        // Update previous frame - use copyTo for better performance
+        currentFrame.copyTo(prevFrame);
+
+        // Minimal sleep to allow other threads to run
+        if (settings.aimbotData.limitDetectorFps) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(15));
+        }
+        else {
+            std::this_thread::sleep_for(std::chrono::microseconds(200)); // ~5000 FPS
         }
     }
 }
@@ -492,8 +795,14 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
 
     int activeROI = 0;
 
-    if (((settings.mode == xorstr_("Character") && settings.characters[settings.selectedCharacterIndex].options[4]) ||
-        (settings.mode == xorstr_("Game") && settings.game == xorstr_("Siege") && settings.characters[settings.selectedCharacterIndex].options[1])) &&
+    if (settings.activeState.selectedCharacterIndex >= settings.characters.size() ||
+        settings.characters.empty()) {
+        settings.activeState.weaponOffOverride = true;
+        return;
+    }
+
+    if ((settings.characters[settings.activeState.selectedCharacterIndex].options.size() > 0) &&
+        settings.characters[settings.activeState.selectedCharacterIndex].options[0] &&
         primaryArea1 > minActiveAreaThreshold && primaryArea1 > primaryArea2 && primaryArea1 > primaryArea3) {
     
         if (totalBrightness2 > minActiveAreaThreshold && totalBrightness2 > totalBrightness3) {
@@ -523,18 +832,18 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     // Print the index of the active ROI or indicate neither if both are not active
     if (activeROI == 0 || activeROI == 1) {
         //std::cout << "Neither ROI is active" << std::endl;
-        settings.weaponOffOverride = true;
+        settings.activeState.weaponOffOverride = true;
     }
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
-        settings.weaponOffOverride = false;
+        settings.activeState.weaponOffOverride = false;
         if (activeROI == 2) {
-            settings.isPrimaryActive = true;
-            settings.weaponDataChanged = true;
+            settings.activeState.isPrimaryActive = true;
+            settings.activeState.weaponDataChanged = true;
         }
         else if (activeROI == 3) {
-            settings.isPrimaryActive = false;
-            settings.weaponDataChanged = true;
+            settings.activeState.isPrimaryActive = false;
+            settings.activeState.weaponDataChanged = true;
         }
     }
 }
@@ -569,8 +878,8 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     cv::Mat normalizedIcon = normalizeIconSize(src);
     IconHash hash = hashIcon(normalizedIcon);
 
-    //std::cout << xorstr_("Hash: ") << hash << std::endl;
-	//debugHammingDistances(hash);
+    /*std::cout << xorstr_("Hash: ") << hash << std::endl;
+	debugHammingDistances(hash);*/
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -597,7 +906,7 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
             }
         }
 
-        if (bestMatchPercentage <= 10.0f) {  // Adjust between 1-5% based on testing
+        if (bestMatchPercentage <= 12.5f) {  // Adjust between 1-5% based on testing
             operatorFound = true;
         }
     }
@@ -605,8 +914,8 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     if (operatorFound) {
         int characterIndex = utils.findCharacterIndex(detectedOperator);
         if (characterIndex != -1) {
-            settings.selectedCharacterIndex = characterIndex;
-            settings.weaponDataChanged = true;
+            settings.activeState.selectedCharacterIndex = characterIndex;
+            settings.activeState.weaponDataChanged = true;
 			return true;
         }
     }
@@ -772,7 +1081,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
     if (activeBoxIndex != -1 && maxColorScore >= MIN_WEIGHTED_SCORE) {
         std::string detectedWeapon = detectWeaponTypeWithMask(activeWeaponIcon);
 
-        settings.weaponOffOverride = false;
+        settings.activeState.weaponOffOverride = false;
 
         if (detectedWeapon == xorstr_("Unknown Weapon")) {
             return; // Don't set weapon if it's an unknown weapon
@@ -780,8 +1089,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Find the matching weapon in the weapondata vector
         int weaponIndex = -1;
-        for (size_t i = 0; i < settings.characters[settings.selectedCharacterIndex].weapondata.size(); ++i) {
-            if (settings.characters[settings.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
+        for (size_t i = 0; i < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size(); ++i) {
+            if (settings.characters[settings.activeState.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
                 weaponIndex = static_cast<int>(i);
                 break;
             }
@@ -789,9 +1098,9 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Set the selectedPrimary if a matching weapon is found
         if (weaponIndex != -1) {
-            settings.characters[settings.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
-            settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
-            settings.weaponDataChanged = true;
+            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
+            settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
+            settings.activeState.weaponDataChanged = true;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;
@@ -809,7 +1118,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         }*/
     }
     else {
-        settings.weaponOffOverride = true;
+        settings.activeState.weaponOffOverride = true;
     }
 }
 
@@ -839,8 +1148,9 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     frameCount++;
 
     if (!simdInitialized) {
-        hasAVX512 = globals.startup.avx == 2;
-        hasAVX2 = globals.startup.avx >= 1;
+        int avx = globals.startup.avx.load();
+        hasAVX512 = avx == 2;
+        hasAVX2 = avx >= 1;
         simdInitialized = true;
     }
 
@@ -1190,15 +1500,17 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     }
 
     if (targetFound) {
+        std::vector<float> sens = settings.activeState.sensMultiplier_SensOnly;
+
         static const float fovScale = constants.OW360DIST * 2.0f / 360.0f;
-        const float pixelsPerDegree = static_cast<float>(src.cols) / settings.fov;  // Note: using original size
+        const float pixelsPerDegree = static_cast<float>(src.cols) / settings.globalSettings.fov;  // Note: using original size
 
         // Scale back up to original coordinates
         const float scaledX = (targetPoint.x * 2) - src.cols / 2;
         const float scaledY = (targetPoint.y * 2) - src.rows / 2;
 
-        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale;
-        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale;
+        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale * sens[0];
+        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale * sens[1];
 
         if (settings.aimbotData.colourAimbotSettings.debugView) {
             cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);

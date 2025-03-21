@@ -32,7 +32,7 @@ std::string clientVerificationKey = xorstr_("4783086bd5eacdea0f09c8fc6fea1642df9
 
 int main()
 {	
-	SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
+	//SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
 
 	WNDCLASSEXW wc = { sizeof(wc), CS_CLASSDC, WndProc, 0L, 0L, GetModuleHandle(nullptr), nullptr, nullptr, nullptr, nullptr, L"Focus", nullptr };
 	::RegisterClassExW(&wc);
@@ -109,12 +109,12 @@ int main()
 		auto current_time = std::chrono::high_resolution_clock::now();
 		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
 
-		if (elapsed_time >= 5 && globals.startup.hasFinished) {
-			if (globals.startup.passedstartup) {
+		if (elapsed_time >= 5 && globals.startup.hasFinished.load()) {
+			if (globals.startup.passedstartup.load()) {
 				startupchecks = false;
 			}
 			else {
-				globals.initshutdown = true;
+				globals.initshutdown.store(true);
 				startupchecks = false;
 			}
 		}
@@ -144,21 +144,18 @@ int main()
 	std::thread driveKeyboardThread(&Control::driveKeyboard, &ctr);
 	std::thread captureDesktopThread(&DXGI::CaptureDesktopDXGI, &dx);
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
+	std::thread triggerbotThread(&DXGI::triggerbot, &dx);
 
-	//#if !_DEBUG
-	//std::thread mouseScrollThread(&Menu::mouseScrollHandler, &mn);
-	//#endif
-
-	while (!globals.done) {
+	while (!globals.done.load()) {
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 		{
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 			if (msg.message == WM_QUIT)
-				globals.done = true;
+				globals.done.store(true);
 		}
-		if (globals.done)
+		if (globals.done.load())
 			break;
 
 		// Handle window resize (we don't resize directly in the WM_SIZE handler)
@@ -191,12 +188,12 @@ int main()
 		mn.gui();
 
 		//if (GetAsyncKeyState(VK_RSHIFT)) {
-			//if (!globals.desktopMat.empty()) {
-			//	globals.desktopMutex_.lock();
+			//if (!globals.capture.desktopMat.empty()) {
+			//	globals.capture.desktopMutex_.lock();
 			//	cv::Mat desktop;
-			//	cv::resize(globals.desktopMat, desktop, cv::Size(1920, 1080));
+			//	cv::resize(globals.capture.desktopMat, desktop, cv::Size(1920, 1080));
 			//	cv::imshow("output", desktop); // Debug window
-			//	globals.desktopMutex_.unlock();
+			//	globals.capture.desktopMutex_.unlock();
 			//}
 		//}
 
@@ -231,22 +228,19 @@ int main()
 	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
-	globals.shutdown = true;
+	globals.shutdown.store(true);
 
 	#if !_DEBUG
 	watchdogThread.join();
 	#endif
 
+	triggerbotThread.join();
 	aimbotThread.join();
 	captureDesktopThread.join();
 	driveKeyboardThread.join();
 	driveAimbotThread.join();
 	driveMouseThread.join();
   
-	//#if !_DEBUG
-	//mouseScrollThread.join();
-	//#endif
-
 	CleanupDeviceD3D();
 	::DestroyWindow(hwnd);
 	::UnregisterClassW(wc.lpszClassName, wc.hInstance);
@@ -260,7 +254,7 @@ extern "C" __declspec(dllexport) bool verification(const char* iv, const char* v
 
 	std::string decryptedVerificationKey = cr.decryptDecode(verificationKey, key, iv);
 
-	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown) {
+	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown.load()) {
 		cr.lastAuthTime.store(std::chrono::steady_clock::now());
 		return true;
 	}

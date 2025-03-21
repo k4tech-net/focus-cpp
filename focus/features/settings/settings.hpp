@@ -15,32 +15,33 @@
 #include "opencv2/imgproc.hpp"
 #include "opencv2/highgui.hpp"
 
-#include <nlohmann/json.hpp>
-
 #include "../imgui/imgui.h"
 #include "hotkeys.hpp"
-
-using json = nlohmann::json;
 
 struct weaponData {
     std::string weaponname = "";
     bool rapidfire = false;
-    std::vector<int> attachments = { 0, 0, 0 };
+    std::vector<int> attachments;
     std::vector<std::vector<float>> values;
+
+    int triggerBurstDuration = 0;
+	int triggerFireDelay = 0;
 
     bool operator==(const weaponData& other) const {
         return weaponname == other.weaponname &&
             rapidfire == other.rapidfire &&
 			attachments == other.attachments &&
-            values == other.values;
+            values == other.values &&
+            triggerBurstDuration == other.triggerBurstDuration &&
+            triggerFireDelay == other.triggerFireDelay;
     }
 };
 
 struct characterData {
     std::string charactername = "";
     std::vector<weaponData> weapondata;
-    std::vector<bool> options = { false, false, false, false, false };
-    std::vector<int> selectedweapon = { 0, 0 };
+    std::vector<bool> options;
+    std::vector<int> selectedweapon;
 };
 
 struct pidSettings {
@@ -71,6 +72,14 @@ struct aiAimbotSettings {
     bool forceHitbox = false;
 };
 
+struct triggerBotSettings {
+    int detectionMethod = 0;
+    float sensitivity = 0.f;
+    int radius = 0;
+    bool showDebug = false;
+    int sleepTime = 0;
+};
+
 struct aimbotData {
 	int correctionX = 0;
 	int correctionY = 0;
@@ -78,14 +87,31 @@ struct aimbotData {
     int type = 0;
     int maxDistance = 0;
     int aimFov = 0;
-    float triggerFov = 0;
-    int triggerSleep = 0;
     bool limitDetectorFps = false;
-    int triggerBurstDuration = 0;
     int verticalCorrection = 0;
+    
     pidSettings pidSettings;
     colourAimbotSettings colourAimbotSettings;
 	aiAimbotSettings aiAimbotSettings;
+    triggerBotSettings triggerSettings;
+};
+
+struct globalSettings {
+    bool potato = false;
+    int sensitivityCalculator = 0;
+    std::vector<bool> characterDetectors = { false };
+    std::vector<bool> weaponDetectors = { false, false };
+
+    std::vector<float> sensitivity = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, };
+    int aspect_ratio = 0;
+    float fov = 0;
+};
+
+struct overlaySettings {
+    bool showInfo = false;
+
+    float magnifierZoom = 0.f;
+    int magnifierSize = 0;
 };
 
 struct miscSettings {
@@ -93,86 +119,90 @@ struct miscSettings {
     int recoilKeyMode = 0;
     int quickPeekDelay = 0;
     HotkeySystem hotkeys;
+    overlaySettings overlay;
+};
+
+struct activeState {
+	int selectedCharacterIndex = 0;
+	bool isPrimaryActive = true;
+	bool weaponOffOverride = false;
+	bool weaponDataChanged = false;
+	bool pidDataChanged = false;
+    int peekDirection = 0;
+
+	std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+    std::vector<float> sensMultiplier_SensOnly = { 1.0f, 1.0f };
+    float fovSensitivityModifier = 1.f;
 };
 
 class Settings 
 {
 public:
     // Global settings
-    std::string mode = "";
-    bool potato = false;
+    globalSettings globalSettings;
+
+	// Aimbot data
     aimbotData aimbotData;
-
-    // Character mode settings
-    std::vector<std::string> wpn_keybinds;
-    std::vector<std::string> aux_keybinds;
-
-    // Game mode settings
-    std::string game = "";
-    std::vector<float> sensitivity;
-    int aspect_ratio = 0;
-    float fov = 0;
-    float fovSensitivityModifier = 1.f;
 
     // Character data
     std::vector<characterData> characters;
 
-    // Active state
-    int selectedCharacterIndex = 0;
-    bool isPrimaryActive = true;
-    bool weaponOffOverride = false;
-    bool weaponDataChanged = false;
-    bool pidDataChanged = false;
-    std::vector<float> sensMultiplier = { 1.0f, 1.0f };
+	// Active state
+	activeState activeState;
 
     // Misc Settings
 	miscSettings misc;
 
+    bool isLegacyConfig(const std::string& filename);
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
 };
 
 struct Globals
 {
-    bool shutdown = false;
-    bool initshutdown = false;
-    bool done = false;
+    std::atomic<bool> shutdown{ false };
+    std::atomic<bool> initshutdown{ false };
+    std::atomic<bool> done{ false };
 
     struct FileSystem {
         std::vector<std::string> configFiles;
         std::string activeFile = "";
-        bool unsavedChanges = false;
-        int activeFileIndex = 0;
+        std::atomic<bool> unsavedChanges{ false };
+        std::atomic<int> activeFileIndex{ 0 };
     } filesystem;
 
     struct Startup {
-        bool passedstartup = false;
-        bool mouse_driver = false;
-        bool keyboard_driver = false;
-        bool files = false;
-        bool dxgi = false;
-        bool marker = false;
-        bool hasFinished = false;
-        int avx = -1;
+        std::atomic<bool> passedstartup{ false };
+        std::atomic<bool> mouse_driver{ false };
+        std::atomic<bool> keyboard_driver{ false };
+        std::atomic<bool> files{ false };
+        std::atomic<bool> dxgi{ false };
+        std::atomic<bool> marker{ false };
+        std::atomic<bool> hasFinished{ false };
+        std::atomic<int> avx{ -1 };
     } startup;
 
     struct MouseInfo {
-		std::atomic<bool> l_mouse_down = false;
-		std::atomic<bool> r_mouse_down = false;
-        std::atomic<ULONG> marker = 0;
+        std::atomic<bool> l_mouse_down{ false };
+        std::atomic<bool> r_mouse_down{ false };
+        std::atomic<ULONG> marker{ false };
     } mouseinfo;
 
     struct Capture {
         cv::Mat desktopMat;
         std::mutex desktopMutex_;
-        int desktopWidth = 0;
-		int desktopHeight = 0;
-        int desktopCenterX = 0;
-		int desktopCenterY = 0;
-        bool initDims = false;
+        std::atomic<int> desktopWidth{ 0 };
+        std::atomic<int> desktopHeight{ 0 };
+        std::atomic<int> desktopCenterX{ 0 };
+        std::atomic<int> desktopCenterY{ 0 };
+        std::atomic<bool> initDims{ false };
     } capture;
 
-    std::atomic<float> inferenceTimeMs{ 0.0f };
+    struct Engine {
+        std::atomic<bool> isEngineBuildingInProgress{ false };
+        std::atomic<float> engineBuildProgress{ 0.0f };
+        std::atomic<float> inferenceTimeMs{ 0.0f };
+    } engine;
 };
 
 struct Constants {

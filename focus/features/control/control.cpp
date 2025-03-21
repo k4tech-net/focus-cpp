@@ -2,19 +2,6 @@
 
 Utils ut;
 
-void pressMouse1(bool press) {
-	INPUT input;
-	input.type = INPUT_MOUSE;
-	input.mi.dx = 0;
-	input.mi.dy = 0;
-	input.mi.mouseData = 0;
-	input.mi.dwFlags = press ? MOUSEEVENTF_LEFTDOWN : MOUSEEVENTF_LEFTUP;
-	input.mi.time = 0;
-	input.mi.dwExtraInfo = globals.mouseinfo.marker.load(std::memory_order_relaxed);
-
-	SendInput(1, &input, sizeof(INPUT));
-}
-
 //void pressMouse1(bool press) {
 //	if (press) {
 //		ms.press(VK_LBUTTON);
@@ -56,20 +43,57 @@ void Control::driveMouse() {
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
 
-	while (!globals.shutdown) {
-		// Check if the selected weapon has changed
+	while (!globals.shutdown.load()) {
 
-		if (settings.weaponDataChanged) {
-			settings.weaponDataChanged = false;
-			
-			if (settings.isPrimaryActive) {
-				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[0]];
+		// Check if the selected weapon has changed
+		if (settings.activeState.weaponDataChanged) {
+			settings.activeState.weaponDataChanged = false;
+
+			// Validate character index is within bounds
+			if (settings.activeState.selectedCharacterIndex >= 0 &&
+				settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+
+				// Get reference to current character for readability
+				const auto& character = settings.characters[settings.activeState.selectedCharacterIndex];
+
+				// Validate that the character has weapons data
+				if (!character.weapondata.empty()) {
+					// Ensure weapon indices are valid
+					int primaryIndex = 0;
+					int secondaryIndex = 0;
+
+					// Validate primary weapon index is within bounds
+					if (character.selectedweapon.size() > 0) {
+						primaryIndex = std::min(character.selectedweapon[0],
+							static_cast<int>(character.weapondata.size()) - 1);
+					}
+
+					// Validate secondary weapon index is within bounds
+					if (character.selectedweapon.size() > 1) {
+						secondaryIndex = std::min(character.selectedweapon[1],
+							static_cast<int>(character.weapondata.size()) - 1);
+					}
+
+					// Select the appropriate weapon based on active state
+					if (settings.activeState.isPrimaryActive) {
+						currwpn = character.weapondata[primaryIndex];
+					}
+					else {
+						currwpn = character.weapondata[secondaryIndex];
+					}
+
+					// Update max instructions for the weapon
+					maxInstructions = currwpn.values.size();
+				}
+				else {
+					// Handle case where character has no weapons
+					maxInstructions = 0;
+				}
 			}
 			else {
-				currwpn = settings.characters[settings.selectedCharacterIndex].weapondata[settings.characters[settings.selectedCharacterIndex].selectedweapon[1]];
+				// Handle case where character index is invalid
+				maxInstructions = 0;
 			}
-
-			maxInstructions = currwpn.values.size();
 		}
 
 		// Check mouse button states based on keymode
@@ -92,7 +116,7 @@ void Control::driveMouse() {
 			break;
 		}
 
-		while (mouseCondition && !complete && !settings.weaponOffOverride) {
+		while (mouseCondition && !complete && !settings.activeState.weaponOffOverride) {
 			for (int index = 0; index < maxInstructions; index++) {
 				auto& instruction = currwpn.values[index];
 				float x = instruction[0];
@@ -108,7 +132,7 @@ void Control::driveMouse() {
 					auto elapsed = std::chrono::high_resolution_clock::now() - currtime;
 					int_timer = std::chrono::duration_cast<std::chrono::milliseconds>(elapsed).count() / 1000.0f;
 
-					std::vector<float> sens = settings.sensMultiplier;
+					std::vector<float> sens = settings.activeState.sensMultiplier;
 					xAccumulator += x * sens[0];
 					yAccumulator += y * sens[1];
 
@@ -121,13 +145,13 @@ void Control::driveMouse() {
 					ms.moveR(xMove, yMove);
 
 					if (currwpn.rapidfire && cycles >= 8 && globals.mouseinfo.l_mouse_down) {
-						pressMouse1(flipFlop);
+						ut.pressMouse1(flipFlop);
 						flipFlop = !flipFlop;
 					}
 
 					cycles++;
 
-					if (settings.potato) {
+					if (settings.globalSettings.potato) {
 						std::this_thread::sleep_until(nextExecution);
 					}
 					else {
@@ -163,7 +187,7 @@ void Control::driveMouse() {
 		if (!mouseCondition) {
 
 			if (cycles > 8 || !flipFlop) {
-				pressMouse1(false);
+				ut.pressMouse1(false);
 				flipFlop = true;
 			}
 
@@ -205,7 +229,7 @@ void Control::driveMouse() {
 			//}
 		}
 
-		if (settings.potato) {
+		if (settings.globalSettings.potato) {
 			std::this_thread::sleep_for(std::chrono::nanoseconds(500));
 		}
 		//ut.preciseSleepFor(0.0005); // uses too much resources
@@ -225,18 +249,18 @@ void Control::driveAimbot() {
 	bool burstActive = false;
 	std::chrono::steady_clock::time_point burstStartTime;
 
-	while (!globals.shutdown) {
-		if (settings.pidDataChanged) {
+	while (!globals.shutdown.load()) {
+		// Update PID settings if needed
+		if (settings.activeState.pidDataChanged) {
 			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
 			pidY.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
 			pidX.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
 			pidY.setIntegralRampTime(settings.aimbotData.pidSettings.rampUpTime);
-			settings.pidDataChanged = false;
+			settings.activeState.pidDataChanged = false;
 		}
 
-		// Check activation conditions based on keymode
+		// ===== AIMBOT SECTION =====
 		bool aimbotCondition = false;
-		bool triggerBotCondition = false;
 		bool l_mouse = globals.mouseinfo.l_mouse_down.load();
 		bool r_mouse = globals.mouseinfo.r_mouse_down.load();
 
@@ -255,99 +279,29 @@ void Control::driveAimbot() {
 			break;
 		}
 
-		triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
-		if (!triggerBotCondition) {
-			canTrigger = true;
-
-			// End burst if triggerbot key is released
-			if (burstActive) {
-				pressMouse1(false);
-				burstActive = false;
-			}
-		}
-
-		// Main aimbot loop
-		while ((aimbotCondition || triggerBotCondition) && !settings.weaponOffOverride) {
-			// Calculate PID corrections
+		// Main aimbot loop - completely separate from triggerbot
+		if (aimbotCondition && settings.aimbotData.enabled && !settings.activeState.weaponOffOverride) {
 			float pidCorrectionX = 0;
 			float pidCorrectionY = 0;
 
-			// Check if burst is active and should be terminated
-			auto currentTime = std::chrono::steady_clock::now();
-			if (burstActive) {
-				auto burstElapsed = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - burstStartTime).count();
-				if (burstElapsed >= settings.aimbotData.triggerBurstDuration) {
-					// Only release if we initiated the press (don't interfere with user holding mouse1)
-					if (!l_mouse) {
-						pressMouse1(false);
-					}
-					burstActive = false;
-				}
-			}
-
-			// Check if enough time has passed since last trigger
-			auto timeSinceLastTrigger = std::chrono::duration_cast<std::chrono::milliseconds>(currentTime - lastTriggerTime).count();
-			if (timeSinceLastTrigger >= settings.aimbotData.triggerSleep) {
-				canTrigger = true;
-			}
-
 			// Only calculate corrections if we have valid tracking data
 			if (settings.aimbotData.correctionX != 0 || settings.aimbotData.correctionY != 0) {
-
-				// Triggerbot FOV Check
-				if (triggerBotCondition && canTrigger) {
-					const float triggerbotFovPercentage = settings.aimbotData.triggerFov / 50.f;
-					const int triggerbotFovPixelsX = static_cast<int>(triggerbotFovPercentage * globals.capture.desktopWidth);
-					const int triggerbotFovPixelsY = static_cast<int>(triggerbotFovPercentage * globals.capture.desktopHeight);
-					bool withinTriggerbotFov = std::abs(settings.aimbotData.correctionX) < triggerbotFovPixelsX && std::abs(settings.aimbotData.correctionY) < triggerbotFovPixelsY;
-
-					if (withinTriggerbotFov) {
-						// Check if mouse1 is already being held down
-						bool mouseAlreadyDown = globals.mouseinfo.l_mouse_down.load(std::memory_order_relaxed);
-
-						// Handle burst mode vs. single click mode
-						if (settings.aimbotData.triggerBurstDuration > 0) {
-							// Burst mode
-							if (!mouseAlreadyDown && !burstActive) {
-								// Start burst only if user isn't already holding mouse1 and no burst is active
-								pressMouse1(true);
-								burstActive = true;
-								burstStartTime = currentTime;
-							}
-						}
-						else {
-							// Single click mode
-							if (!mouseAlreadyDown) {
-								// Only do a click if the user isn't already holding the button
-								pressMouse1(true);
-								std::this_thread::sleep_for(std::chrono::milliseconds(1));
-								pressMouse1(false);
-							}
-						}
-
-						lastTriggerTime = currentTime;
-						canTrigger = false;
-					}
-				}
-
 				// Aimbot FOV Check
-				if (aimbotCondition) {
-					const float aimbotFovPercentage = settings.aimbotData.aimFov / 50.f;
-					const int aimbotFovPixelsX = static_cast<int>(aimbotFovPercentage * globals.capture.desktopWidth);
-					const int aimbotFovPixelsY = static_cast<int>(aimbotFovPercentage * globals.capture.desktopHeight);
-					bool withinAimbotFov = std::abs(settings.aimbotData.correctionX) < aimbotFovPixelsX && std::abs(settings.aimbotData.correctionY) < aimbotFovPixelsY;
+				const float aimbotFovPercentage = settings.aimbotData.aimFov / 50.f;
+				const int aimbotFovPixelsX = static_cast<int>(aimbotFovPercentage * globals.capture.desktopWidth.load());
+				const int aimbotFovPixelsY = static_cast<int>(aimbotFovPercentage * globals.capture.desktopHeight.load());
+				bool withinAimbotFov = std::abs(settings.aimbotData.correctionX) < aimbotFovPixelsX &&
+					std::abs(settings.aimbotData.correctionY) < aimbotFovPixelsY;
 
-					if (withinAimbotFov) {
-						// Calculate PID corrections only if within FOV
-						pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
-
-						pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * PERCENT(settings.aimbotData.verticalCorrection);
-					}
-					else {
-						// Outside FOV - reset corrections
-						settings.aimbotData.correctionX = 0;
-						settings.aimbotData.correctionY = 0;
-					}
+				if (withinAimbotFov) {
+					// Calculate PID corrections only if within FOV
+					pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
+					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * PERCENT(settings.aimbotData.verticalCorrection);
+				}
+				else {
+					// Outside FOV - reset corrections
+					settings.aimbotData.correctionX = 0;
+					settings.aimbotData.correctionY = 0;
 				}
 			}
 
@@ -360,50 +314,11 @@ void Control::driveAimbot() {
 			if (xMove != 0 || yMove != 0) {
 				ms.moveR(xMove, yMove);
 			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-
-			// Update mouseCondition
-			l_mouse = globals.mouseinfo.l_mouse_down.load();
-			r_mouse = globals.mouseinfo.r_mouse_down.load();
-
-			switch (settings.misc.aimKeyMode) {
-			case 0:
-				aimbotCondition = l_mouse && r_mouse;
-				break;
-			case 1:
-				aimbotCondition = l_mouse;
-				break;
-			case 2:
-				aimbotCondition = r_mouse;
-				break;
-			case 3:
-				aimbotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::AimKey);
-				break;
-			}
-
-			triggerBotCondition = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
-			if (!triggerBotCondition) {
-				canTrigger = true;
-
-				// End burst if triggerbot key is released
-				if (burstActive) {
-					pressMouse1(false);
-					burstActive = false;
-				}
-			}
 		}
-
 		// Reset PID controllers when not active
-		if (!aimbotCondition) {
+		else if (!aimbotCondition) {
 			pidX.reset();
 			pidY.reset();
-		}
-
-		// Ensure burst is canceled if we exit the aimbot loop
-		if (burstActive && !triggerBotCondition) {
-			pressMouse1(false);
-			burstActive = false;
 		}
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -435,164 +350,145 @@ void resetLean() {
 
 void Control::driveKeyboard() {
 	static bool moved = false;
-	static int direction = 0;
 	static bool init = true;
+	static bool quickPeekTapFired = false;
 
-	//NetworkBlocker nb;
+	while (!globals.shutdown.load()) {
+		bool quickPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek);
+		bool hashomPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
+		bool quickPeekTapEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::QuickPeekTapKey);
+		bool peekActive = quickPeekEnabled || hashomPeekEnabled;
 
-	//nb.initForR6();
-
-	while (!globals.shutdown) {
-		if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek)) {
+		if (peekActive) {
 			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
 			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
-
-			if (init) {
-				// Going Left
-				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
-					resetLean();
-					direction = 1;
-					init = false;
-
-					pressAndReleaseKey(leftLeanKey);
-
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
-				}
-				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
-					resetLean();
-					direction = 2;
-					init = false;
-
-					pressAndReleaseKey(rightLeanKey);
-
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
-				}
-				else {
-					moved = false;
-					direction = 0;
-					init = true;
-				}
-			}
-
-			// Was going left, now right
-			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				kb.keyboard_press(rightLeanKey);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(leftLeanKey);
-				std::this_thread::sleep_for(std::chrono::microseconds(10));
-				kb.keyboard_release();
-
-				moved = true;
-			}
-
-			// Wait until moving left again
-			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				moved = false;
-			}
-
-			// Was going right, now left
-			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				kb.keyboard_press(leftLeanKey);
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
-				kb.keyboard_press(rightLeanKey);
-				std::this_thread::sleep_for(std::chrono::microseconds(10));
-				kb.keyboard_release();
-
-				moved = true;
-			}
-
-			// Wait until moving right again
-			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
-				std::this_thread::sleep_for(std::chrono::milliseconds(100));
-				moved = false;
-			}
-		}
-		else if (settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek)) {
 			KeyboardKey proneKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::ProneKey));
-			KeyboardKey leftLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanLeftKey));
-			KeyboardKey rightLeanKey = Keyboard::VKToKeyboardKey(settings.misc.hotkeys.GetHotkeyVK(HotkeyIndex::LeanRightKey));
 
 			if (init) {
-				// Going Left
+				// Initial detection of direction
 				if (GetAsyncKeyState(0x41) && !GetAsyncKeyState(0x44)) {
+					// Going Left
 					resetLean();
-					direction = 1;
+					settings.activeState.peekDirection = 1;
 					init = false;
+					quickPeekTapFired = false;
 
 					pressAndReleaseKey(leftLeanKey);
-
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
-				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) { // Going Right
+				else if (GetAsyncKeyState(0x44) && !GetAsyncKeyState(0x41)) {
+					// Going Right
 					resetLean();
-					direction = 2;
+					settings.activeState.peekDirection = 2;
 					init = false;
+					quickPeekTapFired = false;
 
 					pressAndReleaseKey(rightLeanKey);
-
 					std::this_thread::sleep_for(std::chrono::microseconds(50));
 				}
 				else {
 					moved = false;
-					direction = 0;
+					settings.activeState.peekDirection = 0;
 					init = true;
 				}
 			}
 
-			// Was going left, now right
-			if (direction == 1 && GetAsyncKeyState(0x44) && !moved) {
-				pressAndReleaseKey(proneKey);
+			// Integrated peek logic for both HashomPeek and QuickPeek
+			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x44) && !moved) {
+				// Started going left, now going right
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+				if (quickPeekTapEnabled && !quickPeekTapFired) {
+					ut.pressMouse1(true);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					ut.pressMouse1(false);
+					quickPeekTapFired = true;
+				}
 
-				pressAndReleaseKey(proneKey);
+				// Execute the integrated sequence
+				if (hashomPeekEnabled) {
+					// First the prone (Hashom part 1)
+					pressAndReleaseKey(proneKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+				}
+
+				if (quickPeekEnabled) {
+					// Then the counter-lean (Quick peek part)
+					kb.keyboard_press(rightLeanKey);
+					std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					kb.keyboard_press(leftLeanKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+
+				if (hashomPeekEnabled) {
+					// Then the second prone (Hashom part 2)
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					pressAndReleaseKey(proneKey);
+				}
 
 				moved = true;
 			}
 
 			// Wait until moving left again
-			if (direction == 1 && GetAsyncKeyState(0x41) && moved) {
+			if (settings.activeState.peekDirection == 1 && GetAsyncKeyState(0x41) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
+				quickPeekTapFired = false;
 			}
 
-			// Was going right, now left
-			if (direction == 2 && GetAsyncKeyState(0x41) && !moved) {
-				pressAndReleaseKey(proneKey);
+			// Integrated peek logic for both HashomPeek and QuickPeek
+			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x41) && !moved) {
+				// Started going right, now going left
 
-				std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+				if (quickPeekTapEnabled && !quickPeekTapFired) {
+					ut.pressMouse1(true);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					ut.pressMouse1(false);
+					quickPeekTapFired = true;
+				}
 
-				pressAndReleaseKey(proneKey);
+				// Execute the integrated sequence
+				if (hashomPeekEnabled) {
+					// First the prone (Hashom part 1)
+					pressAndReleaseKey(proneKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+				}
+
+				if (quickPeekEnabled) {
+					// Then the counter-lean (Quick peek part)
+					kb.keyboard_press(leftLeanKey);
+					std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					kb.keyboard_press(rightLeanKey);
+					std::this_thread::sleep_for(std::chrono::microseconds(10));
+					kb.keyboard_release();
+				}
+
+				if (hashomPeekEnabled) {
+					// Then the second prone (Hashom part 2)
+					std::this_thread::sleep_for(std::chrono::microseconds(50));
+					pressAndReleaseKey(proneKey);
+				}
 
 				moved = true;
 			}
 
 			// Wait until moving right again
-			if (direction == 2 && GetAsyncKeyState(0x44) && moved) {
+			if (settings.activeState.peekDirection == 2 && GetAsyncKeyState(0x44) && moved) {
 				std::this_thread::sleep_for(std::chrono::milliseconds(100));
 				moved = false;
+				quickPeekTapFired = false;
 			}
 		}
 		else {
 			moved = false;
-			direction = 0;
+			settings.activeState.peekDirection = 0;
 			init = true;
+			quickPeekTapFired = false;
 		}
 
 		if (settings.misc.hotkeys.IsActive(HotkeyIndex::FakeSpinBot)) {
-			
 			ms.moveR(50000, 1000);
 		}
-
-		/*if (settings.misc.hotkeys.IsActive(HotkeyIndex::DimXKey)) {
-			if (!nb.isCurrentlyBlocking()) {
-				nb.enableBlocking();
-			}
-		}
-		else if (nb.isCurrentlyBlocking()) {
-			nb.disableBlocking();
-		}*/
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(1));
 	}

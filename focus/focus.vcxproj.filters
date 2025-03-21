@@ -72,6 +72,9 @@
     <ClCompile Include="features\network\network.cpp">
       <Filter>features\network</Filter>
     </ClCompile>
+    <ClCompile Include="features\overlay\overlay.cpp">
+      <Filter>features\overlay</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="features">
@@ -109,6 +112,9 @@
     </Filter>
     <Filter Include="features\network">
       <UniqueIdentifier>{8a1626d7-90fe-4b79-8c6a-344af0cf43f8}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="features\overlay">
+      <UniqueIdentifier>{d25c1825-fb9b-4f76-91e5-321bd3e8244c}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -187,6 +193,9 @@
     </ClInclude>
     <ClInclude Include="features\network\network.hpp">
       <Filter>features\network</Filter>
+    </ClInclude>
+    <ClInclude Include="features\overlay\overlay.hpp">
+      <Filter>features\overlay</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

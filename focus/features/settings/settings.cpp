@@ -4,7 +4,32 @@ Constants constants;
 Globals globals;
 Settings settings;
 
+// New function to check and convert legacy configs
+bool Settings::isLegacyConfig(const std::string& filename) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    // Check multiple markers that indicate a legacy config
+    std::string line;
+    while (std::getline(file, line)) {
+        // Check for specific legacy markers
+        if (line.find(xorstr_("Mode=")) == 0 ||
+            line.find(xorstr_("Game=")) == 0) {
+            return true;
+        }
+    }
+    return false;
+}
+
 void Settings::readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo) {
+    // Check if this is a legacy config and convert if needed
+    if (isLegacyConfig(filename)) {
+        // Don't load legacy configs
+        return;
+    }
+
     if (clearExisting) {
         characters.clear();
     }
@@ -26,22 +51,53 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         std::getline(iss, key, '=');
         std::getline(iss, value);
 
-        if (key == xorstr_("Mode")) {
-            mode = value;
+        // Global settings
+        if (key == xorstr_("Potato")) {
+            globalSettings.potato = (value == xorstr_("1"));
         }
-        else if (key == xorstr_("Potato")) {
-            potato = (value == xorstr_("1"));
+        else if (key == xorstr_("SensitivityCalculator")) {
+            globalSettings.sensitivityCalculator = std::stoi(value);
         }
+        else if (key == xorstr_("CharacterDetectors")) {
+            globalSettings.characterDetectors.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                globalSettings.characterDetectors.push_back(item == xorstr_("1"));
+            }
+        }
+        else if (key == xorstr_("WeaponDetectors")) {
+            globalSettings.weaponDetectors.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                globalSettings.weaponDetectors.push_back(item == xorstr_("1"));
+            }
+        }
+        else if (key == xorstr_("Sensitivity")) {
+            globalSettings.sensitivity.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                if (!item.empty()) {
+                    globalSettings.sensitivity.push_back(std::stof(item));
+                }
+            }
+        }
+        else if (key == xorstr_("AspectRatio")) {
+            globalSettings.aspect_ratio = std::stoi(value);
+        }
+        else if (key == xorstr_("Fov")) {
+            globalSettings.fov = std::stof(value);
+        }
+        // Aimbot settings
         else if (key == xorstr_("AimAssist") && updateAimbotInfo) {
             std::istringstream ss(value);
             std::string item;
             std::getline(ss, item, ','); aimbotData.type = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.maxDistance = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.aimFov = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.triggerFov = std::stoi(item);
-            std::getline(ss, item, ','); aimbotData.triggerSleep = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.limitDetectorFps = item == xorstr_("1");
-            std::getline(ss, item, ','); aimbotData.triggerBurstDuration = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.verticalCorrection = std::stoi(item);
         }
         else if (key == xorstr_("PidSettings")) {
@@ -75,6 +131,16 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.confidence = std::stoi(item);
             std::getline(ss, item, ','); aimbotData.aiAimbotSettings.forceHitbox = item == xorstr_("1");
         }
+        else if (key == xorstr_("TriggerBotSettings")) {
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); aimbotData.triggerSettings.detectionMethod = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.sensitivity = std::stof(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.radius = std::stoi(item);
+            std::getline(ss, item, ','); aimbotData.triggerSettings.showDebug = item == xorstr_("1");
+            std::getline(ss, item, ','); aimbotData.triggerSettings.sleepTime = std::stoi(item);
+        }
+        // Misc settings
         else if (key == xorstr_("Misc")) {
             std::istringstream ss(value);
             std::string item;
@@ -82,112 +148,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::getline(ss, item, ','); misc.recoilKeyMode = std::stoi(item);
             std::getline(ss, item, ','); misc.quickPeekDelay = std::stoi(item);
         }
-        else if (key == xorstr_("WeaponKeybinds")) {
-            wpn_keybinds.clear();
-            std::istringstream ss(value);
-            std::string item;
-            while (std::getline(ss, item, ',')) {
-                wpn_keybinds.push_back(item);
-            }
-        }
-        else if (key == xorstr_("AuxKeybinds")) {
-            aux_keybinds.clear();
-            std::istringstream ss(value);
-            std::string item;
-            while (std::getline(ss, item, ',')) {
-                aux_keybinds.push_back(item);
-            }
-        }
-        else if (key == xorstr_("Character")) {
-            if (!currentCharacter.charactername.empty()) {
-                if (!currentWeapon.weaponname.empty()) {
-                    currentCharacter.weapondata.push_back(currentWeapon);
-                    currentWeapon = weaponData();
-                }
-                // Validate selected weapon indices before adding the character
-                if (!currentCharacter.weapondata.empty()) {
-                    size_t maxWeaponIndex = currentCharacter.weapondata.size() - 1;
-                    if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
-                        currentCharacter.selectedweapon[0] = 0;
-                    }
-                    if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
-                        currentCharacter.selectedweapon[1] = 0;
-                    }
-                }
-                characters.push_back(currentCharacter);
-                currentCharacter = characterData();
-                weaponCount = 0;
-            }
-            currentCharacter.charactername = value;
-        }
-        else if (key == xorstr_("Options")) {
-            currentCharacter.options.clear();
-            std::istringstream ss(value);
-            std::string item;
-            while (std::getline(ss, item, ',')) {
-                currentCharacter.options.push_back(item == xorstr_("1"));
-            }
-        }
-        else if (key == xorstr_("SelectedWeapons")) {
-            std::istringstream ss(value);
-            std::string item;
-            std::getline(ss, item, ','); currentCharacter.selectedweapon[0] = std::stoi(item);
-            std::getline(ss, item, ','); currentCharacter.selectedweapon[1] = std::stoi(item);
-        }
-        else if (key == xorstr_("Weapon")) {
-            if (!currentWeapon.weaponname.empty()) {
-                currentCharacter.weapondata.push_back(currentWeapon);
-                weaponCount++;
-                currentWeapon = weaponData();
-            }
-            currentWeapon.weaponname = value;
-        }
-        else if (key == xorstr_("RapidFire")) {
-            currentWeapon.rapidfire = (value == xorstr_("1"));
-        }
-        else if (key == xorstr_("Attachments")) {
-            std::istringstream ss(value);
-            std::string item;
-            std::getline(ss, item, ','); currentWeapon.attachments[0] = std::stoi(item);
-            std::getline(ss, item, ','); currentWeapon.attachments[1] = std::stoi(item);
-            std::getline(ss, item, ','); currentWeapon.attachments[2] = std::stoi(item);
-        }
-        else if (key == xorstr_("Values")) {
-            std::istringstream ss(value);
-            std::string valueSet;
-            while (std::getline(ss, valueSet, ';')) {
-                std::vector<float> values;
-                std::istringstream valueSS(valueSet);
-                std::string item;
-                while (std::getline(valueSS, item, ',')) {
-                    if (!item.empty()) {
-                        values.push_back(std::stof(item));
-                    }
-                }
-                if (!values.empty()) {
-                    currentWeapon.values.push_back(values);
-                }
-            }
-        }
-        else if (key == xorstr_("Game")) {
-            game = value;
-        }
-        else if (key == xorstr_("Sensitivity")) {
-            sensitivity.clear();
-            std::istringstream ss(value);
-            std::string item;
-            while (std::getline(ss, item, ',')) {
-                if (!item.empty()) {
-                    sensitivity.push_back(std::stof(item));
-                }
-            }
-        }
-        else if (key == xorstr_("AspectRatio")) {
-            aspect_ratio = std::stoi(value);
-        }
-        else if (key == xorstr_("Fov")) {
-            fov = std::stoi(value);
-        }
+        // Hotkeys
         else if (key.substr(0, 6) == "Hotkey") {
             int index = std::stoi(key.substr(6));
             if (index >= 0 && index < static_cast<size_t>(HotkeyIndex::COUNT)) {
@@ -206,6 +167,107 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
                 }
             }
         }
+        // Overlay
+        else if (key == xorstr_("Overlay")) {
+            std::istringstream ss(value);
+            std::string item;
+            std::getline(ss, item, ','); misc.overlay.showInfo = item == xorstr_("1");
+            std::getline(ss, item, ','); misc.overlay.magnifierZoom = std::stof(item);
+            std::getline(ss, item, ','); misc.overlay.magnifierSize = std::stoi(item);
+        }
+        // Character data
+        else if (key == xorstr_("Character")) {
+            if (!currentCharacter.charactername.empty()) {
+                if (!currentWeapon.weaponname.empty()) {
+                    currentCharacter.weapondata.push_back(currentWeapon);
+                    currentWeapon = weaponData();
+                }
+                // Validate selected weapon indices before adding the character
+                if (!currentCharacter.weapondata.empty()) {
+                    size_t maxWeaponIndex = currentCharacter.weapondata.size() - 1;
+                    if (currentCharacter.selectedweapon.size() >= 2) {
+                        if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
+                            currentCharacter.selectedweapon[0] = 0;
+                        }
+                        if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
+                            currentCharacter.selectedweapon[1] = 0;
+                        }
+                    }
+                    else {
+                        currentCharacter.selectedweapon = { 0, 0 };
+                    }
+                }
+                characters.push_back(currentCharacter);
+                currentCharacter = characterData();
+                weaponCount = 0;
+            }
+            currentCharacter.charactername = value;
+        }
+        else if (key == xorstr_("Options")) {
+            currentCharacter.options.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                currentCharacter.options.push_back(item == xorstr_("1"));
+            }
+        }
+        else if (key == xorstr_("SelectedWeapons")) {
+            currentCharacter.selectedweapon.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                currentCharacter.selectedweapon.push_back(std::stoi(item));
+            }
+            if (currentCharacter.selectedweapon.size() < 2) {
+                currentCharacter.selectedweapon.resize(2, 0);
+            }
+        }
+        // Weapon data
+        else if (key == xorstr_("Weapon")) {
+            if (!currentWeapon.weaponname.empty()) {
+                currentCharacter.weapondata.push_back(currentWeapon);
+                weaponCount++;
+                currentWeapon = weaponData();
+            }
+            currentWeapon.weaponname = value;
+        }
+        else if (key == xorstr_("RapidFire")) {
+            currentWeapon.rapidfire = (value == xorstr_("1"));
+        }
+        else if (key == xorstr_("TriggerBurstDuration")) {
+            currentWeapon.triggerBurstDuration = std::stoi(value);
+    }
+        else if (key == xorstr_("TriggerFireDelay")) {
+            currentWeapon.triggerFireDelay = std::stoi(value);
+            }
+        else if (key == xorstr_("Attachments")) {
+            currentWeapon.attachments.clear();
+            std::istringstream ss(value);
+            std::string item;
+            while (std::getline(ss, item, ',')) {
+                currentWeapon.attachments.push_back(std::stoi(item));
+            }
+            if (currentWeapon.attachments.size() < 3) {
+                currentWeapon.attachments.resize(3, 0);
+            }
+        }
+        else if (key == xorstr_("Values")) {
+            std::istringstream ss(value);
+            std::string valueSet;
+            while (std::getline(ss, valueSet, ';')) {
+                std::vector<float> values;
+                std::istringstream valueSS(valueSet);
+                std::string item;
+                while (std::getline(valueSS, item, ',')) {
+                    if (!item.empty()) {
+                        values.push_back(std::stof(item));
+                    }
+                }
+                if (!values.empty()) {
+                    currentWeapon.values.push_back(values);
+                }
+            }
+        }
     }
 
     // Add the last weapon and character
@@ -213,15 +275,20 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
         currentCharacter.weapondata.push_back(currentWeapon);
         weaponCount++;
     }
-    if (!currentCharacter.charactername.empty() || mode == xorstr_("Generic") || game == xorstr_("Rust") || game == xorstr_("Overwatch")) {
+    if (!currentCharacter.charactername.empty()) {
         // Validate selected weapon indices for the last character
         if (!currentCharacter.weapondata.empty()) {
             size_t maxWeaponIndex = currentCharacter.weapondata.size() - 1;
-            if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
-                currentCharacter.selectedweapon[0] = 0;
+            if (currentCharacter.selectedweapon.size() >= 2) {
+                if (currentCharacter.selectedweapon[0] > maxWeaponIndex) {
+                    currentCharacter.selectedweapon[0] = 0;
+                }
+                if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
+                    currentCharacter.selectedweapon[1] = 0;
+                }
             }
-            if (currentCharacter.selectedweapon[1] > maxWeaponIndex) {
-                currentCharacter.selectedweapon[1] = 0;
+            else {
+                currentCharacter.selectedweapon = { 0, 0 };
             }
         }
         characters.push_back(currentCharacter);
@@ -229,13 +296,13 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
 
     // Set the initial selected character and weapon
     if (!characters.empty()) {
-        selectedCharacterIndex = 0;
-        isPrimaryActive = true;
+        activeState.selectedCharacterIndex = 0;
+        activeState.isPrimaryActive = true;
     }
 
     // Set the weaponDataChanged flag
-    weaponDataChanged = true;
-    pidDataChanged = true;
+    activeState.weaponDataChanged = true;
+    activeState.pidDataChanged = true;
 }
 
 void Settings::saveSettings(const std::string& filename) {
@@ -245,15 +312,77 @@ void Settings::saveSettings(const std::string& filename) {
         return;
     }
 
-    file << xorstr_("Mode=") << mode << xorstr_("\n");
-    file << xorstr_("Potato=") << (potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AimAssist=") << aimbotData.type << xorstr_(",") << aimbotData.maxDistance << xorstr_(",") << aimbotData.aimFov << xorstr_(",") << aimbotData.triggerFov << xorstr_(",") << aimbotData.triggerSleep << xorstr_(",") << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") << aimbotData.triggerBurstDuration << xorstr_(",") << aimbotData.verticalCorrection << xorstr_("\n");
-    file << xorstr_("PidSettings=") << aimbotData.pidSettings.pidPreset << xorstr_(",") << aimbotData.pidSettings.proportional << xorstr_(",") << aimbotData.pidSettings.integral << xorstr_(",") << aimbotData.pidSettings.derivative << xorstr_(",") << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
-	file << xorstr_("ColourAimbotSettings=") << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") << aimbotData.colourAimbotSettings.trackConfidenceRate
-        << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") << aimbotData.colourAimbotSettings.minArea << xorstr_(",")
-        << aimbotData.colourAimbotSettings.aimHeight << xorstr_(",") << (aimbotData.colourAimbotSettings.debugView ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("AiAimbotSettings=") << aimbotData.aiAimbotSettings.provider << xorstr_(",") << aimbotData.aiAimbotSettings.hitbox << xorstr_(",") << aimbotData.aiAimbotSettings.confidence << xorstr_(",") << (aimbotData.aiAimbotSettings.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-    file << xorstr_("Misc=") << misc.aimKeyMode << xorstr_(",") << misc.recoilKeyMode << xorstr_(",") << misc.quickPeekDelay << xorstr_("\n");
+    // Save global settings
+    file << xorstr_("Potato=") << (globalSettings.potato ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    file << xorstr_("SensitivityCalculator=") << globalSettings.sensitivityCalculator << xorstr_("\n");
+
+    // Save detectors
+    file << xorstr_("CharacterDetectors=");
+    for (const auto& detector : globalSettings.characterDetectors) {
+        file << (detector ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
+    }
+    file << xorstr_("\n");
+
+    file << xorstr_("WeaponDetectors=");
+    for (const auto& detector : globalSettings.weaponDetectors) {
+        file << (detector ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
+    }
+    file << xorstr_("\n");
+
+    // Save sensitivity settings
+    file << xorstr_("Sensitivity=");
+    for (const auto& sens : globalSettings.sensitivity) {
+        file << sens << xorstr_(",");
+    }
+    file << xorstr_("\n");
+
+    file << xorstr_("AspectRatio=") << globalSettings.aspect_ratio << xorstr_("\n");
+    file << xorstr_("Fov=") << globalSettings.fov << xorstr_("\n");
+
+    // Save aimbot settings
+    file << xorstr_("AimAssist=") 
+        << aimbotData.type << xorstr_(",") 
+        << aimbotData.maxDistance << xorstr_(",") 
+        << aimbotData.aimFov << xorstr_(",") 
+        << (aimbotData.limitDetectorFps ? xorstr_("1") : xorstr_("0")) << xorstr_(",") 
+        << aimbotData.verticalCorrection << xorstr_("\n");
+
+    file << xorstr_("PidSettings=") 
+        << aimbotData.pidSettings.pidPreset << xorstr_(",") 
+        << aimbotData.pidSettings.proportional << xorstr_(",") 
+        << aimbotData.pidSettings.integral << xorstr_(",") 
+        << aimbotData.pidSettings.derivative << xorstr_(",")
+        << aimbotData.pidSettings.rampUpTime << xorstr_("\n");
+
+    file << xorstr_("ColourAimbotSettings=") 
+        << aimbotData.colourAimbotSettings.detectionPreset << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxTrackAge << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.trackSmoothingFactor << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.trackConfidenceRate << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxClusterDistance << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.maxClusterDensityDifferential << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.minDensity << xorstr_(",") 
+        << aimbotData.colourAimbotSettings.minArea << xorstr_(",")
+        << aimbotData.colourAimbotSettings.aimHeight << xorstr_(",") 
+        << (aimbotData.colourAimbotSettings.debugView ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    
+    file << xorstr_("AiAimbotSettings=") 
+        << aimbotData.aiAimbotSettings.provider << xorstr_(",") 
+        << aimbotData.aiAimbotSettings.hitbox << xorstr_(",") 
+        << aimbotData.aiAimbotSettings.confidence << xorstr_(",") 
+        << (aimbotData.aiAimbotSettings.forceHitbox ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
+    
+    file << xorstr_("TriggerBotSettings=")
+        << settings.aimbotData.triggerSettings.detectionMethod << xorstr_(",")
+        << settings.aimbotData.triggerSettings.sensitivity << xorstr_(",")
+        << settings.aimbotData.triggerSettings.radius << xorstr_(",")
+        << (settings.aimbotData.triggerSettings.showDebug ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
+        << settings.aimbotData.triggerSettings.sleepTime << xorstr_("\n");
+    
+    file << xorstr_("Misc=") 
+        << misc.aimKeyMode << xorstr_(",") 
+        << misc.recoilKeyMode << xorstr_(",") 
+        << misc.quickPeekDelay << xorstr_("\n");
 
     // Save hotkeys in matching format
     for (size_t i = 0; i < static_cast<size_t>(HotkeyIndex::COUNT); i++) {
@@ -264,149 +393,49 @@ void Settings::saveSettings(const std::string& filename) {
             static_cast<int>(hotkey.mode.load()) << "\n";
     }
 
-    if (mode == xorstr_("Generic")) {
-        for (const auto& character : characters) {
-            for (const auto& weapon : character.weapondata) {
-                file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-                file << xorstr_("Values=");
-                for (const auto& valueSet : weapon.values) {
-                    for (const auto& value : valueSet) {
-                        file << value << xorstr_(",");
-                    }
-                    file << xorstr_(";");
-                }
-                file << xorstr_("\n");
-            }
-        }
-    }
-    else if (mode == xorstr_("Character")) {
-        file << xorstr_("WeaponKeybinds=");
-        for (const auto& keybind : wpn_keybinds) {
-            file << keybind << xorstr_(",");
+    file << xorstr_("Overlay=")
+        << (misc.overlay.showInfo ? xorstr_("1") : xorstr_("0")) << xorstr_(",")
+        << misc.overlay.magnifierZoom << xorstr_(",")
+        << misc.overlay.magnifierSize << xorstr_("\n");
+
+    // Save character and weapon data
+    for (const auto& character : characters) {
+        file << xorstr_("Character=") << character.charactername << xorstr_("\n");
+        file << xorstr_("Options=");
+        for (const auto& option : character.options) {
+            file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
         }
         file << xorstr_("\n");
-        file << xorstr_("AuxKeybinds=");
-        for (const auto& keybind : aux_keybinds) {
-            file << keybind << xorstr_(",");
+        file << xorstr_("SelectedWeapons=");
+        for (const auto& weaponIndex : character.selectedweapon) {
+            file << weaponIndex << xorstr_(",");
         }
         file << xorstr_("\n");
 
-        for (const auto& character : characters) {
-            file << xorstr_("Character=") << character.charactername << xorstr_("\n");
-            file << xorstr_("Options=");
-            for (const auto& option : character.options) {
-                file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
-            }
-            file << xorstr_("\n");
-            file << xorstr_("SelectedWeapons=") << character.selectedweapon[0] << xorstr_(",") << character.selectedweapon[1] << xorstr_("\n");
+        for (const auto& weapon : character.weapondata) {
+            file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
+            file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
 
-            for (const auto& weapon : character.weapondata) {
-                file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-                file << xorstr_("Values=");
-                for (const auto& valueSet : weapon.values) {
-                    for (const auto& value : valueSet) {
-                        file << value << xorstr_(",");
-                    }
-                    file << xorstr_(";");
+            // Only save attachments if there are any
+            if (!weapon.attachments.empty()) {
+                file << xorstr_("Attachments=");
+                for (const auto& attachment : weapon.attachments) {
+                    file << attachment << xorstr_(",");
                 }
                 file << xorstr_("\n");
             }
-        }
-    }
-    else if (mode == xorstr_("Game")) {
-        file << xorstr_("Game=") << game << xorstr_("\n");
 
-        if (game == xorstr_("Siege")) {
-            file << xorstr_("Sensitivity=");
-            for (const auto& sens : sensitivity) {
-                file << sens << xorstr_(",");
-            }
-            file << xorstr_("\n");
-
-            file << xorstr_("AspectRatio=") << aspect_ratio << xorstr_("\n");
-            file << xorstr_("Fov=") << fov << xorstr_("\n");
-
-            for (const auto& character : characters) {
-                file << xorstr_("Character=") << character.charactername << xorstr_("\n");
-                file << xorstr_("Options=");
-                for (const auto& option : character.options) {
-                    file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
+            file << xorstr_("Values=");
+            for (const auto& valueSet : weapon.values) {
+                for (const auto& value : valueSet) {
+                    file << value << xorstr_(",");
                 }
-                file << xorstr_("\n");
-                file << xorstr_("SelectedWeapons=") << character.selectedweapon[0] << xorstr_(",") << character.selectedweapon[1] << xorstr_("\n");
-
-                for (const auto& weapon : character.weapondata) {
-                    file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                    file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-                    file << xorstr_("Attachments=") << weapon.attachments[0] << xorstr_(",") << weapon.attachments[1] << xorstr_(",") << weapon.attachments[2] << xorstr_("\n");
-                    file << xorstr_("Values=");
-                    for (const auto& valueSet : weapon.values) {
-                        for (const auto& value : valueSet) {
-                            file << value << xorstr_(",");
-                        }
-                        file << xorstr_(";");
-                    }
-                    file << xorstr_("\n");
-                }
-            }
-        }
-        else if (game == xorstr_("Rust")) {
-            file << xorstr_("Sensitivity=");
-            for (const auto& sens : sensitivity) {
-                file << sens << xorstr_(",");
+                file << xorstr_(";");
             }
             file << xorstr_("\n");
 
-            file << xorstr_("Fov=") << fov << xorstr_("\n");
-
-            file << xorstr_("Options=");
-            for (const auto& option : characters[0].options) {
-                file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
-            }
-            file << xorstr_("\n");
-
-            for (const auto& weapon : characters[0].weapondata) {
-                file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-                file << xorstr_("Values=");
-                for (const auto& valueSet : weapon.values) {
-                    for (const auto& value : valueSet) {
-                        file << value << xorstr_(",");
-                    }
-                    file << xorstr_(";");
-                }
-                file << xorstr_("\n");
-            }
-        }
-        else if (game == xorstr_("Overwatch")) {
-            file << xorstr_("Sensitivity=");
-            for (const auto& sens : sensitivity) {
-                file << sens << xorstr_(",");
-            }
-            file << xorstr_("\n");
-
-            file << xorstr_("Fov=") << fov << xorstr_("\n");
-
-            file << xorstr_("Options=");
-            for (const auto& option : characters[0].options) {
-                file << (option ? xorstr_("1") : xorstr_("0")) << xorstr_(",");
-            }
-            file << xorstr_("\n");
-
-            for (const auto& weapon : characters[0].weapondata) {
-                file << xorstr_("Weapon=") << weapon.weaponname << xorstr_("\n");
-                file << xorstr_("RapidFire=") << (weapon.rapidfire ? xorstr_("1") : xorstr_("0")) << xorstr_("\n");
-                file << xorstr_("Values=");
-                for (const auto& valueSet : weapon.values) {
-                    for (const auto& value : valueSet) {
-                        file << value << xorstr_(",");
-                    }
-                    file << xorstr_(";");
-                }
-                file << xorstr_("\n");
-            }
+            file << xorstr_("TriggerBurstDuration=") << weapon.triggerBurstDuration << xorstr_("\n");
+            file << xorstr_("TriggerFireDelay=") << weapon.triggerFireDelay << xorstr_("\n");
         }
     }
 }

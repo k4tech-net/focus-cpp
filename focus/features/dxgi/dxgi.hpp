@@ -38,6 +38,7 @@ public:
 	std::string detectWeaponTypeWithMask(const cv::Mat& weaponIcon);
 	void initializeRustDetector(cv::Mat& src);
 	void overwatchDetector(cv::Mat& src);
+	void triggerbot();
 
 private:
 	// DXGI variables
