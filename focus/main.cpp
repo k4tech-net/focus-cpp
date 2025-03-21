@@ -109,12 +109,12 @@ int main()
 		auto current_time = std::chrono::high_resolution_clock::now();
 		auto elapsed_time = std::chrono::duration_cast<std::chrono::seconds>(current_time - startuptimer).count();
 
-		if (elapsed_time >= 5 && globals.startup.hasFinished) {
-			if (globals.startup.passedstartup) {
+		if (elapsed_time >= 5 && globals.startup.hasFinished.load()) {
+			if (globals.startup.passedstartup.load()) {
 				startupchecks = false;
 			}
 			else {
-				globals.initshutdown = true;
+				globals.initshutdown.store(true);
 				startupchecks = false;
 			}
 		}
@@ -146,16 +146,16 @@ int main()
 	std::thread aimbotThread(&DXGI::aimbot, &dx);
 	std::thread triggerbotThread(&DXGI::triggerbot, &dx);
 
-	while (!globals.done) {
+	while (!globals.done.load()) {
 		MSG msg;
 		while (::PeekMessage(&msg, nullptr, 0U, 0U, PM_REMOVE))
 		{
 			::TranslateMessage(&msg);
 			::DispatchMessage(&msg);
 			if (msg.message == WM_QUIT)
-				globals.done = true;
+				globals.done.store(true);
 		}
-		if (globals.done)
+		if (globals.done.load())
 			break;
 
 		// Handle window resize (we don't resize directly in the WM_SIZE handler)
@@ -228,7 +228,7 @@ int main()
 	ImPlot::DestroyContext();
 	ImGui::DestroyContext();
 
-	globals.shutdown = true;
+	globals.shutdown.store(true);
 
 	#if !_DEBUG
 	watchdogThread.join();
@@ -254,7 +254,7 @@ extern "C" __declspec(dllexport) bool verification(const char* iv, const char* v
 
 	std::string decryptedVerificationKey = cr.decryptDecode(verificationKey, key, iv);
 
-	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown) {
+	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown.load()) {
 		cr.lastAuthTime.store(std::chrono::steady_clock::now());
 		return true;
 	}

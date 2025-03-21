@@ -43,7 +43,7 @@ void Control::driveMouse() {
 	static float xAccumulator = 0;
 	static float yAccumulator = 0;
 
-	while (!globals.shutdown) {
+	while (!globals.shutdown.load()) {
 
 		// Check if the selected weapon has changed
 		if (settings.activeState.weaponDataChanged) {
@@ -249,7 +249,7 @@ void Control::driveAimbot() {
 	bool burstActive = false;
 	std::chrono::steady_clock::time_point burstStartTime;
 
-	while (!globals.shutdown) {
+	while (!globals.shutdown.load()) {
 		// Update PID settings if needed
 		if (settings.activeState.pidDataChanged) {
 			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
@@ -288,8 +288,8 @@ void Control::driveAimbot() {
 			if (settings.aimbotData.correctionX != 0 || settings.aimbotData.correctionY != 0) {
 				// Aimbot FOV Check
 				const float aimbotFovPercentage = settings.aimbotData.aimFov / 50.f;
-				const int aimbotFovPixelsX = static_cast<int>(aimbotFovPercentage * globals.capture.desktopWidth);
-				const int aimbotFovPixelsY = static_cast<int>(aimbotFovPercentage * globals.capture.desktopHeight);
+				const int aimbotFovPixelsX = static_cast<int>(aimbotFovPercentage * globals.capture.desktopWidth.load());
+				const int aimbotFovPixelsY = static_cast<int>(aimbotFovPercentage * globals.capture.desktopHeight.load());
 				bool withinAimbotFov = std::abs(settings.aimbotData.correctionX) < aimbotFovPixelsX &&
 					std::abs(settings.aimbotData.correctionY) < aimbotFovPixelsY;
 
@@ -353,7 +353,7 @@ void Control::driveKeyboard() {
 	static bool init = true;
 	static bool quickPeekTapFired = false;
 
-	while (!globals.shutdown) {
+	while (!globals.shutdown.load()) {
 		bool quickPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek);
 		bool hashomPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
 		bool quickPeekTapEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::QuickPeekTapKey);

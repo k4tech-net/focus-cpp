@@ -42,7 +42,7 @@ bool DXGI::InitDXGI() {
 
 void DXGI::CaptureDesktopDXGI() {
 
-    while (!globals.shutdown) {
+    while (!globals.shutdown.load()) {
 
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
@@ -98,12 +98,12 @@ void DXGI::CaptureDesktopDXGI() {
         globals.capture.desktopMat = desktopImage;
         globals.capture.desktopMutex_.unlock();
 
-        if (!globals.capture.initDims) {
-			globals.capture.initDims = true;
-			globals.capture.desktopWidth = desktopImage.cols;
-			globals.capture.desktopHeight = desktopImage.rows;
-            globals.capture.desktopCenterX = globals.capture.desktopWidth / 2.0f;
-			globals.capture.desktopCenterY = globals.capture.desktopHeight / 2.0f;
+        if (!globals.capture.initDims.load()) {
+			globals.capture.initDims.store(true);
+			globals.capture.desktopWidth.store(desktopImage.cols);
+			globals.capture.desktopHeight.store(desktopImage.rows);
+            globals.capture.desktopCenterX.store(desktopImage.cols / 2.0f);
+			globals.capture.desktopCenterY.store(desktopImage.rows / 2.0f);
         }
 
         //imshow("output", frameCopy); // Debug window
@@ -262,7 +262,7 @@ void DXGI::aimbot() {
 
     std::unique_ptr<YoloInferencer> inferencer;
 
-    while (!globals.shutdown) {
+    while (!globals.shutdown.load()) {
 
         if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
@@ -417,7 +417,7 @@ void DXGI::triggerbot() {
     static int lastRadius = -1;
     static bool currentWeaponHasRapidfire = false;
 
-    while (!globals.shutdown) {
+    while (!globals.shutdown.load()) {
         // Early exit if trigger key not active
         if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
             if (debugWindowCreated) {
@@ -514,14 +514,17 @@ void DXGI::triggerbot() {
         const int detectionMethod = settings.aimbotData.triggerSettings.detectionMethod;
 
         // Only recalculate ROI if radius changed
+        int desktopWidth = globals.capture.desktopWidth.load();
+        int desktopHeight = globals.capture.desktopHeight.load();
+
         if (lastRadius != radius) {
-            const int centerX = globals.capture.desktopWidth / 2;
-            const int centerY = globals.capture.desktopHeight / 2;
+            const int centerX = desktopWidth / 2;
+            const int centerY = desktopHeight / 2;
             roi = cv::Rect(
                 std::max(0, centerX - radius),
                 std::max(0, centerY - radius),
-                std::min(radius * 2, globals.capture.desktopWidth - (centerX - radius)),
-                std::min(radius * 2, globals.capture.desktopHeight - (centerY - radius))
+                std::min(radius * 2, desktopWidth - (centerX - radius)),
+                std::min(radius * 2, desktopHeight - (centerY - radius))
             );
             lastRadius = radius;
         }
@@ -1145,8 +1148,9 @@ void DXGI::overwatchDetector(cv::Mat& src) {
     frameCount++;
 
     if (!simdInitialized) {
-        hasAVX512 = globals.startup.avx == 2;
-        hasAVX2 = globals.startup.avx >= 1;
+        int avx = globals.startup.avx.load();
+        hasAVX512 = avx == 2;
+        hasAVX2 = avx >= 1;
         simdInitialized = true;
     }
 

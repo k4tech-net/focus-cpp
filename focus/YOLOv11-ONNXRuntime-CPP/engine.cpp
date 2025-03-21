@@ -3,6 +3,10 @@
 YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const char* provider)
     : env_(ORT_LOGGING_LEVEL_WARNING, logid) {
 
+    // Set the building flag to true at the start
+    globals.engine.isEngineBuildingInProgress.store(true);
+    globals.engine.engineBuildProgress.store(0.0f);
+
     // Set session options
     Ort::SessionOptions sessionOptions;
 
@@ -10,6 +14,10 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
 
     if (strcmp(provider, "TensorRT") == 0) {
         std::cout << "Initializing with TensorRT provider" << std::endl;
+
+        // Signal to the UI that we're starting TensorRT initialization
+        globals.engine.isEngineBuildingInProgress.store(true);
+        globals.engine.engineBuildProgress.store(0.1f);
 
         // Create TensorRT provider options using V2 API
         OrtTensorRTProviderOptionsV2* trtOptionsV2;
@@ -29,7 +37,6 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
             "trt_max_partition_iterations",
             "trt_min_subgraph_size",
             "trt_builder_optimization_level",
-            "trt_timing_cache_enable",
             "trt_context_memory_sharing_enable"
         };
 
@@ -43,15 +50,20 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
             "1000",                    // trt_max_partition_iterations
             "1",                       // trt_min_subgraph_size
             "5",                       // trt_builder_optimization_level
-            "1",                       // trt_timing_cache_enable
             "1"
         };
+
+        globals.engine.engineBuildProgress.store(0.2f);
 
         // Update options
         Ort::GetApi().UpdateTensorRTProviderOptions(trtOptionsV2, keys, values, sizeof(keys) / sizeof(keys[0]));
 
+        globals.engine.engineBuildProgress.store(0.3f);
+
         // Append TensorRT execution provider with V2 options
         sessionOptions.AppendExecutionProvider_TensorRT_V2(*trtOptionsV2);
+
+        globals.engine.engineBuildProgress.store(0.4f);
 
         // Release options after use
         Ort::GetApi().ReleaseTensorRTProviderOptions(trtOptionsV2);
@@ -61,6 +73,8 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         cudaOptions.cudnn_conv_algo_search = OrtCudnnConvAlgoSearch::OrtCudnnConvAlgoSearchExhaustive;
         cudaOptions.do_copy_in_default_stream = 1;
         sessionOptions.AppendExecutionProvider_CUDA(cudaOptions);
+
+        globals.engine.engineBuildProgress.store(0.5f);
 
         std::cout << "TensorRT provider initialized with engine caching at: " << cacheDir << std::endl;
     }
@@ -84,7 +98,12 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
         sessionOptions.SetExecutionMode(ExecutionMode::ORT_SEQUENTIAL);
         sessionOptions.EnableMemPattern();
     }
+
+    globals.engine.engineBuildProgress.store(0.6f);
+
     session_ = Ort::Session(env_, modelPath.c_str(), sessionOptions);
+
+    globals.engine.engineBuildProgress.store(0.8f);
 
     // Aquire input names
     std::vector<Ort::AllocatedStringPtr> inputNodeNameAllocatedStrings;
@@ -218,6 +237,9 @@ YoloInferencer::YoloInferencer(std::wstring& modelPath, const char* logid, const
     {
         cvSize_ = cv::Size(imgsz_[1], imgsz_[0]);
     }
+
+    globals.engine.engineBuildProgress.store(1.0f);
+    globals.engine.isEngineBuildingInProgress.store(false);
 }
 
 // Destructor for the class
@@ -581,7 +603,7 @@ std::vector<Detection> YoloInferencer::infer(cv::Mat& frame, float conf_threshol
     // Update global value occasionally to minimize overhead
     static int update_counter = 0;
     if (++update_counter >= 5) {
-        globals.inferenceTimeMs.store(smoothed_time);
+        globals.engine.inferenceTimeMs.store(smoothed_time);
         update_counter = 0;
     }
 

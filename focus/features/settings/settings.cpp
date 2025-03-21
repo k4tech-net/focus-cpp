@@ -172,7 +172,7 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::istringstream ss(value);
             std::string item;
             std::getline(ss, item, ','); misc.overlay.showInfo = item == xorstr_("1");
-            std::getline(ss, item, ','); misc.overlay.magnifierZoom = std::stoi(item);
+            std::getline(ss, item, ','); misc.overlay.magnifierZoom = std::stof(item);
             std::getline(ss, item, ','); misc.overlay.magnifierSize = std::stoi(item);
         }
         // Character data

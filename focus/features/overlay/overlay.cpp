@@ -195,8 +195,8 @@ void Overlay::RenderThreadProc() {
         bool hashomPeekActive = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
         bool triggerBotActive = settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey);
         bool uiHidden = settings.misc.hotkeys.IsActive(HotkeyIndex::HideUiKey);
-        float inferenceTime = globals.inferenceTimeMs.load();
-        bool peekDirection = settings.activeState.peekDirection;
+        float inferenceTime = globals.engine.inferenceTimeMs.load();
+        int peekDirection = settings.activeState.peekDirection;
 
         // Check for forced redraw
         bool needForceRedraw = forceRedraw;
@@ -485,7 +485,7 @@ RECT Overlay::DrawInfo(HDC hdc) {
     if (settings.aimbotData.type == 1 && aimbotEnabled) {
         RECT msRect = { x_pos, y_pos, boundingRect.right, y_pos + 24 };
         std::stringstream ms_buffer;
-        float ms = globals.inferenceTimeMs.load();
+        float ms = globals.engine.inferenceTimeMs.load();
         ms_buffer << xorstr_("Inference: ") << ms << " ms";
 
         // Color-code based on performance

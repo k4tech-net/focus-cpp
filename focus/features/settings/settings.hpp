@@ -160,45 +160,49 @@ public:
 
 struct Globals
 {
-    bool shutdown = false;
-    bool initshutdown = false;
-    bool done = false;
+    std::atomic<bool> shutdown{ false };
+    std::atomic<bool> initshutdown{ false };
+    std::atomic<bool> done{ false };
 
     struct FileSystem {
         std::vector<std::string> configFiles;
         std::string activeFile = "";
-        bool unsavedChanges = false;
-        int activeFileIndex = 0;
+        std::atomic<bool> unsavedChanges{ false };
+        std::atomic<int> activeFileIndex{ 0 };
     } filesystem;
 
     struct Startup {
-        bool passedstartup = false;
-        bool mouse_driver = false;
-        bool keyboard_driver = false;
-        bool files = false;
-        bool dxgi = false;
-        bool marker = false;
-        bool hasFinished = false;
-        int avx = -1;
+        std::atomic<bool> passedstartup{ false };
+        std::atomic<bool> mouse_driver{ false };
+        std::atomic<bool> keyboard_driver{ false };
+        std::atomic<bool> files{ false };
+        std::atomic<bool> dxgi{ false };
+        std::atomic<bool> marker{ false };
+        std::atomic<bool> hasFinished{ false };
+        std::atomic<int> avx{ -1 };
     } startup;
 
     struct MouseInfo {
-		std::atomic<bool> l_mouse_down = false;
-		std::atomic<bool> r_mouse_down = false;
-        std::atomic<ULONG> marker = 0;
+        std::atomic<bool> l_mouse_down{ false };
+        std::atomic<bool> r_mouse_down{ false };
+        std::atomic<ULONG> marker{ false };
     } mouseinfo;
 
     struct Capture {
         cv::Mat desktopMat;
         std::mutex desktopMutex_;
-        int desktopWidth = 0;
-		int desktopHeight = 0;
-        int desktopCenterX = 0;
-		int desktopCenterY = 0;
-        bool initDims = false;
+        std::atomic<int> desktopWidth{ 0 };
+        std::atomic<int> desktopHeight{ 0 };
+        std::atomic<int> desktopCenterX{ 0 };
+        std::atomic<int> desktopCenterY{ 0 };
+        std::atomic<bool> initDims{ false };
     } capture;
 
-    std::atomic<float> inferenceTimeMs{ 0.0f };
+    struct Engine {
+        std::atomic<bool> isEngineBuildingInProgress{ false };
+        std::atomic<float> engineBuildProgress{ 0.0f };
+        std::atomic<float> inferenceTimeMs{ 0.0f };
+    } engine;
 };
 
 struct Constants {

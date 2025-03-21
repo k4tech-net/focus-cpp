@@ -130,35 +130,35 @@ int checkAVXSupport() {
 
 void Utils::startUpChecksRunner() {
 	if (ms.mouse_open()) {
-		globals.startup.mouse_driver = true;
+		globals.startup.mouse_driver.store(true);
 	}
 
 	if (kb.keyboard_open()) {
-		globals.startup.keyboard_driver = true;
+		globals.startup.keyboard_driver.store(true);
 	}
 
 	if (globals.filesystem.configFiles.size() > 0) {
-		globals.startup.files = true;
+		globals.startup.files.store(true);
 	}
 
 	if (dx.InitDXGI()) {
-		globals.startup.dxgi = true;
+		globals.startup.dxgi.store(true);
 	}
 
 	if (initilizeMarker()) {
-		globals.startup.marker = true;
+		globals.startup.marker.store(true);
 	}
 
-	globals.startup.avx = checkAVXSupport();
+	globals.startup.avx.store(checkAVXSupport());
 
-	if (globals.startup.mouse_driver && globals.startup.keyboard_driver && globals.startup.dxgi && globals.startup.marker) {
-		globals.startup.passedstartup = true;
+	if (globals.startup.mouse_driver.load() && globals.startup.keyboard_driver.load() && globals.startup.dxgi.load() && globals.startup.marker.load()) {
+		globals.startup.passedstartup.store(true);
 	}
 	else {
-		globals.startup.passedstartup = false;
+		globals.startup.passedstartup.store(false);
 	}
 
-	globals.startup.hasFinished = true;
+	globals.startup.hasFinished.store(true);
 	return;
 }
 
