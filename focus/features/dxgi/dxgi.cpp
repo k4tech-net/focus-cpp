@@ -41,37 +41,85 @@ bool DXGI::InitDXGI() {
 }
 
 void DXGI::CaptureDesktopDXGI() {
-
     while (!globals.shutdown.load()) {
-
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 
-        // Try to acquire next frame
-        HRESULT hr = gOutputDuplication->AcquireNextFrame(1000, &frameInfo, &desktopResource);
-        if (FAILED(hr)) {
-            std::cerr << xorstr_("Failed to acquire next frame") << std::endl;
+        // Use a less aggressive timeout
+        HRESULT hr = gOutputDuplication->AcquireNextFrame(16, &frameInfo, &desktopResource);
+
+        if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
+            // No new frame available, this is normal
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+        else if (hr == DXGI_ERROR_ACCESS_LOST) {
+            // Desktop switch or resolution change
+            // Re-initialize the duplication
+            if (gOutputDuplication) {
+                gOutputDuplication->Release();
+                gOutputDuplication = nullptr;
+            }
+
+            // Try to recreate the output duplication
+            IDXGIOutput* dxgiOutput = nullptr;
+            IDXGIAdapter* dxgiAdapter = nullptr;
+            IDXGIDevice* dxgiDevice = nullptr;
+            IDXGIOutput1* dxgiOutput1 = nullptr;
+
+            if (SUCCEEDED(gDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice)))) {
+                if (SUCCEEDED(dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter)))) {
+                    if (SUCCEEDED(dxgiAdapter->EnumOutputs(0, &dxgiOutput))) {
+                        if (SUCCEEDED(dxgiOutput->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&dxgiOutput1)))) {
+                            hr = dxgiOutput1->DuplicateOutput(gDevice, &gOutputDuplication);
+                            dxgiOutput1->Release();
+                        }
+                        dxgiOutput->Release();
+                    }
+                    dxgiAdapter->Release();
+                }
+                dxgiDevice->Release();
+            }
+
+            if (FAILED(hr) || !gOutputDuplication) {
+                std::this_thread::sleep_for(std::chrono::milliseconds(500));
+                continue;
+            }
+        }
+        else if (FAILED(hr)) {
+            // Other error occurred
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
         }
 
         // Query for ID3D11Texture2D
         ID3D11Texture2D* desktopImageTex = nullptr;
-        desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
-        desktopResource->Release();
+        if (desktopResource) {
+            hr = desktopResource->QueryInterface(__uuidof(ID3D11Texture2D), reinterpret_cast<void**>(&desktopImageTex));
+            desktopResource->Release();
+            desktopResource = nullptr;
+        }
+
+        if (FAILED(hr) || !desktopImageTex) {
+            gOutputDuplication->ReleaseFrame();
+            continue;
+        }
 
         // Get metadata to create Mat
         D3D11_TEXTURE2D_DESC desc;
         desktopImageTex->GetDesc(&desc);
 
-        // Create staging texture
+        // Create staging texture with CPU read access
         ID3D11Texture2D* stagingTexture = nullptr;
         desc.Usage = D3D11_USAGE_STAGING;
         desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
         desc.BindFlags = 0;
         desc.MiscFlags = 0;
-        gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
 
-        if (desktopImageTex == 0 || stagingTexture == 0) {
+        hr = gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
+        if (FAILED(hr) || !stagingTexture) {
+            if (desktopImageTex) desktopImageTex->Release();
+            gOutputDuplication->ReleaseFrame();
             continue;
         }
 
@@ -80,37 +128,52 @@ void DXGI::CaptureDesktopDXGI() {
 
         // Map resource
         D3D11_MAPPED_SUBRESOURCE resource;
-        gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
+        hr = gContext->Map(stagingTexture, 0, D3D11_MAP_READ, 0, &resource);
 
-        // Create OpenCV Mat
-        cv::Mat desktopImage(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
+        if (SUCCEEDED(hr) && resource.pData) {
+            // Create OpenCV Mat from mapped data
+            cv::Mat capturedFrame(desc.Height, desc.Width, CV_8UC4, resource.pData, resource.RowPitch);
 
-        //cv::Mat frameCopy = desktopImage.clone();
+            // Make a deep copy to ensure we have the data after unmapping
+            cv::Mat desktopImage = capturedFrame.clone();
 
-        // Unmap and release
-        gContext->Unmap(stagingTexture, 0);
-        stagingTexture->Release();
-        desktopImageTex->Release();
-        gOutputDuplication->ReleaseFrame();
+            // Unmap and release D3D resources before handling the OpenCV processing
+            gContext->Unmap(stagingTexture, 0);
+            stagingTexture->Release();
+            desktopImageTex->Release();
+            gOutputDuplication->ReleaseFrame();
 
-        // Swap buffers
-        globals.capture.desktopMutex_.lock();
-        globals.capture.desktopMat = desktopImage;
-        globals.capture.desktopMutex_.unlock();
+            // Validate the frame before passing it on
+            if (!desktopImage.empty() && desktopImage.data &&
+                desktopImage.cols > 0 && desktopImage.rows > 0) {
 
-        if (!globals.capture.initDims.load()) {
-			globals.capture.initDims.store(true);
-			globals.capture.desktopWidth.store(desktopImage.cols);
-			globals.capture.desktopHeight.store(desktopImage.rows);
-            globals.capture.desktopCenterX.store(desktopImage.cols / 2.0f);
-			globals.capture.desktopCenterY.store(desktopImage.rows / 2.0f);
+                // Swap buffers with lock
+                globals.capture.desktopMutex_.lock();
+                globals.capture.desktopMat = desktopImage;
+                globals.capture.desktopMutex_.unlock();
+
+                if (!globals.capture.initDims.load()) {
+                    globals.capture.initDims.store(true);
+                    globals.capture.desktopWidth.store(desktopImage.cols);
+                    globals.capture.desktopHeight.store(desktopImage.rows);
+                    globals.capture.desktopCenterX.store(desktopImage.cols / 2.0f);
+                    globals.capture.desktopCenterY.store(desktopImage.rows / 2.0f);
+                }
+            }
+        }
+        else {
+            // Failed to map texture
+            stagingTexture->Release();
+            desktopImageTex->Release();
+            gOutputDuplication->ReleaseFrame();
         }
 
-        //imshow("output", frameCopy); // Debug window
-        //cv::waitKey(1);
-
-        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+        // Small sleep to yield CPU to other threads
+        std::this_thread::sleep_for(std::chrono::microseconds(100));
     }
+
+    // Cleanup on exit
+    CleanupDXGI();
 }
 
 void DXGI::CleanupDXGI() {
