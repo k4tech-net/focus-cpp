@@ -472,6 +472,8 @@ std::vector<float> calculateSensitivityModifierR6() {
 	float fovModifier = 1.0f + (quadratic_coef * fovDifference * fovDifference) +
 		(linear_coef * fovDifference);
 
+	bool isPistol = false;
+
 	settings.activeState.fovSensitivityModifier = fovModifier;
 
 	if (settings.activeState.selectedCharacterIndex < settings.characters.size() &&
@@ -484,6 +486,8 @@ std::vector<float> calculateSensitivityModifierR6() {
 		weaponIndex = std::min(weaponIndex, static_cast<int>(settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size()) - 1);
 
 		const auto& weapon = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex];
+
+		isPistol = !settings.activeState.isPrimaryActive && weapon.rapidfire;
 
 		if (weapon.attachments.size() >= 3) {
 			switch (weapon.attachments[0]) {
@@ -554,6 +558,18 @@ std::vector<float> calculateSensitivityModifierR6() {
 	// Calculate the sensitivity modifier without attachment effects
 	float sensXModifier_SensOnly = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseXSens * newMultiplier)) * fovModifier;
 	float sensYModifier_SensOnly = ((oldBaseSens * oldRelativeSens * oldMultiplier) / (scopeModifier * newBaseYSens * newMultiplier)) * fovModifier;
+
+	// Apply non-linear compensation for very low multiplier values, but NOT for pistols
+	const float MULTIPLIER_THRESHOLD = 0.02f;
+	if (newMultiplier < MULTIPLIER_THRESHOLD && !isPistol) {
+		// Calculate non-linear adjustment factor with quadratic curve
+		// As multiplier gets closer to zero, correction factor increases faster
+		float adjustmentFactor = 1.0f + pow((MULTIPLIER_THRESHOLD - newMultiplier) / MULTIPLIER_THRESHOLD, 2) * 1.3f;
+
+		// Apply the correction
+		sensXModifier_SensOnly *= adjustmentFactor;
+		sensYModifier_SensOnly *= adjustmentFactor;
+	}
 
 	// Set the sensMultiplier_SensOnly (without attachment effects)
 	settings.activeState.sensMultiplier_SensOnly = std::vector<float>{ sensXModifier_SensOnly, sensYModifier_SensOnly };
@@ -2044,7 +2060,7 @@ void Menu::gui()
 
 						// X value
 						ImGui::SetNextItemWidth(-1);
-						if (ImGui::InputFloat(xorstr_("##X"), &weapon.values[i][0], 0.1f, 1.0f, "%.1f")) {
+						if (ImGui::InputFloat(xorstr_("##X"), &weapon.values[i][0], 0.1f, 1.0f, "%.2f")) {
 							globals.filesystem.unsavedChanges.store(true);
 							settings.activeState.weaponDataChanged = true;
 						}
@@ -2052,7 +2068,7 @@ void Menu::gui()
 
 						// Y value
 						ImGui::SetNextItemWidth(-1);
-						if (ImGui::InputFloat(xorstr_("##Y"), &weapon.values[i][1], 0.1f, 1.0f, "%.1f")) {
+						if (ImGui::InputFloat(xorstr_("##Y"), &weapon.values[i][1], 0.1f, 1.0f, "%.2f")) {
 							globals.filesystem.unsavedChanges.store(true);
 							settings.activeState.weaponDataChanged = true;
 						}

@@ -969,7 +969,7 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
             }
         }
 
-        if (bestMatchPercentage <= 12.5f) {  // Adjust between 1-5% based on testing
+        if (bestMatchPercentage <= 10.f) {  // Adjust between 1-5% based on testing
             operatorFound = true;
         }
     }
