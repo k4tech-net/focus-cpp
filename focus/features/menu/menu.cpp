@@ -1190,15 +1190,15 @@ void Menu::gui()
 						const char* Sights[] = { xorstr_("1x"), xorstr_("2.5x"), xorstr_("3.5x") };
 						const char* Grips[] = { xorstr_("Horizontal/Angled/None"), xorstr_("Vertical") };
 						const char* Barrels[] = { xorstr_("Supressor/Extended/None"), xorstr_("Muzzle Break (Semi-Auto Only)"), xorstr_("Compensator"), xorstr_("Flash Hider") };
-						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Primary Grip"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[1], Grips, 2)) {
+						if (comboBoxGen(xorstr_("Secondary Grip"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[1], Grips, 2)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Primary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Secondary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1209,15 +1209,15 @@ void Menu::gui()
 						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
 						const char* Grips[] = { xorstr_("None"), xorstr_("Gas Compression Overdrive") };
 						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
-						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Primary Grip"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[1], Grips, 2)) {
+						if (comboBoxGen(xorstr_("Secondary Grip"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[1], Grips, 2)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Primary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Secondary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1302,33 +1302,6 @@ void Menu::gui()
 
 				if (ImGui::Checkbox(xorstr_("AI Aim Assist"), &settings.aimbotData.enabled)) {
 					globals.filesystem.unsavedChanges.store(true);
-					if (settings.aimbotData.enabled &&
-						settings.aimbotData.aiAimbotSettings.provider == 2 &&
-						!globals.engine.isEngineBuildingInProgress.load()) {
-						ImGui::OpenPopup("TensorRT Warning");
-					}
-				}
-
-				if (ImGui::BeginPopupModal("TensorRT Warning", NULL, ImGuiWindowFlags_AlwaysAutoResize)) {
-					ImGui::Text("You're enabling TensorRT acceleration for the first time.");
-					ImGui::Text("This will build optimization engines which may take several minutes.");
-					ImGui::Text("The application will appear to freeze during this process.");
-					ImGui::Text("Do you want to continue?");
-
-					ImGui::Separator();
-
-					if (ImGui::Button("Yes", ImVec2(120, 0))) {
-						// User wants to proceed with TensorRT
-						ImGui::CloseCurrentPopup();
-					}
-					ImGui::SameLine();
-					if (ImGui::Button("Cancel", ImVec2(120, 0))) {
-						// Disable aim assist
-						settings.aimbotData.enabled = false;
-						ImGui::CloseCurrentPopup();
-					}
-
-					ImGui::EndPopup();
 				}
 			}
 
@@ -1338,18 +1311,18 @@ void Menu::gui()
 					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
 					float progress = globals.engine.engineBuildProgress.load();
 					ImGui::ProgressBar(progress, ImVec2(-1, 0),
-						progress < 1.0f ? "Building TensorRT engine... Please wait" : "Engine build complete!");
+						progress < 1.0f ? xorstr_("Initialising ONNXRuntime... Please wait") : xorstr_("ONNXRuntime initialised"));
 					ImGui::PopStyleColor();
 
-					const char* phaseText = "";
-					if (progress < 0.3f) phaseText = "Initializing TensorRT...";
-					else if (progress < 0.6f) phaseText = "Setting up providers...";
-					else if (progress < 0.9f) phaseText = "Building ONNX optimization engine...";
-					else phaseText = "Finalizing setup...";
+					const char* phaseText = xorstr_("");
+					if (progress < 0.3f) phaseText = xorstr_("Starting ONNXRuntime...");
+					else if (progress < 0.6f) phaseText = xorstr_("Setting up providers...");
+					else if (progress < 0.9f) phaseText = xorstr_("Building ONNX optimisation engine...");
+					else phaseText = xorstr_("Finalizing setup...");
 
-					ImGui::Text("%s", phaseText);
-					ImGui::Text("This process may take several minutes on first run.");
-					ImGui::Text("Future runs will be faster if using the same model.");
+					ImGui::Text(xorstr_("%s"), phaseText);
+					ImGui::Text(xorstr_("This process may take several minutes on first run."));
+					ImGui::Text(xorstr_("Future runs will be faster if using the same model."));
 				}
 				else {
 					std::vector<const char*> pidPresets = { xorstr_("Slow"), xorstr_("Legit"), xorstr_("Aggressive"), xorstr_("Custom") };
@@ -1770,9 +1743,6 @@ void Menu::gui()
 					// Build list of available options based on gameType
 					if (settings.globalSettings.sensitivityCalculator == 1) { // Siege
 						CharacterOptions = { xorstr_("Siege Gadget Detection Override") };
-					}
-					else if (settings.globalSettings.sensitivityCalculator == 2) { // Rust
-						CharacterOptions = { xorstr_("Rust-specific Option") };
 					}
 
 					if (!CharacterOptions.empty()) {
