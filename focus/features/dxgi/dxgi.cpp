@@ -14,24 +14,98 @@ bool DXGI::InitDXGI() {
 
     // Get DXGI device
     IDXGIDevice* dxgiDevice = nullptr;
-    gDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice));
+    hr = gDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice));
+    if (FAILED(hr)) {
+        std::cerr << xorstr_("Failed to get DXGI device") << std::endl;
+        return false;
+    }
 
     // Get DXGI adapter
     IDXGIAdapter* dxgiAdapter = nullptr;
-    dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter));
+    hr = dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter));
+    if (FAILED(hr)) {
+        dxgiDevice->Release();
+        std::cerr << xorstr_("Failed to get DXGI adapter") << std::endl;
+        return false;
+    }
 
-    // Get output
+    // Find primary output (monitor)
     IDXGIOutput* dxgiOutput = nullptr;
-    dxgiAdapter->EnumOutputs(0, &dxgiOutput); // Assuming first output
+    DXGI_OUTPUT_DESC outputDesc;
+    bool foundPrimaryOutput = false;
+
+    // Try to find the primary display adapter
+    for (UINT i = 0; !foundPrimaryOutput; i++) {
+        if (dxgiAdapter->EnumOutputs(i, &dxgiOutput) == DXGI_ERROR_NOT_FOUND) {
+            break; // No more outputs
+        }
+
+        dxgiOutput->GetDesc(&outputDesc);
+        if (outputDesc.AttachedToDesktop) {
+            // Check if this is the primary monitor
+            MONITORINFOEX monitorInfo;
+            monitorInfo.cbSize = sizeof(MONITORINFOEX);
+            if (GetMonitorInfo(outputDesc.Monitor, &monitorInfo) &&
+                (monitorInfo.dwFlags & MONITORINFOF_PRIMARY)) {
+                foundPrimaryOutput = true;
+                break;
+            }
+        }
+
+        dxgiOutput->Release();
+        dxgiOutput = nullptr;
+    }
+
+    // If we couldn't find the primary output, fall back to the first output
+    if (!foundPrimaryOutput) {
+        if (FAILED(dxgiAdapter->EnumOutputs(0, &dxgiOutput))) {
+            dxgiAdapter->Release();
+            dxgiDevice->Release();
+            std::cerr << xorstr_("Failed to get any DXGI output") << std::endl;
+            return false;
+        }
+    }
 
     // Get output 1
     IDXGIOutput1* dxgiOutput1 = nullptr;
-    dxgiOutput->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&dxgiOutput1));
+    hr = dxgiOutput->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&dxgiOutput1));
+    if (FAILED(hr)) {
+        dxgiOutput->Release();
+        dxgiAdapter->Release();
+        dxgiDevice->Release();
+        std::cerr << xorstr_("Failed to get DXGI output1") << std::endl;
+        return false;
+    }
 
-    // Create output duplication
-    dxgiOutput1->DuplicateOutput(gDevice, &gOutputDuplication);
+    // Create output duplication with retry logic for fullscreen apps
+    for (int retryCount = 0; retryCount < 3; retryCount++) {
+        hr = dxgiOutput1->DuplicateOutput(gDevice, &gOutputDuplication);
 
-    // Cleanup
+        if (SUCCEEDED(hr)) {
+            break;
+        }
+
+        // If failed due to fullscreen app, wait a bit and retry
+        if (hr == DXGI_ERROR_UNSUPPORTED) {
+            std::cerr << xorstr_("Failed to duplicate output: DXGI_ERROR_UNSUPPORTED. Retrying...") << std::endl;
+            std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        }
+        else {
+            std::cerr << xorstr_("Failed to duplicate output, error code: ") << hr << std::endl;
+            break;
+        }
+    }
+
+    if (!gOutputDuplication) {
+        dxgiOutput1->Release();
+        dxgiOutput->Release();
+        dxgiAdapter->Release();
+        dxgiDevice->Release();
+        std::cerr << xorstr_("Failed to create output duplication") << std::endl;
+        return false;
+    }
+
+    // Cleanup intermediate interfaces
     dxgiOutput1->Release();
     dxgiOutput->Release();
     dxgiAdapter->Release();
@@ -41,56 +115,79 @@ bool DXGI::InitDXGI() {
 }
 
 void DXGI::CaptureDesktopDXGI() {
+    // Track consecutive failures to help determine if we need to reinitialize
+    int consecutiveFailures = 0;
+    const int MAX_CONSECUTIVE_FAILURES = 60; // About 6 seconds at 10ms sleep
+
     while (!globals.shutdown.load()) {
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 
         // Use a less aggressive timeout
-        HRESULT hr = gOutputDuplication->AcquireNextFrame(16, &frameInfo, &desktopResource);
+        HRESULT hr = E_FAIL;
+
+        if (gOutputDuplication) {
+            hr = gOutputDuplication->AcquireNextFrame(16, &frameInfo, &desktopResource);
+        }
+        else {
+            // If duplication is null, we need to reinitialize
+            consecutiveFailures = MAX_CONSECUTIVE_FAILURES;
+        }
 
         if (hr == DXGI_ERROR_WAIT_TIMEOUT) {
             // No new frame available, this is normal
             std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            consecutiveFailures = 0; // Reset counter since this is a normal condition
             continue;
         }
-        else if (hr == DXGI_ERROR_ACCESS_LOST) {
-            // Desktop switch or resolution change
-            // Re-initialize the duplication
+        else if (hr == DXGI_ERROR_ACCESS_LOST ||
+            hr == DXGI_ERROR_UNSUPPORTED ||
+            consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) {
+            // Common errors that occur with fullscreen apps:
+            // - DXGI_ERROR_ACCESS_LOST: Desktop switch or resolution change
+            // - DXGI_ERROR_UNSUPPORTED: App has exclusive fullscreen
+            // - Too many consecutive failures: Something is persistently wrong
+
+            std::cerr << xorstr_("Reinitializing DXGI due to errors or timeout") << std::endl;
+
+            // Clean up existing resources
             if (gOutputDuplication) {
                 gOutputDuplication->Release();
                 gOutputDuplication = nullptr;
             }
 
-            // Try to recreate the output duplication
-            IDXGIOutput* dxgiOutput = nullptr;
-            IDXGIAdapter* dxgiAdapter = nullptr;
-            IDXGIDevice* dxgiDevice = nullptr;
-            IDXGIOutput1* dxgiOutput1 = nullptr;
-
-            if (SUCCEEDED(gDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&dxgiDevice)))) {
-                if (SUCCEEDED(dxgiDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&dxgiAdapter)))) {
-                    if (SUCCEEDED(dxgiAdapter->EnumOutputs(0, &dxgiOutput))) {
-                        if (SUCCEEDED(dxgiOutput->QueryInterface(__uuidof(IDXGIOutput1), reinterpret_cast<void**>(&dxgiOutput1)))) {
-                            hr = dxgiOutput1->DuplicateOutput(gDevice, &gOutputDuplication);
-                            dxgiOutput1->Release();
-                        }
-                        dxgiOutput->Release();
-                    }
-                    dxgiAdapter->Release();
-                }
-                dxgiDevice->Release();
+            // Full reinitialization including device
+            if (gContext) {
+                gContext->Release();
+                gContext = nullptr;
             }
 
-            if (FAILED(hr) || !gOutputDuplication) {
+            if (gDevice) {
+                gDevice->Release();
+                gDevice = nullptr;
+            }
+
+            // Try to completely reinitialize DXGI
+            if (InitDXGI()) {
+                std::cerr << xorstr_("DXGI reinitialization successful") << std::endl;
+                consecutiveFailures = 0;
+            }
+            else {
+                std::cerr << xorstr_("DXGI reinitialization failed, will retry") << std::endl;
                 std::this_thread::sleep_for(std::chrono::milliseconds(500));
-                continue;
             }
+
+            continue;
         }
         else if (FAILED(hr)) {
             // Other error occurred
+            consecutiveFailures++;
             std::this_thread::sleep_for(std::chrono::milliseconds(10));
             continue;
         }
+
+        // Reset failure counter when we successfully get a frame
+        consecutiveFailures = 0;
 
         // Query for ID3D11Texture2D
         ID3D11Texture2D* desktopImageTex = nullptr;
@@ -101,7 +198,10 @@ void DXGI::CaptureDesktopDXGI() {
         }
 
         if (FAILED(hr) || !desktopImageTex) {
-            gOutputDuplication->ReleaseFrame();
+            if (gOutputDuplication) {
+                gOutputDuplication->ReleaseFrame();
+            }
+            consecutiveFailures++;
             continue;
         }
 
@@ -119,7 +219,8 @@ void DXGI::CaptureDesktopDXGI() {
         hr = gDevice->CreateTexture2D(&desc, nullptr, &stagingTexture);
         if (FAILED(hr) || !stagingTexture) {
             if (desktopImageTex) desktopImageTex->Release();
-            gOutputDuplication->ReleaseFrame();
+            if (gOutputDuplication) gOutputDuplication->ReleaseFrame();
+            consecutiveFailures++;
             continue;
         }
 
@@ -141,7 +242,10 @@ void DXGI::CaptureDesktopDXGI() {
             gContext->Unmap(stagingTexture, 0);
             stagingTexture->Release();
             desktopImageTex->Release();
-            gOutputDuplication->ReleaseFrame();
+
+            if (gOutputDuplication) {
+                gOutputDuplication->ReleaseFrame();
+            }
 
             // Validate the frame before passing it on
             if (!desktopImage.empty() && desktopImage.data &&
@@ -166,6 +270,7 @@ void DXGI::CaptureDesktopDXGI() {
             stagingTexture->Release();
             desktopImageTex->Release();
             gOutputDuplication->ReleaseFrame();
+            consecutiveFailures++;
         }
 
         // Small sleep to yield CPU to other threads
