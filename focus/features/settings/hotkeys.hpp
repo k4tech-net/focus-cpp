@@ -144,6 +144,7 @@ private:
         case VK_RSHIFT: return "Right Shift";
         case VK_LCONTROL: return "Left Ctrl";
         case VK_RCONTROL: return "Right Ctrl";
+        case VK_CONTROL: return "Ctrl";
         case VK_LMENU: return "Left Alt";
         case VK_RMENU: return "Right Alt";
 

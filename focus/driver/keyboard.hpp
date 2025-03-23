@@ -223,6 +223,7 @@ public:
             // Modifier keys
         case VK_LCONTROL: return KeyboardKey::lctrl;
         case VK_RCONTROL: return KeyboardKey::rctrl;
+        case VK_CONTROL: return KeyboardKey::lctrl;
         case VK_LSHIFT: return KeyboardKey::lshift;
         case VK_RSHIFT: return KeyboardKey::rshift;
         case VK_LMENU: return KeyboardKey::lalt;

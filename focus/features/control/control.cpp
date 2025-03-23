@@ -408,7 +408,10 @@ void Control::driveKeyboard() {
 				if (hashomPeekEnabled) {
 					// First the prone (Hashom part 1)
 					pressAndReleaseKey(proneKey);
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
+
+					if (!quickPeekEnabled) {
+						std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					}
 				}
 
 				if (quickPeekEnabled) {
@@ -451,7 +454,10 @@ void Control::driveKeyboard() {
 				if (hashomPeekEnabled) {
 					// First the prone (Hashom part 1)
 					pressAndReleaseKey(proneKey);
-					std::this_thread::sleep_for(std::chrono::microseconds(50));
+
+					if (!quickPeekEnabled) {
+						std::this_thread::sleep_for(std::chrono::milliseconds(settings.misc.quickPeekDelay));
+					}
 				}
 
 				if (quickPeekEnabled) {
