@@ -120,6 +120,11 @@ void DXGI::CaptureDesktopDXGI() {
     const int MAX_CONSECUTIVE_FAILURES = 60; // About 6 seconds at 10ms sleep
 
     while (!globals.shutdown.load()) {
+        if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+            std::this_thread::sleep_for(std::chrono::nanoseconds(500));
+            continue;
+        }
+
         IDXGIResource* desktopResource = nullptr;
         DXGI_OUTDUPL_FRAME_INFO frameInfo = {};
 
@@ -260,8 +265,8 @@ void DXGI::CaptureDesktopDXGI() {
                     globals.capture.initDims.store(true);
                     globals.capture.desktopWidth.store(desktopImage.cols);
                     globals.capture.desktopHeight.store(desktopImage.rows);
-                    globals.capture.desktopCenterX.store(desktopImage.cols / 2.0f);
-                    globals.capture.desktopCenterY.store(desktopImage.rows / 2.0f);
+                    globals.capture.desktopCenterX.store(desktopImage.cols / 2);
+                    globals.capture.desktopCenterY.store(desktopImage.rows / 2);
                 }
             }
         }
@@ -294,8 +299,8 @@ void DXGI::CleanupDXGI() {
 }
 
 std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<Detection>& detections, int targetClass, float fov, bool forceHitbox) {
-    int imageCenterX = image.cols / 2;
-    int imageCenterY = image.rows / 2;
+    float imageCenterX = image.cols / 2.f;
+    float imageCenterY = image.rows / 2.f;
 
     float minDistance = std::numeric_limits<float>::max();
     cv::Point2f closestDetectionCenter(imageCenterX, imageCenterY);
@@ -306,9 +311,9 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
         if (targetClass == 2 || (forceHitbox && detection.class_id == targetClass) ||
             (!forceHitbox && (detection.class_id == targetClass || (!found && (detection.class_id == 0 || detection.class_id == 1))))) {
 
-            cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.0f,
-                detection.box.y + detection.box.height / 2.0f);
-            float distance = cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY));
+            cv::Point2f detectionCenter(detection.box.x + detection.box.width / 2.f,
+                detection.box.y + detection.box.height / 2.f);
+            float distance = static_cast<float>(cv::norm(detectionCenter - cv::Point2f(imageCenterX, imageCenterY)));
 
             if (distance < minDistance && (targetClass == 2 || forceHitbox || detection.class_id == targetClass || !found)) {
                 minDistance = distance;
@@ -328,7 +333,7 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
     float pixelOffsetY = closestDetectionCenter.y - imageCenterY;
 
     // Convert FOV from degrees to radians
-    float fovRad = fov * std::numbers::pi / 180.0f;
+    float fovRad = static_cast<float>(fov * std::numbers::pi / 180.0f);
 
     // Calculate the number of pixels per degree
     // This uses half the screen width since FOV is horizontal
@@ -340,7 +345,7 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
 
     // Calculate vertical FOV based on aspect ratio
     float aspectRatio = (float)image.cols / image.rows;
-    float verticalFov = 2.0f * atan(tan(fovRad / 2.0f) / aspectRatio) * 180.0f / std::numbers::pi;
+    float verticalFov = static_cast<float>(2.0f * atan(tan(fovRad / 2.0f) / aspectRatio) * 180.0f / std::numbers::pi);
 
     // Scale Y angle based on vertical FOV
     angleY = angleY * (fov / verticalFov);
@@ -385,7 +390,7 @@ cv::Mat DXGI::preprocessIcon(const cv::Mat& icon) {
     cv::cvtColor(icon, gray, cv::COLOR_BGR2GRAY);
 
     // Remove potential defuser icon area first
-    int defuserSize = gray.rows / 2.5;  // Assume defuser icon is about 1/4 of the icon height
+    int defuserSize = static_cast<int>(gray.rows / 2.5f);  // Assume defuser icon is about 1/4 of the icon height
     cv::rectangle(gray, cv::Rect(gray.cols - defuserSize, gray.rows - defuserSize, defuserSize, defuserSize), cv::Scalar(0), cv::FILLED);
 
     // Then apply adaptive thresholding to handle brightness variations
@@ -431,6 +436,10 @@ void DXGI::aimbot() {
     std::unique_ptr<YoloInferencer> inferencer;
 
     while (!globals.shutdown.load()) {
+        if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
 
         if (!settings.aimbotData.enabled) {
             if (aimbotInit) {
@@ -558,8 +567,8 @@ void DXGI::aimbot() {
 
             std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.globalSettings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
 
-            settings.aimbotData.correctionX = corrections[0] * settings.activeState.sensMultiplier_SensOnly[0];
-            settings.aimbotData.correctionY = corrections[1] * settings.activeState.sensMultiplier_SensOnly[1];
+            settings.aimbotData.correctionX = static_cast<int>(corrections[0] * settings.activeState.sensMultiplier_SensOnly[0]);
+            settings.aimbotData.correctionY = static_cast<int>(corrections[1] * settings.activeState.sensMultiplier_SensOnly[1]);
 
             if (settings.aimbotData.limitDetectorFps) {
                 std::this_thread::sleep_for(std::chrono::milliseconds(1));
@@ -586,6 +595,11 @@ void DXGI::triggerbot() {
     static bool currentWeaponHasRapidfire = false;
 
     while (!globals.shutdown.load()) {
+        if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(1));
+            continue;
+        }
+
         // Early exit if trigger key not active
         if (!settings.misc.hotkeys.IsActive(HotkeyIndex::TriggerKey)) {
             if (debugWindowCreated) {
@@ -1137,10 +1151,10 @@ cv::Mat createMask(int size, int bottomRightWidth, int bottomRightHeight, int to
 
 std::string DXGI::detectWeaponTypeWithMask(const cv::Mat& weaponIcon) {
     static const int MASK_SIZE = 64;
-    static const int bottomRightWidth = MASK_SIZE * 0.45;
-    static const int bottomRightHeight = MASK_SIZE * 0.27;
-    static const int topLeftWidth = MASK_SIZE * 0.2;
-    static const int topLeftHeight = MASK_SIZE * 0.4;
+    static const int bottomRightWidth = static_cast<int>(MASK_SIZE * 0.45f);
+    static const int bottomRightHeight = static_cast<int>(MASK_SIZE * 0.27f);
+    static const int topLeftWidth = static_cast<int>(MASK_SIZE * 0.2f);
+    static const int topLeftHeight = static_cast<int>(MASK_SIZE * 0.4f);
 
     static const cv::Mat mask = createMask(MASK_SIZE, bottomRightWidth, bottomRightHeight, topLeftWidth, topLeftHeight);
 
@@ -1204,6 +1218,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         double totalPixels = boxROI.total();
         int matchingPixels = 0;
 
+        // Use fixed target color but with more lenient threshold
         for (int y = 0; y < hsv.rows; ++y) {
             for (int x = 0; x < hsv.cols; ++x) {
                 cv::Vec3b pixel = hsv.at<cv::Vec3b>(y, x);
@@ -1218,7 +1233,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
                 double similarity = 1.0 - (hueDiff + satDiff + valDiff) / 3.0;
 
-                if (similarity > 0.8) { // Adjust this threshold as needed
+                // Use the lower threshold that's working well
+                if (similarity > 0.4) {
                     colorScore += similarity;
                     matchingPixels++;
                 }
@@ -1227,8 +1243,6 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
         // Normalize the color score
         colorScore /= totalPixels;
-
-        // Factor in the proportion of matching pixels
         double matchingRatio = matchingPixels / totalPixels;
         colorScore *= matchingRatio;
 
@@ -1238,6 +1252,9 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
             activeBoxIndex = i;
             activeWeaponIcon = boxROI.clone();
         }
+
+        // For debugging - can be removed for production
+        //std::cout << "Color score for box " << i << ": " << colorScore << std::endl;
 
         cv::Scalar boxColor = (i == activeBoxIndex) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
         cv::rectangle(src, weaponBoxes[i], boxColor, 2);
@@ -1303,11 +1320,12 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
     // Temporal smoothing
     struct SmoothTarget {
-        cv::Point2f pos;
-        float area;
-        int lastSeen;
-        float confidence;
+        cv::Point2f pos = cv::Point2f(0, 0);
+        float area = 0.f;
+        int lastSeen = 0;
+        float confidence = 0.f;
     };
+
     static std::vector<SmoothTarget> trackedTargets;
     static int frameCount = 0;
     const int maxTrackAge = settings.aimbotData.colourAimbotSettings.maxTrackAge;  // Maximum frames to keep tracking a disappeared target
@@ -1496,10 +1514,10 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
     // Structure to hold component data for clustering
     struct Component {
-        cv::Point center;
-        int area;
-        cv::Rect bounds;
-        float density;
+        cv::Point center = cv::Point(0, 0);
+        int area = 0;
+        cv::Rect bounds = cv::Rect(0, 0, 0, 0);
+        float density = 0.f;
     };
     std::vector<Component> validComponents;
 
@@ -1522,7 +1540,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 
         Component comp;
         comp.center = cv::Point2f(centroids.at<double>(label, 0), centroids.at<double>(label, 1));
-        comp.area = static_cast<float>(area);
+        comp.area = area;
         comp.bounds = cv::Rect(x, y, width, height);
         comp.density = density;
 
@@ -1632,7 +1650,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         if (!clusterMatched[i]) {
             SmoothTarget newTrack;
             newTrack.pos = clusters[i].center;
-            newTrack.area = clusters[i].area;
+            newTrack.area = static_cast<float>(clusters[i].area);
             newTrack.lastSeen = frameCount;
             newTrack.confidence = 0.3f;  // Initial confidence
             newTrackedTargets.push_back(newTrack);
@@ -1674,11 +1692,11 @@ void DXGI::overwatchDetector(cv::Mat& src) {
         const float pixelsPerDegree = static_cast<float>(src.cols) / settings.globalSettings.fov;  // Note: using original size
 
         // Scale back up to original coordinates
-        const float scaledX = (targetPoint.x * 2) - src.cols / 2;
-        const float scaledY = (targetPoint.y * 2) - src.rows / 2;
+        const float scaledX = static_cast<float>((targetPoint.x * 2) - src.cols / 2);
+        const float scaledY = static_cast<float>((targetPoint.y * 2) - src.rows / 2);
 
-        settings.aimbotData.correctionX = (scaledX / pixelsPerDegree) * fovScale * sens[0];
-        settings.aimbotData.correctionY = (scaledY / pixelsPerDegree) * fovScale * sens[1];
+        settings.aimbotData.correctionX = static_cast<int>((scaledX / pixelsPerDegree) * fovScale * sens[0]);
+        settings.aimbotData.correctionY = static_cast<int>((scaledY / pixelsPerDegree) * fovScale * sens[1]);
 
         if (settings.aimbotData.colourAimbotSettings.debugView) {
             cv::circle(downsampledSrc, targetPoint, 3, cv::Scalar(255, 0, 0), -1);

@@ -117,10 +117,10 @@ private:
                 int value = std::stoi(str);
                 result.push_back(value);
             }
-            catch (const std::invalid_argument& e) {
+            catch (const std::invalid_argument&) {
                 throw std::invalid_argument(xorstr_("Bad argument (cannot cast): value=") + str);
             }
-            catch (const std::out_of_range& e) {
+            catch (const std::out_of_range&) {
                 throw std::out_of_range(xorstr_("Value out of range: ") + str);
             }
         }

@@ -42,6 +42,7 @@ enum class HotkeyIndex {
     MagnifierKey,
     OverlayKey,
     QuickPeekTapKey,
+    DisableKey,
     COUNT
 };
 

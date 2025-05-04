@@ -199,8 +199,6 @@ struct Globals
     } capture;
 
     struct Engine {
-        std::atomic<bool> isEngineBuildingInProgress{ false };
-        std::atomic<float> engineBuildProgress{ 0.0f };
         std::atomic<float> inferenceTimeMs{ 0.0f };
     } engine;
 };

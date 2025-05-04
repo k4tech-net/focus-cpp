@@ -14,32 +14,32 @@ public:
 class PIDController {
 private:
     // Base PID coefficients
-    float baseKp, baseKi, Kd;
-    float maxKp;
-    float maxKi;  // Maximum integral gain
+    float baseKp, baseKi, Kd = 0.f;
+    float maxKp = 0.f;
+    float maxKi = 0.f;  // Maximum integral gain
 
     // Error tracking
-    float previousError;
-    float integralError;
-    float lastCorrection;
+    float previousError = 0.f;
+    float integralError = 0.f;
+    float lastCorrection = 0.f;
 
     // Timing
     std::chrono::steady_clock::time_point lastUpdateTime;
     std::chrono::steady_clock::time_point startTrackingTime;
-    bool isTracking;
+    bool isTracking = false;
 
     // Integral windup prevention
-    float integralLimit;
+    float integralLimit = 0.f;
 
     // Integral ramp-up configuration
-    float integralRampTime;  // Time in seconds to reach full integral gain
+    float integralRampTime = 0.f;  // Time in seconds to reach full integral gain
 
     // Enhanced derivative filtering
     static const int DERIVATIVE_FILTER_SIZE = 5;
     std::array<float, DERIVATIVE_FILTER_SIZE> derivativeHistory;
-    int derivativeHistoryIndex;
-    float derivativeFilterBeta;
-    float lastFilteredDerivative;
+    int derivativeHistoryIndex = 0;
+    float derivativeFilterBeta = 0.f;
+    float lastFilteredDerivative = 0.f;
 
     float clamp(float value, float min, float max) {
         return std::max(min, std::min(value, max));

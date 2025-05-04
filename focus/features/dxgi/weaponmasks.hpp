@@ -20,6 +20,5 @@ struct ProcessedMask {
 static const int HASH_SIZE = 512;
 using IconHash = std::bitset<HASH_SIZE>;
 
-extern IconHash;
 extern std::vector<WeaponMask> rustMasks;
 extern std::unordered_map<IconHash, std::string> operatorHashes;

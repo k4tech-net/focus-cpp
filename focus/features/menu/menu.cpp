@@ -236,7 +236,7 @@ void renameConfigPopup(bool& trigger, static char renameBuffer[256]) {
 
 void Menu::popup(bool& trigger, int type) {
 
-	const char* chartype;
+	const char* chartype = "";
 
 	switch (type) {
 		case 0:
@@ -576,7 +576,7 @@ std::vector<float> calculateSensitivityModifierRust() {
 	// Weapons with 1.5x holo modifier
 	constexpr std::array<std::string_view, 12> specialHoloWeapons = {
 		"High Caliber Revolver", "Python Revolver", "Handmade SMG", "Semi-Automatic Pistol",
-		"Thompson", "Custom SMG", "M39", "M4 Shotgun",
+		"Thompson", "Custom SMG", "M39 Rifle", "M4 Shotgun",
 		"M92 Pistol", "Prototype 17", "Spas-12 Shotgun"
 	};
 
@@ -841,9 +841,9 @@ void keybindManager() {
 			cv::Mat smallRegion = globals.capture.desktopMat(roi);
 			globals.capture.desktopMutex_.unlock();
 
-			if (!initializeRustDetector) {
+			if (initializeRustDetector) {
 				dx.initializeRustDetector(smallRegion);
-				initializeRustDetector = true;
+				initializeRustDetector = false;
 			}
 
 			dx.detectWeaponRust(smallRegion);
@@ -860,7 +860,7 @@ void keybindManager() {
 		settings.activeState.sensMultiplier = calculateSensitivityModifierR6();
 		break;
 	case 2: // Rust
-		settings.activeState.sensMultiplier = calculateSensitivityModifierOverwatch();
+		settings.activeState.sensMultiplier = calculateSensitivityModifierRust();
 		break;
 	case 3: // Overwatch
 		settings.activeState.sensMultiplier = calculateSensitivityModifierOverwatch();
@@ -900,11 +900,11 @@ void DrawRecoilPattern(const std::vector<std::vector<float>>& recoilData) {
 
 	// Ensure a minimum spread for X-axis
 	float minSpread = 7000.0f;
-	maxX = maxX * 1.1;
+	maxX = maxX * 1.1f;
 	maxX = std::max(maxX, minSpread / 2.0f);
 
 	// Ensure a minimum spread for Y-axis
-	maxY = maxY * 1.1;
+	maxY = maxY * 1.1f;
 	maxY = std::max(maxY, minSpread / 2.0f);
 
 	if (ImPlot::BeginPlot(xorstr_("Recoil Pattern"), ImVec2(-1, -1))) {
@@ -930,12 +930,20 @@ void Menu::gui()
 {
 	bool inverseShutdown = !globals.initshutdown.load();
 
+	if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+		ImGui::PushStyleColor(ImGuiCol_Border, ImVec4(1.0f, 0.0f, 0.0f, 1.f));
+	}
+
 	ImGui::SetNextWindowSize(ImVec2(850, 650), ImGuiCond_FirstUseEver);
 	#if !_DEBUG
 	ImGui::Begin(xorstr_("Focus"), &inverseShutdown, WINDOWFLAGS);
 	#else
 	ImGui::Begin(xorstr_("Focus DEBUG"), &inverseShutdown, WINDOWFLAGS);
 	#endif
+
+	if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+		ImGui::PopStyleColor();
+	}
 
 	bool initshutdownpopup = false;
 
@@ -1125,7 +1133,7 @@ void Menu::gui()
 						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
 						const char* Grips[] = { xorstr_("None"), xorstr_("Gas Compression Overdrive") };
 						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
-						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Primary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].attachments[0], Sights, 5)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1133,7 +1141,7 @@ void Menu::gui()
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Primary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].attachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Primary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].attachments[2], Barrels, 3)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1209,7 +1217,7 @@ void Menu::gui()
 						const char* Sights[] = { xorstr_("None"), xorstr_("Handmade"), xorstr_("Holosight"), xorstr_("8x Scope"), xorstr_("16x Scope") };
 						const char* Grips[] = { xorstr_("None"), xorstr_("Gas Compression Overdrive") };
 						const char* Barrels[] = { xorstr_("None/Suppressor"), xorstr_("Muzzle Break"), xorstr_("Muzzle Boost") };
-						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 3)) {
+						if (comboBoxGen(xorstr_("Secondary Sight"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[0], Sights, 5)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1217,7 +1225,7 @@ void Menu::gui()
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
-						if (comboBoxGen(xorstr_("Secondary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 4)) {
+						if (comboBoxGen(xorstr_("Secondary Barrel"), &settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1]].attachments[2], Barrels, 3)) {
 							settings.activeState.weaponDataChanged = true;
 							globals.filesystem.unsavedChanges.store(true);
 						}
@@ -1293,7 +1301,7 @@ void Menu::gui()
 			}
 			else if (settings.aimbotData.type == 1) {
 				if (!settings.aimbotData.enabled) {
-					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA"), xorstr_("TensorRT") };
+					std::vector<const char*> providers = { xorstr_("CPU"), xorstr_("CUDA") };
 					if (ImGui::Combo(xorstr_("Provider"), &settings.aimbotData.aiAimbotSettings.provider, providers.data(), (int)providers.size())) {
 						globals.filesystem.unsavedChanges.store(true);
 					}
@@ -1306,178 +1314,159 @@ void Menu::gui()
 			}
 
 			if (settings.aimbotData.enabled) {
-				if (globals.engine.isEngineBuildingInProgress.load()) {
-					// Show progress indicator instead of provider selection
-					ImGui::PushStyleColor(ImGuiCol_PlotHistogram, ImVec4(0.2f, 0.7f, 0.2f, 1.0f));
-					float progress = globals.engine.engineBuildProgress.load();
-					ImGui::ProgressBar(progress, ImVec2(-1, 0),
-						progress < 1.0f ? xorstr_("Initialising ONNXRuntime... Please wait") : xorstr_("ONNXRuntime initialised"));
-					ImGui::PopStyleColor();
+				
+				std::vector<const char*> pidPresets = { xorstr_("Slow"), xorstr_("Legit"), xorstr_("Aggressive"), xorstr_("Custom") };
 
-					const char* phaseText = xorstr_("");
-					if (progress < 0.3f) phaseText = xorstr_("Starting ONNXRuntime...");
-					else if (progress < 0.6f) phaseText = xorstr_("Setting up providers...");
-					else if (progress < 0.9f) phaseText = xorstr_("Building ONNX optimisation engine...");
-					else phaseText = xorstr_("Finalizing setup...");
+				if (ImGui::Combo(xorstr_("Aimbot Preset"), &settings.aimbotData.pidSettings.pidPreset, pidPresets.data(), (int)pidPresets.size())) {
+					globals.filesystem.unsavedChanges.store(true);
 
-					ImGui::Text(xorstr_("%s"), phaseText);
-					ImGui::Text(xorstr_("This process may take several minutes on first run."));
-					ImGui::Text(xorstr_("Future runs will be faster if using the same model."));
+					if (settings.aimbotData.pidSettings.pidPreset == 0) {
+						settings.aimbotData.pidSettings.proportional = 0.005f;
+						settings.aimbotData.pidSettings.integral = 0.05f;
+						settings.aimbotData.pidSettings.derivative = 0.008f;
+						settings.aimbotData.pidSettings.rampUpTime = 0.0f;
+						settings.activeState.pidDataChanged = true;
+					}
+					else if (settings.aimbotData.pidSettings.pidPreset == 1) {
+						settings.aimbotData.pidSettings.proportional = 0.02f;
+						settings.aimbotData.pidSettings.integral = 0.2f;
+						settings.aimbotData.pidSettings.derivative = 0.008f;
+						settings.aimbotData.pidSettings.rampUpTime = 1.f;
+						settings.activeState.pidDataChanged = true;
+					}
+					else if (settings.aimbotData.pidSettings.pidPreset == 2) {
+						settings.aimbotData.pidSettings.proportional = 0.035f;
+						settings.aimbotData.pidSettings.integral = 0.8f;
+						settings.aimbotData.pidSettings.derivative = 0.008f;
+						settings.aimbotData.pidSettings.rampUpTime = 1.f;
+						settings.activeState.pidDataChanged = true;
+					}
 				}
-				else {
-					std::vector<const char*> pidPresets = { xorstr_("Slow"), xorstr_("Legit"), xorstr_("Aggressive"), xorstr_("Custom") };
 
-					if (ImGui::Combo(xorstr_("Aimbot Preset"), &settings.aimbotData.pidSettings.pidPreset, pidPresets.data(), (int)pidPresets.size())) {
+				if (settings.aimbotData.pidSettings.pidPreset == 3) {
+					if (ImGui::InputFloat(xorstr_("Proportional"), &settings.aimbotData.pidSettings.proportional, 0.0f, 0.0f)) {
+						globals.filesystem.unsavedChanges.store(true);
+						settings.activeState.pidDataChanged = true;
+					}
+					tooltip(xorstr_("How quickly the aimbot moves"));
+					if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
+						globals.filesystem.unsavedChanges.store(true);
+						settings.activeState.pidDataChanged = true;
+					}
+					tooltip(xorstr_("How quickly the aimbot changes direction"));
+					if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
+						globals.filesystem.unsavedChanges.store(true);
+						settings.activeState.pidDataChanged = true;
+					}
+					tooltip(xorstr_("How far ahead in time the aimbot looks"));
+					if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
+						globals.filesystem.unsavedChanges.store(true);
+						settings.activeState.pidDataChanged = true;
+					}
+					tooltip(xorstr_("The amount of time it takes to reach the full PID value (Starts from 0)"));
+				}
+
+				if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
+					globals.filesystem.unsavedChanges.store(true);
+				}
+				tooltip(xorstr_("The farthest a single aimbot movement can travel"));
+
+				if (ImGui::SliderInt(xorstr_("Aimbot FOV"), &settings.aimbotData.aimFov, 0, 50, xorstr_("%d%%"))) {
+					globals.filesystem.unsavedChanges.store(true);
+				}
+				tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
+
+				if (ImGui::SliderInt(xorstr_("Aimbot Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
+					globals.filesystem.unsavedChanges.store(true);
+				}
+				tooltip(xorstr_("How much of the vertical aimbot correction is actually applied"));
+
+				if (settings.aimbotData.type == 0) {
+					std::vector<const char*> colourAimbotPreset = { xorstr_("Default"), xorstr_("Custom") };
+					if (ImGui::Combo(xorstr_("Colour Aimbot Detection Preset"), &settings.aimbotData.colourAimbotSettings.detectionPreset, colourAimbotPreset.data(), (int)colourAimbotPreset.size())) {
 						globals.filesystem.unsavedChanges.store(true);
 
-						if (settings.aimbotData.pidSettings.pidPreset == 0) {
-							settings.aimbotData.pidSettings.proportional = 0.005f;
-							settings.aimbotData.pidSettings.integral = 0.05f;
-							settings.aimbotData.pidSettings.derivative = 0.008f;
-							settings.aimbotData.pidSettings.rampUpTime = 0.0f;
-							settings.activeState.pidDataChanged = true;
-						}
-						else if (settings.aimbotData.pidSettings.pidPreset == 1) {
-							settings.aimbotData.pidSettings.proportional = 0.02f;
-							settings.aimbotData.pidSettings.integral = 0.2f;
-							settings.aimbotData.pidSettings.derivative = 0.008f;
-							settings.aimbotData.pidSettings.rampUpTime = 1.f;
-							settings.activeState.pidDataChanged = true;
-						}
-						else if (settings.aimbotData.pidSettings.pidPreset == 2) {
-							settings.aimbotData.pidSettings.proportional = 0.035f;
-							settings.aimbotData.pidSettings.integral = 0.8f;
-							settings.aimbotData.pidSettings.derivative = 0.008f;
-							settings.aimbotData.pidSettings.rampUpTime = 1.f;
-							settings.activeState.pidDataChanged = true;
+						if (settings.aimbotData.colourAimbotSettings.detectionPreset == 0) {
+							settings.aimbotData.colourAimbotSettings.maxTrackAge = 3;
+							settings.aimbotData.colourAimbotSettings.trackSmoothingFactor = 0;
+							settings.aimbotData.colourAimbotSettings.trackConfidenceRate = 20;
+							settings.aimbotData.colourAimbotSettings.maxClusterDistance = 10;
+							settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential = 80;
+							settings.aimbotData.colourAimbotSettings.minDensity = 10;
+							settings.aimbotData.colourAimbotSettings.minArea = 5;
+							settings.aimbotData.colourAimbotSettings.aimHeight = -5;
 						}
 					}
 
-					if (settings.aimbotData.pidSettings.pidPreset == 3) {
-						if (ImGui::InputFloat(xorstr_("Proportional"), &settings.aimbotData.pidSettings.proportional, 0.0f, 0.0f)) {
+					if (settings.aimbotData.colourAimbotSettings.detectionPreset == 1) {
+						if (ImGui::InputInt(xorstr_("Max Tracking Age"), &settings.aimbotData.colourAimbotSettings.maxTrackAge, 0, 0)) {
 							globals.filesystem.unsavedChanges.store(true);
-							settings.activeState.pidDataChanged = true;
 						}
-						tooltip(xorstr_("How quickly the aimbot moves"));
-						if (ImGui::InputFloat(xorstr_("Integral"), &settings.aimbotData.pidSettings.integral, 0.0f, 0.0f)) {
+						tooltip(xorstr_("How long a point is preserved after losing tracking (Measured in frames)"));
+						if (ImGui::SliderInt(xorstr_("Tracking Smoothing Factor"), &settings.aimbotData.colourAimbotSettings.trackSmoothingFactor, 0, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges.store(true);
-							settings.activeState.pidDataChanged = true;
 						}
-						tooltip(xorstr_("How quickly the aimbot changes direction"));
-						if (ImGui::InputFloat(xorstr_("Derivative"), &settings.aimbotData.pidSettings.derivative, 0.0f, 0.0f)) {
+						tooltip(xorstr_("How strongly past positions are favoured in tracking"));
+						if (ImGui::SliderInt(xorstr_("Tracking Confidence Rate"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges.store(true);
-							settings.activeState.pidDataChanged = true;
 						}
-						tooltip(xorstr_("How far ahead in time the aimbot looks"));
-						if (ImGui::InputFloat(xorstr_("Integral Ramp Up Time"), &settings.aimbotData.pidSettings.rampUpTime, 0.0f, 0.0f)) {
+						tooltip(xorstr_("How fast confidence in a detection is gained or lost"));
+						if (ImGui::SliderInt(xorstr_("Max Cluster Distance"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
 							globals.filesystem.unsavedChanges.store(true);
-							settings.activeState.pidDataChanged = true;
 						}
-						tooltip(xorstr_("The amount of time it takes to reach the full PID value (Starts from 0)"));
+						tooltip(xorstr_("How far apart points can be, to be classified as a single cluster"));
+						if (ImGui::SliderInt(xorstr_("Max Cluster Density Differential"), &settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential, 0, 100, xorstr_("%d%%"))) {
+							globals.filesystem.unsavedChanges.store(true);
+						}
+						tooltip(xorstr_("How similar the density of clusters must be, in order to be joined"));
+						if (ImGui::SliderInt(xorstr_("Minimum Cluster Density"), &settings.aimbotData.colourAimbotSettings.minDensity, 0, 100, xorstr_("%d%%"))) {
+							globals.filesystem.unsavedChanges.store(true);
+						}
+						tooltip(xorstr_("How dense a cluster must be to be considered valid"));
+						if (ImGui::InputInt(xorstr_("Minimum Cluster Area"), &settings.aimbotData.colourAimbotSettings.minArea, 0, 0)) {
+							globals.filesystem.unsavedChanges.store(true);
+						}
+						tooltip(xorstr_("How large a cluster must be to be considered valid"));
+						if (ImGui::SliderInt(xorstr_("Target Height Correction"), &settings.aimbotData.colourAimbotSettings.aimHeight, -100, 100, xorstr_("%d%%"))) {
+							globals.filesystem.unsavedChanges.store(true);
+						}
+						tooltip(xorstr_("Vertical correction above or below the original aim point"));
+						if (ImGui::Checkbox(xorstr_("Enable Debug View"), &settings.aimbotData.colourAimbotSettings.debugView)) {
+							globals.filesystem.unsavedChanges.store(true);
+						}
+						tooltip(xorstr_("Allows you to visualise the detection pipeline but severely impacts performance"));
 					}
-
-					if (ImGui::SliderInt(xorstr_("Max Distance per Tick"), &settings.aimbotData.maxDistance, 1, 100)) {
+				}
+				else if (settings.aimbotData.type == 1) {
+					if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.aiAimbotSettings.confidence, 1, 100, xorstr_("%d%%"))) {
 						globals.filesystem.unsavedChanges.store(true);
 					}
-					tooltip(xorstr_("The farthest a single aimbot movement can travel"));
+					tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
 
-					if (ImGui::SliderInt(xorstr_("Aimbot FOV"), &settings.aimbotData.aimFov, 0, 50, xorstr_("%d%%"))) {
+					if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.aiAimbotSettings.forceHitbox)) {
 						globals.filesystem.unsavedChanges.store(true);
 					}
-					tooltip(xorstr_("The percentage of the screen that the aimbot can see (Within the centre 50% of your screen)"));
+					tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
 
-					if (ImGui::SliderInt(xorstr_("Aimbot Vertical Correction Modifier"), &settings.aimbotData.verticalCorrection, 1, 100, xorstr_("%d%%"))) {
+					std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
+					if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.aiAimbotSettings.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
 						globals.filesystem.unsavedChanges.store(true);
 					}
-					tooltip(xorstr_("How much of the vertical aimbot correction is actually applied"));
 
-					if (settings.aimbotData.type == 0) {
-						std::vector<const char*> colourAimbotPreset = { xorstr_("Default"), xorstr_("Custom") };
-						if (ImGui::Combo(xorstr_("Colour Aimbot Detection Preset"), &settings.aimbotData.colourAimbotSettings.detectionPreset, colourAimbotPreset.data(), (int)colourAimbotPreset.size())) {
-							globals.filesystem.unsavedChanges.store(true);
+					float ms = globals.engine.inferenceTimeMs.load();
+					ImVec4 timeColor;
+					if (ms <= 10.0f)
+						timeColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for fast
+					else if (ms <= 30.0f)
+						timeColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for medium
+					else if (ms <= 50.0f)
+						timeColor = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for slow
+					else
+						timeColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for very slow
 
-							if (settings.aimbotData.colourAimbotSettings.detectionPreset == 0) {
-								settings.aimbotData.colourAimbotSettings.maxTrackAge = 3;
-								settings.aimbotData.colourAimbotSettings.trackSmoothingFactor = 0;
-								settings.aimbotData.colourAimbotSettings.trackConfidenceRate = 20;
-								settings.aimbotData.colourAimbotSettings.maxClusterDistance = 10;
-								settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential = 80;
-								settings.aimbotData.colourAimbotSettings.minDensity = 10;
-								settings.aimbotData.colourAimbotSettings.minArea = 5;
-								settings.aimbotData.colourAimbotSettings.aimHeight = -5;
-							}
-						}
-
-						if (settings.aimbotData.colourAimbotSettings.detectionPreset == 1) {
-							if (ImGui::InputInt(xorstr_("Max Tracking Age"), &settings.aimbotData.colourAimbotSettings.maxTrackAge, 0, 0)) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How long a point is preserved after losing tracking (Measured in frames)"));
-							if (ImGui::SliderInt(xorstr_("Tracking Smoothing Factor"), &settings.aimbotData.colourAimbotSettings.trackSmoothingFactor, 0, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How strongly past positions are favoured in tracking"));
-							if (ImGui::SliderInt(xorstr_("Tracking Confidence Rate"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How fast confidence in a detection is gained or lost"));
-							if (ImGui::SliderInt(xorstr_("Max Cluster Distance"), &settings.aimbotData.colourAimbotSettings.trackConfidenceRate, 0, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How far apart points can be, to be classified as a single cluster"));
-							if (ImGui::SliderInt(xorstr_("Max Cluster Density Differential"), &settings.aimbotData.colourAimbotSettings.maxClusterDensityDifferential, 0, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How similar the density of clusters must be, in order to be joined"));
-							if (ImGui::SliderInt(xorstr_("Minimum Cluster Density"), &settings.aimbotData.colourAimbotSettings.minDensity, 0, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How dense a cluster must be to be considered valid"));
-							if (ImGui::InputInt(xorstr_("Minimum Cluster Area"), &settings.aimbotData.colourAimbotSettings.minArea, 0, 0)) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("How large a cluster must be to be considered valid"));
-							if (ImGui::SliderInt(xorstr_("Target Height Correction"), &settings.aimbotData.colourAimbotSettings.aimHeight, -100, 100, xorstr_("%d%%"))) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("Vertical correction above or below the original aim point"));
-							if (ImGui::Checkbox(xorstr_("Enable Debug View"), &settings.aimbotData.colourAimbotSettings.debugView)) {
-								globals.filesystem.unsavedChanges.store(true);
-							}
-							tooltip(xorstr_("Allows you to visualise the detection pipeline but severely impacts performance"));
-						}
-					}
-					else if (settings.aimbotData.type == 1) {
-						if (ImGui::SliderInt(xorstr_("Minimum Required Confidence"), &settings.aimbotData.aiAimbotSettings.confidence, 1, 100, xorstr_("%d%%"))) {
-							globals.filesystem.unsavedChanges.store(true);
-						}
-						tooltip(xorstr_("Higher confidences are less likely to falsely detect an enemy, but also results in less detections overall"));
-
-						if (ImGui::Checkbox(xorstr_("Force Hitbox Selection"), &settings.aimbotData.aiAimbotSettings.forceHitbox)) {
-							globals.filesystem.unsavedChanges.store(true);
-						}
-						tooltip(xorstr_("Will force the aimbot to target the selected hitbox, if the hitbox isn't detected, the aimbot will not move"));
-
-						std::vector<const char*> AimbotHitbox = { xorstr_("Body"), xorstr_("Head"), xorstr_("Closest") };
-						if (ImGui::Combo(xorstr_("Hitbox Priority"), &settings.aimbotData.aiAimbotSettings.hitbox, AimbotHitbox.data(), (int)AimbotHitbox.size())) {
-							globals.filesystem.unsavedChanges.store(true);
-						}
-
-						float ms = globals.engine.inferenceTimeMs.load();
-						ImVec4 timeColor;
-						if (ms <= 10.0f)
-							timeColor = ImVec4(0.0f, 1.0f, 0.0f, 1.0f);  // Green for fast
-						else if (ms <= 30.0f)
-							timeColor = ImVec4(1.0f, 1.0f, 0.0f, 1.0f);  // Yellow for medium
-						else if (ms <= 50.0f)
-							timeColor = ImVec4(1.0f, 0.5f, 0.0f, 1.0f);  // Orange for slow
-						else
-							timeColor = ImVec4(1.0f, 0.0f, 0.0f, 1.0f);  // Red for very slow
-
-						ImGui::PushStyleColor(ImGuiCol_Text, timeColor);
-						ImGui::Text("Inference: %.1f ms", ms);
-						ImGui::PopStyleColor();
-					}
+					ImGui::PushStyleColor(ImGuiCol_Text, timeColor);
+					ImGui::Text("Inference: %.1f ms", ms);
+					ImGui::PopStyleColor();
 				}
 			}
 
@@ -1605,6 +1594,11 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("Hide the focus UI"));
 
+			if (settings.misc.hotkeys.RenderHotkey(xorstr_("Disable Key"), HotkeyIndex::DisableKey)) {
+				globals.filesystem.unsavedChanges.store(true);
+			}
+			tooltip(xorstr_("Disables almost all features from running (Recoil, Aimbot, Detectors, etc...)"));
+
 			ImGui::Spacing();
 			ImGui::Spacing();
 			ImGui::SeparatorText(xorstr_("Overlay"));
@@ -1720,7 +1714,7 @@ void Menu::gui()
 
 				if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
 					char characterNameBuffer[256];
-					strncpy(characterNameBuffer, settings.characters[settings.activeState.selectedCharacterIndex].charactername.c_str(), sizeof(characterNameBuffer));
+					strncpy_s(characterNameBuffer, settings.characters[settings.activeState.selectedCharacterIndex].charactername.c_str(), sizeof(characterNameBuffer));
 					characterNameBuffer[sizeof(characterNameBuffer) - 1] = '\0';
 
 					if (ImGui::InputText(xorstr_("Character Name"), characterNameBuffer, sizeof(characterNameBuffer))) {
@@ -1885,7 +1879,7 @@ void Menu::gui()
 					auto& weapon = (*currentWeaponData)[selectedWeaponIndex];
 
 					char weaponNameBuffer[256];
-					strncpy(weaponNameBuffer, weapon.weaponname.c_str(), sizeof(weaponNameBuffer));
+					strncpy_s(weaponNameBuffer, weapon.weaponname.c_str(), sizeof(weaponNameBuffer));
 					weaponNameBuffer[sizeof(weaponNameBuffer) - 1] = '\0';
 
 					if (ImGui::InputText(xorstr_("Weapon Name"), weaponNameBuffer, sizeof(weaponNameBuffer))) {
@@ -2156,7 +2150,7 @@ void Menu::gui()
 						}
 
 						static char exportBuffer[4096];
-						strncpy(exportBuffer, exportText.c_str(), sizeof(exportBuffer));
+						strncpy_s(exportBuffer, exportText.c_str(), sizeof(exportBuffer));
 						exportBuffer[sizeof(exportBuffer) - 1] = '\0';
 
 						ImGui::Text(xorstr_("Copy this data to clipboard:"));

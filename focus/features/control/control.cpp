@@ -44,6 +44,10 @@ void Control::driveMouse() {
 	static float yAccumulator = 0;
 
 	while (!globals.shutdown.load()) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			continue;
+		}
 
 		// Check if the selected weapon has changed
 		if (settings.activeState.weaponDataChanged) {
@@ -250,6 +254,11 @@ void Control::driveAimbot() {
 	std::chrono::steady_clock::time_point burstStartTime;
 
 	while (!globals.shutdown.load()) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			continue;
+		}
+
 		// Update PID settings if needed
 		if (settings.activeState.pidDataChanged) {
 			pidX.setTunings(settings.aimbotData.pidSettings.proportional, settings.aimbotData.pidSettings.integral, settings.aimbotData.pidSettings.derivative);
@@ -295,8 +304,8 @@ void Control::driveAimbot() {
 
 				if (withinAimbotFov) {
 					// Calculate PID corrections only if within FOV
-					pidCorrectionX = pidX.calculate(settings.aimbotData.correctionX, 0);
-					pidCorrectionY = pidY.calculate(settings.aimbotData.correctionY, 0) * PERCENT(settings.aimbotData.verticalCorrection);
+					pidCorrectionX = pidX.calculate(static_cast<float>(settings.aimbotData.correctionX), 0);
+					pidCorrectionY = pidY.calculate(static_cast<float>(settings.aimbotData.correctionY), 0) * PERCENT(settings.aimbotData.verticalCorrection);
 				}
 				else {
 					// Outside FOV - reset corrections
@@ -354,6 +363,11 @@ void Control::driveKeyboard() {
 	static bool quickPeekTapFired = false;
 
 	while (!globals.shutdown.load()) {
+		if (settings.misc.hotkeys.IsActive(HotkeyIndex::DisableKey)) {
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+			continue;
+		}
+
 		bool quickPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoQuickPeek);
 		bool hashomPeekEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::AutoHashomPeek);
 		bool quickPeekTapEnabled = settings.misc.hotkeys.IsActive(HotkeyIndex::QuickPeekTapKey);
