@@ -1060,8 +1060,8 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     cv::Mat normalizedIcon = normalizeIconSize(src);
     IconHash hash = hashIcon(normalizedIcon);
 
-    /*std::cout << xorstr_("Hash: ") << hash << std::endl;
-	debugHammingDistances(hash);*/
+    //std::cout << xorstr_("Hash: ") << hash << std::endl;
+	//debugHammingDistances(hash);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -1122,6 +1122,9 @@ void DXGI::initializeRustDetector(cv::Mat& src) {
 
         processedMasks.push_back({ weaponMask.name, maskEdges });
     }
+
+    // Clear any existing weapon boxes
+    weaponBoxes.clear();
 
     std::vector<BoxPercentage> weaponBoxPercentages = {
         {0.00f, 0.0f, 0.15f, 1.f},  // Adjust these percentages
@@ -1194,23 +1197,31 @@ std::string DXGI::detectWeaponTypeWithMask(const cv::Mat& weaponIcon) {
 }
 
 void DXGI::detectWeaponRust(cv::Mat& src) {
-    //static auto lastSaveTime = std::chrono::steady_clock::now();
-
     if (src.empty()) {
         return;
     }
 
+    // Initialize variables properly
     int activeBoxIndex = -1;
     cv::Mat activeWeaponIcon;
     double maxColorScore = 0.0;
 
-    const int targetHue = 102;  // 204 / 2 for OpenCV's 0-180 scale
-    const int targetSat = 212;  // 83 * 255 / 100
+    const int targetHue = 102;
+    const int targetSat = 212;
     const int targetVal = 144;
 
-    // Detect which box is active (has blue background)
+    // Get scores for all boxes first before drawing anything
+    std::vector<double> colorScores(weaponBoxes.size(), 0.0);
+
+    // First pass: calculate all color scores
     for (int i = 0; i < weaponBoxes.size(); ++i) {
-        cv::Mat boxROI = src(weaponBoxes[i]);
+        // Make sure the box is within bounds
+        cv::Rect validBox = weaponBoxes[i] & cv::Rect(0, 0, src.cols, src.rows);
+        if (validBox.width <= 0 || validBox.height <= 0) {
+            continue;
+        }
+
+        cv::Mat boxROI = src(validBox);
         cv::Mat hsv;
         cv::cvtColor(boxROI, hsv, cv::COLOR_BGR2HSV);
 
@@ -1218,7 +1229,7 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         double totalPixels = boxROI.total();
         int matchingPixels = 0;
 
-        // Use fixed target color but with more lenient threshold
+        // Use a slightly more lenient threshold for better detection
         for (int y = 0; y < hsv.rows; ++y) {
             for (int x = 0; x < hsv.cols; ++x) {
                 cv::Vec3b pixel = hsv.at<cv::Vec3b>(y, x);
@@ -1233,8 +1244,8 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
 
                 double similarity = 1.0 - (hueDiff + satDiff + valDiff) / 3.0;
 
-                // Use the lower threshold that's working well
-                if (similarity > 0.4) {
+                // Lower the threshold from 0.8 to 0.7 for better detection
+                if (similarity > 0.7) {
                     colorScore += similarity;
                     matchingPixels++;
                 }
@@ -1246,33 +1257,47 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
         double matchingRatio = matchingPixels / totalPixels;
         colorScore *= matchingRatio;
 
+        // Store for logging
+        colorScores[i] = colorScore;
+
         // Update if this is the highest color score so far
         if (colorScore > maxColorScore) {
             maxColorScore = colorScore;
             activeBoxIndex = i;
             activeWeaponIcon = boxROI.clone();
         }
-
-        // For debugging - can be removed for production
-        //std::cout << "Color score for box " << i << ": " << colorScore << std::endl;
-
-        cv::Scalar boxColor = (i == activeBoxIndex) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-        cv::rectangle(src, weaponBoxes[i], boxColor, 2);
     }
 
-    const double MIN_WEIGHTED_SCORE = 0.00001;
+    // Second pass: draw rectangles after we've determined the active box
+    //for (int i = 0; i < weaponBoxes.size(); ++i) {
+    //    cv::Rect validBox = weaponBoxes[i] & cv::Rect(0, 0, src.cols, src.rows);
+    //    if (validBox.width <= 0 || validBox.height <= 0) {
+    //        continue;
+    //    }
 
-    // If an active box is found and meets the minimum blue threshold, detect the weapon
+    //    // Log the scores
+    //    std::cout << "Color score for box " << i << ": " << colorScores[i] << std::endl;
+
+    //    // Draw green for active, red for inactive
+    //    cv::Scalar boxColor = (i == activeBoxIndex) ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+    //    cv::rectangle(src, validBox, boxColor, 2); // Thicker line for visibility
+    //}
+
+    //std::cout << "Selected box: " << activeBoxIndex << std::endl;
+
+    const double MIN_WEIGHTED_SCORE = 0.01;
+
+    // Process the selected weapon
     if (activeBoxIndex != -1 && maxColorScore >= MIN_WEIGHTED_SCORE) {
         std::string detectedWeapon = detectWeaponTypeWithMask(activeWeaponIcon);
 
         settings.activeState.weaponOffOverride = false;
 
         if (detectedWeapon == xorstr_("Unknown Weapon")) {
-            return; // Don't set weapon if it's an unknown weapon
-		}
+            return;
+        }
 
-        // Find the matching weapon in the weapondata vector
+        // Find and set the weapon
         int weaponIndex = -1;
         for (size_t i = 0; i < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size(); ++i) {
             if (settings.characters[settings.activeState.selectedCharacterIndex].weapondata[i].weaponname == detectedWeapon) {
@@ -1281,26 +1306,15 @@ void DXGI::detectWeaponRust(cv::Mat& src) {
             }
         }
 
-        // Set the selectedPrimary if a matching weapon is found
         if (weaponIndex != -1) {
             settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] = weaponIndex;
-            settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].rapidfire = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
+            settings.characters[settings.activeState.selectedCharacterIndex].weapondata[settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0]].rapidfire =
+                settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex].rapidfire;
             settings.activeState.weaponDataChanged = true;
         }
         else {
             std::cout << xorstr_("Warning: Detected weapon not found in weapondata: ") << detectedWeapon << std::endl;
         }
-
-        //std::cout << g.characterinfo.selectedPrimary;
-
-        /*auto now = std::chrono::steady_clock::now();
-        if (std::chrono::duration_cast<std::chrono::seconds>(now - lastSaveTime).count() >= 5) {
-            std::time_t time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-            std::string filename = "weapon_icon_" + std::to_string(time) + ".png";
-            cv::imwrite(filename, activeWeaponIcon);
-            std::cout << "Saved weapon icon: " << filename << std::endl;
-            lastSaveTime = now;
-        }*/
     }
     else {
         settings.activeState.weaponOffOverride = true;

@@ -694,7 +694,7 @@ void keybindManager() {
 			cropRatioWidth = 0.0325f;
 			break;
 		case 2:
-			cropRatioX = 0.3473f * (useShootingRangeOffset ? 1.224f : 1.f);
+			cropRatioX = 0.3477f * (useShootingRangeOffset ? 1.223f : 1.f);
 			cropRatioWidth = 0.0357f;
 			break;
 		case 3:
@@ -752,7 +752,7 @@ void keybindManager() {
 
 	if (settings.globalSettings.weaponDetectors[0]) {
 		// Define ratios for crop region
-		float cropRatioX = 0.0f;
+		float cropRatioX = 0.f;
 		float cropRatioY = 0.82f;
 		float cropRatioWidth = 0.008f;
 		float cropRatioHeight = 0.14f;
@@ -811,43 +811,82 @@ void keybindManager() {
 
 	if (settings.globalSettings.weaponDetectors[1]) {
 		static bool initializeRustDetector = true;
+		static int aspectRatio = 0;
 
-		if (!globals.capture.desktopMat.empty()) {
-			// Define ratios for crop region
-			float cropRatioX = 0.3475f;
-			float cropRatioY = 0.892f;
-			float cropRatioWidth = 0.295f;
-			float cropRatioHeight = 0.084f;
+		// Define ratios for crop region
+		float cropRatioX = 0.f;
+		float cropRatioY = 0.892f;
+		float cropRatioWidth = 0.f;
+		float cropRatioHeight = 0.084f;
 
-			// Calculate the region of interest (ROI) based on ratios
-			int desktopWidth = globals.capture.desktopWidth.load();
-			int desktopHeight = globals.capture.desktopHeight.load();
-
-			int x = static_cast<int>(cropRatioX * desktopWidth);
-			int y = static_cast<int>(cropRatioY * desktopHeight);
-			int width = static_cast<int>(cropRatioWidth * desktopWidth);
-			int height = static_cast<int>(cropRatioHeight * desktopHeight);
-
-			// Ensure the ROI is within the bounds of the desktopMat
-			x = std::max(0, x);
-			y = std::max(0, y);
-			width = std::min(width, desktopWidth - x);
-			height = std::min(height, desktopHeight - y);
-
-			cv::Rect roi(x, y, width, height);
-
-			// Extract the region of interest from the desktopMat
-			globals.capture.desktopMutex_.lock();
-			cv::Mat smallRegion = globals.capture.desktopMat(roi);
-			globals.capture.desktopMutex_.unlock();
-
-			if (initializeRustDetector) {
-				dx.initializeRustDetector(smallRegion);
-				initializeRustDetector = false;
-			}
-
-			dx.detectWeaponRust(smallRegion);
+		switch (settings.globalSettings.aspect_ratio) {
+		case 0:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 1:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 2:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 3:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 4:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 5:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 6:
+			cropRatioX = 0.3475f;
+			cropRatioWidth = 0.295f;
+			break;
+		case 7:
+			cropRatioX = 0.3852f;
+			cropRatioWidth = 0.2215f;
+			break;
 		}
+
+		if (aspectRatio != settings.globalSettings.aspect_ratio) {
+			initializeRustDetector = true;
+			aspectRatio = settings.globalSettings.aspect_ratio;
+		}
+
+		// Calculate the region of interest (ROI) based on ratios
+		int desktopWidth = globals.capture.desktopWidth.load();
+		int desktopHeight = globals.capture.desktopHeight.load();
+
+		int x = static_cast<int>(cropRatioX * desktopWidth);
+		int y = static_cast<int>(cropRatioY * desktopHeight);
+		int width = static_cast<int>(cropRatioWidth * desktopWidth);
+		int height = static_cast<int>(cropRatioHeight * desktopHeight);
+
+		// Ensure the ROI is within the bounds of the desktopMat
+		x = std::max(0, x);
+		y = std::max(0, y);
+		width = std::min(width, desktopWidth - x);
+		height = std::min(height, desktopHeight - y);
+
+		cv::Rect roi(x, y, width, height);
+
+		// Extract the region of interest from the desktopMat
+		globals.capture.desktopMutex_.lock();
+		cv::Mat smallRegion = globals.capture.desktopMat(roi);
+		globals.capture.desktopMutex_.unlock();
+
+		if (initializeRustDetector) {
+			dx.initializeRustDetector(smallRegion);
+			initializeRustDetector = false;
+		}
+
+		dx.detectWeaponRust(smallRegion);
 	}
 
 	//////////////////////////////////////// - Sensitivity Calculators
