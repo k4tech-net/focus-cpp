@@ -40,6 +40,9 @@ public:
 	void overwatchDetector(cv::Mat& src);
 	void triggerbot();
 
+	int isOperatorScreenR6(cv::Mat& src);
+	void detectAttachmentsR6(cv::Mat& src);
+
 private:
 	// DXGI variables
 	ID3D11Device* gDevice = nullptr;
@@ -48,8 +51,8 @@ private:
 	double prevPrimaryArea1 = 0, prevPrimaryArea2 = 0, prevPrimaryArea3 = 0;
 	double prevSecondaryArea1 = 0, prevSecondaryArea2 = 0, prevSecondaryArea3 = 0;
 
-	IconHash hashIcon(const cv::Mat& icon);
-	cv::Mat normalizeIconSize(const cv::Mat& icon);
+	IconHash hashIcon(const cv::Mat& icon, int size);
+	cv::Mat normalizeIconSize(const cv::Mat& icon, int width, int height);
 	cv::Mat preprocessIcon(const cv::Mat& icon);
 
 	struct BoxPercentage {
@@ -61,6 +64,19 @@ private:
 		float area;
 		cv::Rect boundingBox;
 	};
+
+	struct ROIParameters {
+		float ratioX;
+		float ratioY;
+		float ratioWidth;
+		float ratioHeight;
+		float confidence;
+	};
+
+	ROIParameters optimizeOperatorDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize);
+	float getOperatorDetectionConfidence(cv::Mat& roi);
+	void runOptimiser(float x, float y, float width, float height, cv::Mat& src);
+	std::vector<int> detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion);
 
 	std::vector<ProcessedMask> processedMasks;
 	std::vector<cv::Rect> weaponBoxes;

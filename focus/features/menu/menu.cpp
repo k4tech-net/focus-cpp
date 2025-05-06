@@ -124,7 +124,7 @@ void newConfigPopup(bool trigger, char* newConfigName) {
 			newSettings.globalSettings.aspect_ratio = 0; // 16:9
 			newSettings.globalSettings.sensitivityCalculator = 0; // Generic by default
 			newSettings.globalSettings.characterDetectors.resize(1, false);
-			newSettings.globalSettings.weaponDetectors.resize(2, false);
+			newSettings.globalSettings.weaponDetectors.resize(3, false);
 			newSettings.globalSettings.sensitivity.resize(6, 0.0f);
 
 			// Default sensitivities
@@ -675,76 +675,85 @@ void keybindManager() {
 	//////////////////////////////////////// - Character Detectors
 
 	if (settings.globalSettings.characterDetectors[0]) {
-		static bool detectedOperator = false;
-		static bool useShootingRangeOffset = false;
+		static int frameSkip = 0;
 
-		float cropRatioX = 0.f;
-		float cropRatioY = 0.0f;
-		float cropRatioWidth = 0.f;
-		float cropRatioHeight = 0.052f;
+		if (frameSkip++ > 10) {
+			static bool detectedOperator = false;
+			static bool useShootingRangeOffset = false;
 
-		// Define ratios for crop region
-		switch (settings.globalSettings.aspect_ratio) {
-		case 0:
-			cropRatioX = 0.3928f * (useShootingRangeOffset ? 1.138f : 1.f);
-			cropRatioWidth = 0.026f;
-			break;
-		case 1:
-			cropRatioX = 0.358f * (useShootingRangeOffset ? 1.202f : 1.f);
-			cropRatioWidth = 0.0325f;
-			break;
-		case 2:
-			cropRatioX = 0.3477f * (useShootingRangeOffset ? 1.223f : 1.f);
-			cropRatioWidth = 0.0357f;
-			break;
-		case 3:
-			cropRatioX = 0.3727f * (useShootingRangeOffset ? 1.174f : 1.f);
-			cropRatioWidth = 0.03f;
-			break;
-		case 4:
-			cropRatioX = 0.3815f * (useShootingRangeOffset ? 1.158f : 1.f);
-			cropRatioWidth = 0.028f;
-			break;
-		case 5:
-			cropRatioX = 0.3857f * (useShootingRangeOffset ? 1.152f : 1.f);
-			cropRatioWidth = 0.0263f;
-			break;
-		case 6:
-			cropRatioX = 0.4f * (useShootingRangeOffset ? 1.128f : 1.f);
-			cropRatioWidth = 0.023f;
-			break;
-		case 7:
-			cropRatioX = 0.4196f * (useShootingRangeOffset ? 1.097f : 1.f);
-			cropRatioWidth = 0.0191f;
-			break;
-		}
+			float cropRatioX = 0.f;
+			float cropRatioY = 0.0f;
+			float cropRatioWidth = 0.f;
+			float cropRatioHeight = 0.052f;
 
-		// Calculate the region of interest (ROI) based on ratios
-		int desktopWidth = globals.capture.desktopWidth.load();
-		int desktopHeight = globals.capture.desktopHeight.load();
+			// Define ratios for crop region
+			switch (settings.globalSettings.aspect_ratio) {
+			case 0:
+				cropRatioX = 0.3928f * (useShootingRangeOffset ? 1.138f : 1.f);
+				cropRatioWidth = 0.026f;
+				break;
+			case 1:
+				cropRatioX = 0.358f * (useShootingRangeOffset ? 1.202f : 1.f);
+				cropRatioWidth = 0.0325f;
+				break;
+			case 2:
+				cropRatioX = 0.3477f * (useShootingRangeOffset ? 1.223f : 1.f);
+				cropRatioWidth = 0.0357f;
+				break;
+			case 3:
+				cropRatioX = 0.3727f * (useShootingRangeOffset ? 1.174f : 1.f);
+				cropRatioWidth = 0.03f;
+				break;
+			case 4:
+				cropRatioX = 0.3815f * (useShootingRangeOffset ? 1.158f : 1.f);
+				cropRatioWidth = 0.028f;
+				break;
+			case 5:
+				cropRatioX = 0.3857f * (useShootingRangeOffset ? 1.152f : 1.f);
+				cropRatioWidth = 0.0263f;
+				break;
+			case 6:
+				cropRatioX = 0.4f * (useShootingRangeOffset ? 1.128f : 1.f);
+				cropRatioWidth = 0.023f;
+				break;
+			case 7:
+				cropRatioX = 0.4196f * (useShootingRangeOffset ? 1.097f : 1.f);
+				cropRatioWidth = 0.0191f;
+				break;
+			}
 
-		int x = static_cast<int>(cropRatioX * desktopWidth);
-		int y = static_cast<int>(cropRatioY * desktopHeight);
-		int width = static_cast<int>(cropRatioWidth * desktopWidth);
-		int height = static_cast<int>(cropRatioHeight * desktopHeight);
+			// Calculate the region of interest (ROI) based on ratios
+			int desktopWidth = globals.capture.desktopWidth.load();
+			int desktopHeight = globals.capture.desktopHeight.load();
 
-		// Ensure the ROI is within the bounds of the desktopMat
-		x = std::max(0, x);
-		y = std::max(0, y);
-		width = std::min(width, desktopWidth - x);
-		height = std::min(height, desktopHeight - y);
+			int x = static_cast<int>(cropRatioX * desktopWidth);
+			int y = static_cast<int>(cropRatioY * desktopHeight);
+			int width = static_cast<int>(cropRatioWidth * desktopWidth);
+			int height = static_cast<int>(cropRatioHeight * desktopHeight);
 
-		cv::Rect roi(x, y, width, height);
+			// Ensure the ROI is within the bounds of the desktopMat
+			x = std::max(0, x);
+			y = std::max(0, y);
+			width = std::min(width, desktopWidth - x);
+			height = std::min(height, desktopHeight - y);
 
-		// Extract the region of interest from the desktopMat
-		globals.capture.desktopMutex_.lock();
-		cv::Mat smallRegion = globals.capture.desktopMat(roi);
-		globals.capture.desktopMutex_.unlock();
+			cv::Rect roi(x, y, width, height);
 
-		detectedOperator = dx.detectOperatorR6(smallRegion);
+			// Extract the region of interest from the desktopMat
+			globals.capture.desktopMutex_.lock();
+			cv::Mat smallRegion = globals.capture.desktopMat(roi);
+			globals.capture.desktopMutex_.unlock();
 
-		if (!detectedOperator) {
-			useShootingRangeOffset = !useShootingRangeOffset;
+			detectedOperator = dx.detectOperatorR6(smallRegion);
+
+			if (!detectedOperator) {
+				useShootingRangeOffset = !useShootingRangeOffset;
+			}
+
+			frameSkip = 0;
+
+			cv::imshow("Operator Detection", smallRegion);
+			cv::waitKey(1);
 		}
 	}
 
@@ -889,6 +898,22 @@ void keybindManager() {
 		dx.detectWeaponRust(smallRegion);
 	}
 
+	if (settings.globalSettings.weaponDetectors[2]) {
+		static int frameSkip = 0;
+
+		if (frameSkip++ > 10) {
+
+			// Extract the region of interest from the desktopMat
+			globals.capture.desktopMutex_.lock();
+			cv::Mat desktopMat = globals.capture.desktopMat;
+			globals.capture.desktopMutex_.unlock();
+
+			dx.detectAttachmentsR6(desktopMat);
+
+			frameSkip = 0;
+		}
+	}
+
 	//////////////////////////////////////// - Sensitivity Calculators
 
 	switch (settings.globalSettings.sensitivityCalculator) {
@@ -1019,7 +1044,7 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("Siege Operator Detection - Searches for your Siege Operator"));
 
-			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection") };
+			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection"), xorstr_("Siege Attachment Detection") };
 			if (multiCombo(xorstr_("Weapon Detectors"), WeaponDetectors, settings.globalSettings.weaponDetectors)) {
 				settings.activeState.weaponDataChanged = true;
 				globals.filesystem.unsavedChanges.store(true);
@@ -2287,24 +2312,11 @@ void Menu::gui()
 
 			ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(0, 1));
 			for (int i = 0; i < globals.filesystem.configFiles.size(); i++) {
-				bool isLegacy = settings.isLegacyConfig(globals.filesystem.configFiles[i]);
 				const bool is_selected = (globals.filesystem.activeFileIndex.load() == i);
 
-				// Push a different style color for legacy configs
-				if (isLegacy) {
-					ImGui::PushStyleColor(ImGuiCol_Text, ImVec4(1.0f, 0.5f, 0.5f, 1.0f)); // Red-ish for legacy
-				}
-
-				// Add [Legacy] tag to the name
-				std::string displayName = globals.filesystem.configFiles[i];
-				if (isLegacy) {
-					displayName += " [Legacy]";
-				}
-
-				if (ImGui::Selectable(displayName.c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
+				if (ImGui::Selectable(globals.filesystem.configFiles[i].c_str(), is_selected, ImGuiSelectableFlags_AllowDoubleClick)) {
 					globals.filesystem.activeFileIndex.store(i);
-					if (ImGui::IsMouseDoubleClicked(0) && !isLegacy) {
-						// Only allow double-click loading for non-legacy configs
+					if (ImGui::IsMouseDoubleClicked(0)) {
 						if (globals.filesystem.unsavedChanges.load()) {
 							loadConfigPopup = true;
 						}
@@ -2316,11 +2328,6 @@ void Menu::gui()
 							globals.filesystem.unsavedChanges.store(false);
 						}
 					}
-				}
-
-				// Restore style for legacy configs
-				if (isLegacy) {
-					ImGui::PopStyleColor();
 				}
 
 				if (is_selected) {
@@ -2340,12 +2347,7 @@ void Menu::gui()
 
 				if (activeFileIndex < globals.filesystem.configFiles.size()) {
 					std::string selectedFile = globals.filesystem.configFiles[activeFileIndex];
-					// Check if selected file is a legacy config
-					if (settings.isLegacyConfig(selectedFile)) {
-						// Show popup that legacy configs cannot be loaded
-						ImGui::OpenPopup(xorstr_("Cannot Load Legacy Config"));
-					}
-					else if (globals.filesystem.unsavedChanges.load()) {
+					if (globals.filesystem.unsavedChanges.load()) {
 						loadConfigPopup = true;
 					}
 					else {

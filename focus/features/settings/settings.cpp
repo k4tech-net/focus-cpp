@@ -4,32 +4,7 @@ Constants constants;
 Globals globals;
 Settings settings;
 
-// New function to check and convert legacy configs
-bool Settings::isLegacyConfig(const std::string& filename) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-        return false;
-    }
-
-    // Check multiple markers that indicate a legacy config
-    std::string line;
-    while (std::getline(file, line)) {
-        // Check for specific legacy markers
-        if (line.find(xorstr_("Mode=")) == 0 ||
-            line.find(xorstr_("Game=")) == 0) {
-            return true;
-        }
-    }
-    return false;
-}
-
 void Settings::readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo) {
-    // Check if this is a legacy config and convert if needed
-    if (isLegacyConfig(filename)) {
-        // Don't load legacy configs
-        return;
-    }
-
     if (clearExisting) {
         characters.clear();
     }

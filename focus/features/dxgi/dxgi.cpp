@@ -379,9 +379,9 @@ std::vector<float> calculateCorrections(const cv::Mat& image, const std::vector<
     return { mouseX, mouseY };
 }
 
-cv::Mat DXGI::normalizeIconSize(const cv::Mat& icon) {
+cv::Mat DXGI::normalizeIconSize(const cv::Mat& icon, int width, int height) {
     cv::Mat resized;
-    cv::resize(icon, resized, cv::Size(64, 64), 0, 0, cv::INTER_AREA);
+    cv::resize(icon, resized, cv::Size(width, height), 0, 0, cv::INTER_AREA);
     return resized;
 }
 
@@ -400,20 +400,20 @@ cv::Mat DXGI::preprocessIcon(const cv::Mat& icon) {
     return binary;
 }
 
-IconHash DXGI::hashIcon(const cv::Mat& icon) {
+IconHash DXGI::hashIcon(const cv::Mat& icon, int size) {
     cv::Mat preprocessed = preprocessIcon(icon);
     IconHash hash;
 
     int idx = 0;
-    for (int y = 0; y < preprocessed.rows; y += 4) {
-        for (int x = 0; x < preprocessed.cols; x += 4) {
-            cv::Rect block(x, y, 4, 4);
+    for (int y = 0; y < preprocessed.rows; y += size) {
+        for (int x = 0; x < preprocessed.cols; x += size) {
+            cv::Rect block(x, y, size, size);
             double avgIntensity = cv::mean(preprocessed(block))[0];
             hash[idx++] = (avgIntensity > 127);
 
             // Calculate horizontal gradient
-            if (x < preprocessed.cols - 4) {
-                cv::Rect nextBlock(x + 4, y, 4, 4);
+            if (x < preprocessed.cols - size) {
+                cv::Rect nextBlock(x + size, y, size, size);
                 double nextAvgIntensity = cv::mean(preprocessed(nextBlock))[0];
                 hash[idx++] = (nextAvgIntensity > avgIntensity);
             }
@@ -900,7 +900,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 
     // Highlight the ROIs on the source image for alignment
-    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1  // Keeps crashing here
+    rectangle(src, roi1, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 1
     rectangle(src, roi2, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 2
     rectangle(src, roi3, cv::Scalar(255, 0, 0), 2); // Blue rectangle around ROI 3
 
@@ -1030,10 +1030,10 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     }
 }
 
-void debugHammingDistances(const IconHash& hash) {
+void debugHammingDistances(const IconHash& hash, const std::unordered_map<IconHash, std::string>& hashset) {
     std::vector<std::pair<std::string, float>> distances;
 
-    for (const auto& pair : operatorHashes) {
+    for (const auto& pair : hashset) {
         int distance = utils.hammingDistance(hash, pair.first);
         float percentage = static_cast<float>(distance) / HASH_SIZE * 100.0f;
         distances.push_back({ pair.second, percentage });
@@ -1057,11 +1057,11 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
         return false;
     }
 
-    cv::Mat normalizedIcon = normalizeIconSize(src);
-    IconHash hash = hashIcon(normalizedIcon);
+    cv::Mat normalizedIcon = normalizeIconSize(src, 64, 64);
+    IconHash hash = hashIcon(normalizedIcon, 4);
 
     //std::cout << xorstr_("Hash: ") << hash << std::endl;
-	//debugHammingDistances(hash);
+	debugHammingDistances(hash, operatorHashes);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -1103,6 +1103,149 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     }
 
     return false;
+}
+
+std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) {
+    if (attachmentRegion.empty()) {
+        return { 0, 0, 0 }; // Default attachments: [scope, grip, barrel]
+    }
+
+    std::vector<cv::Rect> attachmentRois;
+    float iconHeight = 0.25f;
+    float iconWidth = 1.f;
+    float iconX = 0.f;
+
+    // Define ROIs for different attachment types
+    float scopeY = 0.f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(scopeY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float barrelY = 0.25f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(barrelY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float gripY = 0.50f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(gripY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float laserY = 0.75f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(laserY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    std::vector<std::string> detectedAttachments = { "", "", "", "" }; // Defaults: [scope, barrel, grip, laser]
+
+    // Process each attachment region
+    for (int i = 0; i < attachmentRois.size(); i++) {
+        cv::Mat attachment = attachmentRegion(attachmentRois[i]);
+        cv::Mat normalizedAttachment = normalizeIconSize(attachment, 32, 32);
+
+        IconHash attachmentHash = hashIcon(normalizedAttachment, 2);
+
+        //std::cout << "Attachment " << i << " hash: " << attachmentHash << std::endl;
+        //debugHammingDistances(attachmentHash, attachmentHashes);
+
+        // Try exact hash match first
+        auto it = attachmentHashes.find(attachmentHash);
+        if (it != attachmentHashes.end()) {
+            //std::cout << "Attachment " << i << ": " << it->second << std::endl;
+            detectedAttachments[i] = it->second;
+        }
+        else {
+            // Try approximate match with Hamming distance
+            int minHammingDistance = HASH_SIZE;
+            std::string bestMatch = "";
+
+            for (const auto& pair : attachmentHashes) {
+                int distance = utils.hammingDistance(attachmentHash, pair.first);
+
+                if (distance < minHammingDistance) {
+                    minHammingDistance = distance;
+                    bestMatch = pair.second;
+                }
+            }
+
+            float percentDiff = static_cast<float>(minHammingDistance) / HASH_SIZE * 100.0f;
+            if (percentDiff <= 15.0f) {
+                detectedAttachments[i] = bestMatch;
+            }
+
+            //std::cout << "Attachment " << i << ": " << bestMatch << " (" << percentDiff << "%)" << std::endl;
+        }
+
+        // Draw debug rectangles
+        cv::rectangle(attachmentRegion, attachmentRois[i], cv::Scalar(0, 255, 0), 1);
+    }
+
+    // Map detected attachments to their correct indices: [scope, grip, barrel]
+    std::vector<int> attachmentIndices = { 0, 0, 0 };
+
+    // Process scope (index 0)
+    if (!detectedAttachments[0].empty()) {
+        std::string scope = detectedAttachments[0];
+
+        if (scope.find("Telescopic") != std::string::npos) {
+            attachmentIndices[0] = 2; // 3.5x scope
+        }
+        else if (scope.find("Magnified") != std::string::npos) {
+            attachmentIndices[0] = 1; // 2.5x scope
+        }
+        else if (scope.find("Red_Dot") != std::string::npos ||
+            scope.find("Holo") != std::string::npos ||
+            scope.find("Reflex") != std::string::npos ||
+            scope.find("Iron_Sight") != std::string::npos) {
+            attachmentIndices[0] = 0; // 1x scope
+        }
+    }
+
+    // Process barrel (index 2 in vector, but position 1 in UI)
+    if (!detectedAttachments[1].empty()) {
+        std::string barrel = detectedAttachments[1];
+
+        if (barrel.find("Suppressor") != std::string::npos ||
+            barrel.find("Extended_Barrel") != std::string::npos) {
+            attachmentIndices[2] = 0;
+        }
+        else if (barrel.find("Muzzle_Break") != std::string::npos) {
+            attachmentIndices[2] = 1;
+        }
+        else if (barrel.find("Compensator") != std::string::npos) {
+            attachmentIndices[2] = 2;
+        }
+        else if (barrel.find("Flash_Hider") != std::string::npos) {
+            attachmentIndices[2] = 3;
+        }
+    }
+
+    // Process grip (index 1 in vector, position 2 in UI)
+    if (!detectedAttachments[2].empty()) {
+        std::string grip = detectedAttachments[2];
+
+        if (grip.find("Vertical_Grip") != std::string::npos) {
+            attachmentIndices[1] = 1;
+        }
+        else if (grip.find("Horizontal_Grip") != std::string::npos ||
+            grip.find("Angled_Grip") != std::string::npos) {
+            attachmentIndices[1] = 0;
+        }
+    }
+
+    return attachmentIndices;
 }
 
 void DXGI::initializeRustDetector(cv::Mat& src) {
@@ -1731,4 +1874,516 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 		//cv::destroyWindow("Mask");
 		destroyed = true;
 	}
+}
+
+int DXGI::isOperatorScreenR6(cv::Mat& src) {
+    if (src.empty()) {
+		return 0;
+	}
+
+    // Define ROIs for primary and secondary weapon selection areas
+    float primaryRoiXPercent = 0.f;
+    float primaryRoiYPercent = 0.f;
+    float primaryRoiWidthPercent = 1.f;
+    float primaryRoiHeightPercent = 0.15f;
+
+    float secondaryRoiXPercent = 0.f;
+    float secondaryRoiYPercent = 0.85f;
+    float secondaryRoiWidthPercent = 1.f;
+    float secondaryRoiHeightPercent = 0.15f;
+
+    // Calculate actual ROI coordinates for primary weapon
+    cv::Rect primaryRoi(
+        static_cast<int>(src.cols * primaryRoiXPercent),
+        static_cast<int>(src.rows * primaryRoiYPercent),
+        static_cast<int>(src.cols * primaryRoiWidthPercent),
+        static_cast<int>(src.rows * primaryRoiHeightPercent)
+    );
+
+    // Calculate actual ROI coordinates for secondary weapon
+    cv::Rect secondaryRoi(
+        static_cast<int>(src.cols * secondaryRoiXPercent),
+        static_cast<int>(src.rows * secondaryRoiYPercent),
+        static_cast<int>(src.cols * secondaryRoiWidthPercent),
+        static_cast<int>(src.rows * secondaryRoiHeightPercent)
+    );
+
+    // Ensure the ROIs are within the source image bounds
+    primaryRoi &= cv::Rect(0, 0, src.cols, src.rows);
+    secondaryRoi &= cv::Rect(0, 0, src.cols, src.rows);
+
+    // Skip if either ROI is invalid
+    if (primaryRoi.width == 0 || primaryRoi.height == 0 ||
+        secondaryRoi.width == 0 || secondaryRoi.height == 0) {
+        return 0;
+    }
+
+    // Extract the ROIs
+    cv::Mat primaryRegion = src(primaryRoi);
+    cv::Mat secondaryRegion = src(secondaryRoi);
+
+    // Convert to HSV for better color detection
+    cv::Mat primaryHsv, secondaryHsv;
+    cv::cvtColor(primaryRegion, primaryHsv, cv::COLOR_BGR2HSV);
+    cv::cvtColor(secondaryRegion, secondaryHsv, cv::COLOR_BGR2HSV);
+
+    // Count blue pixels in each ROI
+    int primaryBlueCount = 0;
+    int secondaryBlueCount = 0;
+
+    // Check primary ROI
+    for (int y = 0; y < primaryHsv.rows; y++) {
+        for (int x = 0; x < primaryHsv.cols; x++) {
+            cv::Vec3b pixel = primaryHsv.at<cv::Vec3b>(y, x);
+            // Blue detection - adjust these thresholds as needed
+            if (pixel[0] > 95 && pixel[0] < 115 && pixel[1] > 150 && pixel[2] > 150) {
+                primaryBlueCount++;
+            }
+        }
+    }
+
+    // Check secondary ROI
+    for (int y = 0; y < secondaryHsv.rows; y++) {
+        for (int x = 0; x < secondaryHsv.cols; x++) {
+            cv::Vec3b pixel = secondaryHsv.at<cv::Vec3b>(y, x);
+            // Blue detection - same criteria as primary
+            if (pixel[0] > 95 && pixel[0] < 115 && pixel[1] > 150 && pixel[2] > 150) {
+                secondaryBlueCount++;
+            }
+        }
+    }
+
+    // Calculate the percentage of blue pixels in each ROI
+    float primaryBluePercent = static_cast<float>(primaryBlueCount) / primaryHsv.total();
+    float secondaryBluePercent = static_cast<float>(secondaryBlueCount) / secondaryHsv.total();
+
+    // Determine which ROI has the most blue (if any)
+    const float blueThreshold = 0.1f; // 10% of pixels need to be blue
+
+    if (primaryBluePercent > blueThreshold && primaryBluePercent > secondaryBluePercent) {
+        return 1; // Primary weapon selected
+    }
+    else if (secondaryBluePercent > blueThreshold && secondaryBluePercent > primaryBluePercent) {
+        return 2; // Secondary weapon selected
+    }
+    else {
+        return 0; // Neither selected
+    }
+}
+
+float DXGI::getOperatorDetectionConfidence(cv::Mat& roi) {
+    // First, normalize and hash the icon
+    cv::Mat normalizedRoi = normalizeIconSize(roi, 64, 64);
+    IconHash roiHash = hashIcon(normalizedRoi, 4);
+
+    // Find best match among operator hashes
+    int minHammingDistance = HASH_SIZE;
+    float bestMatchPercentage = 100.0f;
+    std::string detectedOperator;
+
+    for (const auto& pair : operatorHashes) {
+        int distance = utils.hammingDistance(roiHash, pair.first);
+        float percentDiff = static_cast<float>(distance) / HASH_SIZE * 100.0f;
+
+        if (distance < minHammingDistance) {
+            minHammingDistance = distance;
+            bestMatchPercentage = percentDiff;
+            detectedOperator = pair.second;
+        }
+    }
+
+    // Convert the percentage difference to a confidence score (0-1)
+    // Lower percentage difference means higher confidence
+    float confidence = 1.0f - (bestMatchPercentage / 100.0f);
+
+    return confidence;
+}
+
+DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize) {
+    // Initial parameters
+    ROIParameters bestParams;
+    bestParams.ratioX = initialX;
+    bestParams.ratioY = initialY;
+    bestParams.ratioWidth = initialWidth;
+    bestParams.ratioHeight = initialHeight;
+    bestParams.confidence = 0.0f;
+
+    // Desktop dimensions
+    int desktopWidth = src.cols;
+    int desktopHeight = src.rows;
+
+    // Number of steps to try in each direction
+    const int numSteps = 10;
+
+    // For logging progress
+    int totalIterations = (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1);
+    int currentIteration = 0;
+
+    std::cout << "Starting ROI optimization (this may take a while)..." << std::endl;
+
+    // Temp variables to avoid unnecessary conversions in the loops
+    cv::Mat roiImage;
+    int x, y, width, height;
+    bool result;
+    float confidence;
+
+    // Grid search over all parameters
+    for (int xStep = -numSteps; xStep <= numSteps; xStep++) {
+        float testX = initialX + xStep * stepSize;
+
+        for (int yStep = -numSteps; yStep <= numSteps; yStep++) {
+            float testY = initialY + yStep * stepSize;
+
+            for (int wStep = -numSteps; wStep <= numSteps; wStep++) {
+                float testWidth = initialWidth + wStep * stepSize;
+
+                for (int hStep = -numSteps; hStep <= numSteps; hStep++) {
+                    float testHeight = initialHeight + hStep * stepSize;
+
+                    // Ensure valid parameter ranges
+                    if (testX < 0.0f || testY < 0.0f || testWidth <= 0.0f || testHeight <= 0.0f ||
+                        testX + testWidth > 1.0f || testY + testHeight > 1.0f) {
+                        continue;
+                    }
+
+                    // Calculate ROI dimensions
+                    x = static_cast<int>(testX * desktopWidth);
+                    y = static_cast<int>(testY * desktopHeight);
+                    width = static_cast<int>(testWidth * desktopWidth);
+                    height = static_cast<int>(testHeight * desktopHeight);
+
+                    // Ensure the ROI is within bounds
+                    x = std::max(0, x);
+                    y = std::max(0, y);
+                    width = std::min(width, desktopWidth - x);
+                    height = std::min(height, desktopHeight - y);
+
+                    if (width <= 0 || height <= 0) continue;
+
+                    // Extract ROI and detect operator
+                    cv::Rect roi(x, y, width, height);
+                    roiImage = src(roi);
+
+                    // This part needs to be modified to return a confidence value instead of just boolean
+                    // For now, let's assume we have a version of detectOperatorR6 that returns a confidence score
+                    confidence = getOperatorDetectionConfidence(roiImage);
+
+                    // Update progress
+                    currentIteration++;
+                    if (currentIteration % 100 == 0) {
+                        std::cout << "Progress: " << (currentIteration * 100.0f / totalIterations) << "%" << std::endl;
+                    }
+
+                    // Update best parameters if this ROI is better
+                    if (confidence > bestParams.confidence) {
+                        bestParams.ratioX = testX;
+                        bestParams.ratioY = testY;
+                        bestParams.ratioWidth = testWidth;
+                        bestParams.ratioHeight = testHeight;
+                        bestParams.confidence = confidence;
+                    }
+                }
+            }
+        }
+    }
+
+    // Print the optimal parameters
+    std::cout << "operatorDetectionRatioX = " << bestParams.ratioX << "f;" << std::endl;
+    std::cout << "operatorDetectionRatioY = " << bestParams.ratioY << "f;" << std::endl;
+    std::cout << "operatorDetectionRatioWidth = " << bestParams.ratioWidth << "f;" << std::endl;
+    std::cout << "operatorDetectionRatioHeight = " << bestParams.ratioHeight << "f;" << std::endl;
+    std::cout << "Confidence: " << bestParams.confidence << std::endl;
+
+    return bestParams;
+}
+
+void DXGI::runOptimiser(float x, float y, float width, float height, cv::Mat& src) {
+    // Run the optimizer
+    //ROIParameters optimizedParams = optimizeOperatorDetectionROI(
+    //    src,
+    //    x, y, width, height,
+    //    0.01f
+    //);
+
+    //// Save the optimized parameters
+    //x = optimizedParams.ratioX;
+    //y = optimizedParams.ratioY;
+    //width = optimizedParams.ratioWidth;
+    //height = optimizedParams.ratioHeight;
+
+    ROIParameters optimizedParams = optimizeOperatorDetectionROI(
+        src,
+        x, y, width, height,
+        0.001f
+    );
+
+    // Save the optimized parameters
+    x = optimizedParams.ratioX;
+    y = optimizedParams.ratioY;
+    width = optimizedParams.ratioWidth;
+    height = optimizedParams.ratioHeight;
+
+    optimizedParams = optimizeOperatorDetectionROI(
+        src,
+        x, y, width, height,
+        0.0001f
+    );
+
+    // Pause until the user presses a key to continue
+    std::cout << "Press any key to continue..." << std::endl;
+    std::cin.ignore();
+}
+
+void DXGI::detectAttachmentsR6(cv::Mat& src) {
+    if (src.empty()) {
+        return;
+    }
+
+    //////////////////////////////////////////////////////
+    ///////// CHECK SELECTED WEAPON
+    //////////////////////////////////////////////////////
+
+    // Define ratios for crop region
+    float screenCheckRatioX = 0.f;
+    float screenCheckRatioY = 0.f;
+    float screenCheckRatioWidth = 0.f; // 0.03f for testing
+    float screenCheckRatioHeight = 0.f;
+
+    switch (settings.globalSettings.aspect_ratio) {
+    case 0:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.41f;
+        screenCheckRatioWidth = 0.0075f;
+        screenCheckRatioHeight = 0.199f;
+        break;
+    case 1:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.432f;
+        screenCheckRatioWidth = 0.0075f;
+		screenCheckRatioHeight = 0.15f;
+        break;
+    case 2:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.436f;
+        screenCheckRatioWidth = 0.0075f;
+        screenCheckRatioHeight = 0.142f;
+        break;
+    case 3:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.423f;
+        screenCheckRatioWidth = 0.0075f;
+        screenCheckRatioHeight = 0.17f;
+        break;
+    case 4:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.419f;
+        screenCheckRatioWidth = 0.0075f;
+        screenCheckRatioHeight = 0.18f;
+        break;
+    case 5:
+        screenCheckRatioX = 0.021f;
+        screenCheckRatioY = 0.414f;
+        screenCheckRatioWidth = 0.0075f;
+        screenCheckRatioHeight = 0.188f;
+        break;
+    case 6:
+        screenCheckRatioX = 0.052f;
+        screenCheckRatioY = 0.41f;
+        screenCheckRatioWidth = 0.0065f;
+        screenCheckRatioHeight = 0.199f;
+        break;
+    case 7:
+        screenCheckRatioX = 0.14f;
+        screenCheckRatioY = 0.41f;
+        screenCheckRatioWidth = 0.006f;
+        screenCheckRatioHeight = 0.199f;
+        break;
+    }
+
+    // Calculate the region of interest (ROI) based on ratios
+    int desktopWidth = globals.capture.desktopWidth.load();
+    int desktopHeight = globals.capture.desktopHeight.load();
+
+    int screenCheckX = static_cast<int>(screenCheckRatioX * desktopWidth);
+    int screenCheckY = static_cast<int>(screenCheckRatioY * desktopHeight);
+    int screenCheckWidth = static_cast<int>(screenCheckRatioWidth * desktopWidth);
+    int screenCheckHeight = static_cast<int>(screenCheckRatioHeight * desktopHeight);
+
+    // Ensure the ROI is within the bounds of the desktopMat
+    screenCheckX = std::max(0, screenCheckX);
+    screenCheckY = std::max(0, screenCheckY);
+    screenCheckWidth = std::min(screenCheckWidth, desktopWidth - screenCheckX);
+    screenCheckHeight = std::min(screenCheckHeight, desktopHeight - screenCheckY);
+
+    cv::Rect screenCheckRoi(screenCheckX, screenCheckY, screenCheckWidth, screenCheckHeight);
+
+    cv::Mat screenCheckRegion = src(screenCheckRoi);
+
+    int selectedWeapon = isOperatorScreenR6(screenCheckRegion);
+	if (selectedWeapon == 0) {
+		std::cout << "Not operator screen or no weapon selected" << std::endl;
+		return;
+	}
+
+    //////////////////////////////////////////////////////
+    ///////// OPERATOR DETECTION REGION
+    //////////////////////////////////////////////////////
+
+    static bool detectedOperator = false;
+    static bool useShootingRangeOffset = false;
+
+    float operatorDetectionRatioX = 0.f;
+    float operatorDetectionRatioY = 0.f;
+    float operatorDetectionRatioWidth = 0.f;
+    float operatorDetectionRatioHeight = 0.f;
+
+    // Define ratios for operatorDetection region
+    switch (settings.globalSettings.aspect_ratio) {
+    case 0:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.f;
+        operatorDetectionRatioWidth = 0.0243f;
+        operatorDetectionRatioHeight = 0.0514f;
+        break;
+    case 1:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.1244f;
+        operatorDetectionRatioWidth = 0.0243f;
+        operatorDetectionRatioHeight = 0.0396f;
+        //runOptimiser(operatorDetectionRatioX, operatorDetectionRatioY, operatorDetectionRatioWidth, operatorDetectionRatioHeight, src);
+        break;
+    case 2:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.1487f;
+        operatorDetectionRatioWidth = 0.0243f;
+        operatorDetectionRatioHeight = 0.036f;
+        break;
+    case 3:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.0785f;
+        operatorDetectionRatioWidth = 0.0243f;
+        operatorDetectionRatioHeight = 0.0417f;
+        break;
+    case 4:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.0494f;
+        operatorDetectionRatioWidth = 0.0243f;
+        operatorDetectionRatioHeight = 0.0473f;
+        break;
+    case 5:
+        operatorDetectionRatioX = 0.3934f * (useShootingRangeOffset ? 1.138f : 1.f);
+        operatorDetectionRatioY = 0.0306f;
+        operatorDetectionRatioWidth = 0.0239f;
+        operatorDetectionRatioHeight = 0.048f;
+        break;
+    case 6:
+        operatorDetectionRatioX = 0.4f * (useShootingRangeOffset ? 1.127f : 1.f);
+        operatorDetectionRatioY = 0.f;
+        operatorDetectionRatioWidth = 0.0231f;
+        operatorDetectionRatioHeight = 0.0514f;
+        break;
+    case 7:
+        operatorDetectionRatioX = 0.4196f * (useShootingRangeOffset ? 1.097f : 1.f);
+        operatorDetectionRatioY = 0.f;
+        operatorDetectionRatioWidth = 0.0184f;
+        operatorDetectionRatioHeight = 0.0514f;
+        break;
+    }
+
+    // Calculate the region of interest (ROI) based on ratios
+    int operatorDetectionX = static_cast<int>(operatorDetectionRatioX * desktopWidth);
+    int operatorDetectionY = static_cast<int>(operatorDetectionRatioY * desktopHeight);
+    int operatorDetectionWidth = static_cast<int>(operatorDetectionRatioWidth * desktopWidth);
+    int operatorDetectionHeight = static_cast<int>(operatorDetectionRatioHeight * desktopHeight);
+
+    // Ensure the ROI is within the bounds of the desktopMat
+    operatorDetectionX = std::max(0, operatorDetectionX);
+    operatorDetectionY = std::max(0, operatorDetectionY);
+    operatorDetectionWidth = std::min(operatorDetectionWidth, desktopWidth - operatorDetectionX);
+    operatorDetectionHeight = std::min(operatorDetectionHeight, desktopHeight - operatorDetectionY);
+
+    cv::Rect operatorDetectionRoi(operatorDetectionX, operatorDetectionY, operatorDetectionWidth, operatorDetectionHeight);
+
+    cv::Mat operatorDetectionRegion = src(operatorDetectionRoi);
+
+    detectedOperator = detectOperatorR6(operatorDetectionRegion);
+
+    if (!detectedOperator) {
+        useShootingRangeOffset = !useShootingRangeOffset;
+        std::cout << "Couldn't detect operator" << std::endl;
+		return;
+    }
+
+    //////////////////////////////////////////////////////
+    ///////// ATTACHMENT REGION
+    //////////////////////////////////////////////////////
+
+    // Define ratios for crop region
+    float attachRegionRatioX = 0.f;
+    float attachRegionRatioY = 0.f;
+    float attachRegionRatioWidth = 0.f;
+    float attachRegionRatioHeight = 0.f;
+
+    // Set aspect ratio-specific values
+    switch (settings.globalSettings.aspect_ratio) {
+    case 0: // 16:9
+        attachRegionRatioX = 0.505f;
+        attachRegionRatioY = 0.31f;
+        attachRegionRatioWidth = 0.03f;
+        attachRegionRatioHeight = 0.2f;
+        break;
+    case 1: // 4:3
+        attachRegionRatioX = 0.343f;
+        attachRegionRatioY = 0.3555f;
+        attachRegionRatioWidth = 0.022f;
+        attachRegionRatioHeight = 0.089f;
+        break;
+        // Define values for other aspect ratios...
+    }
+
+    // Calculate attachment Region ROI
+    int attachRegionX = static_cast<int>(attachRegionRatioX * desktopWidth);
+    int attachRegionY = static_cast<int>(attachRegionRatioY * desktopHeight);
+    int attachRegionWidth = static_cast<int>(attachRegionRatioWidth * desktopWidth);
+    int attachRegionHeight = static_cast<int>(attachRegionRatioHeight * desktopHeight);
+
+    // Ensure bounds
+    attachRegionX = std::max(0, attachRegionX);
+    attachRegionY = std::max(0, attachRegionY);
+    attachRegionWidth = std::min(attachRegionWidth, desktopWidth - attachRegionX);
+    attachRegionHeight = std::min(attachRegionHeight, desktopHeight - attachRegionY);
+
+    cv::Rect attachRegionRoi(attachRegionX, attachRegionY, attachRegionWidth, attachRegionHeight);
+    cv::Mat attachmentRegion = src(attachRegionRoi);
+
+    // Call the new function to detect attachments
+    std::vector<int> attachmentIndices = detectAttachmentsR6FromRegion(attachmentRegion);
+
+    // Update the weapon attachments if we found any
+    if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+        int weaponIndex = selectedWeapon == 1 ?
+            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] :
+            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1];
+
+        if (weaponIndex < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size()) {
+            auto& weapon = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex];
+
+            // Ensure we have enough space for attachments
+            if (weapon.attachments.size() < 3) {
+                weapon.attachments.resize(3, 0);
+            }
+
+            // Copy detected attachments to weapon
+            for (int i = 0; i < 3 && i < attachmentIndices.size(); i++) {
+                weapon.attachments[i] = attachmentIndices[i];
+            }
+
+            settings.activeState.weaponDataChanged = true;
+            globals.filesystem.unsavedChanges.store(true);
+        }
+    }
+
+    // Debug visualization
+	/*cv::imshow("Attachment Region", attachmentRegion);
+    cv::waitKey(1);*/
 }

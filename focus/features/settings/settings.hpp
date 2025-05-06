@@ -97,10 +97,10 @@ struct aimbotData {
 };
 
 struct globalSettings {
-    bool potato = false;
+    bool potato = true;
     int sensitivityCalculator = 0;
     std::vector<bool> characterDetectors = { false };
-    std::vector<bool> weaponDetectors = { false, false };
+    std::vector<bool> weaponDetectors = { false, false, false };
 
     std::vector<float> sensitivity = { 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, };
     int aspect_ratio = 0;
@@ -153,7 +153,6 @@ public:
     // Misc Settings
 	miscSettings misc;
 
-    bool isLegacyConfig(const std::string& filename);
     void readSettings(const std::string& filename, bool clearExisting, bool updateAimbotInfo);
     void saveSettings(const std::string& filename);
 };

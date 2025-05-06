@@ -22,3 +22,4 @@ using IconHash = std::bitset<HASH_SIZE>;
 
 extern std::vector<WeaponMask> rustMasks;
 extern std::unordered_map<IconHash, std::string> operatorHashes;
+extern std::unordered_map<IconHash, std::string> attachmentHashes;
