@@ -75,8 +75,11 @@ private:
 
 	ROIParameters optimizeOperatorDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize);
 	float getOperatorDetectionConfidence(cv::Mat& roi);
-	void runOptimiser(float x, float y, float width, float height, cv::Mat& src);
+	void runOperatorOptimiser(float x, float y, float width, float height, cv::Mat& src);
+	void runAttachmentOptimiser(float x, float y, float width, float height, cv::Mat& src);
 	std::vector<int> detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion);
+	std::vector<float> getAttachmentDetectionConfidence(cv::Mat& attachmentRegion);
+	ROIParameters optimizeAttachmentDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize);
 
 	std::vector<ProcessedMask> processedMasks;
 	std::vector<cv::Rect> weaponBoxes;

@@ -1061,7 +1061,7 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     IconHash hash = hashIcon(normalizedIcon, 4);
 
     //std::cout << xorstr_("Hash: ") << hash << std::endl;
-	debugHammingDistances(hash, operatorHashes);
+	//debugHammingDistances(hash, operatorHashes);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -1999,6 +1999,78 @@ float DXGI::getOperatorDetectionConfidence(cv::Mat& roi) {
     return confidence;
 }
 
+std::vector<float> DXGI::getAttachmentDetectionConfidence(cv::Mat& attachmentRegion) {
+    std::vector<float> confidenceScores(4, 0.0f); // 4 attachment slots
+
+    if (attachmentRegion.empty()) {
+        return confidenceScores;
+    }
+
+    // Define ROIs for different attachment slots
+    std::vector<cv::Rect> attachmentRois;
+    float iconHeight = 0.25f;
+    float iconWidth = 1.f;
+    float iconX = 0.f;
+
+    // Define ROIs for each attachment type
+    float scopeY = 0.f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(scopeY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float barrelY = 0.25f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(barrelY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float gripY = 0.50f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(gripY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    float laserY = 0.75f;
+    attachmentRois.push_back(cv::Rect(
+        static_cast<int>(iconX * attachmentRegion.cols),
+        static_cast<int>(laserY * attachmentRegion.rows),
+        static_cast<int>(iconWidth * attachmentRegion.cols),
+        static_cast<int>(iconHeight * attachmentRegion.rows)
+    ));
+
+    // Process each attachment region
+    for (int i = 0; i < attachmentRois.size(); i++) {
+        cv::Mat attachment = attachmentRegion(attachmentRois[i]);
+        cv::Mat normalizedAttachment = normalizeIconSize(attachment, 32, 32);
+        IconHash attachmentHash = hashIcon(normalizedAttachment, 2);
+
+        // Find best match and calculate confidence
+        int minHammingDistance = HASH_SIZE;
+        float percentDiff = 100.0f;
+
+        for (const auto& pair : attachmentHashes) {
+            int distance = utils.hammingDistance(attachmentHash, pair.first);
+
+            if (distance < minHammingDistance) {
+                minHammingDistance = distance;
+                percentDiff = static_cast<float>(minHammingDistance) / HASH_SIZE * 100.0f;
+            }
+        }
+
+        // Convert percentage difference to confidence score (0-1)
+        confidenceScores[i] = 1.0f - (percentDiff / 100.0f);
+    }
+
+    return confidenceScores;
+}
+
 DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize) {
     // Initial parameters
     ROIParameters bestParams;
@@ -2097,20 +2169,112 @@ DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initi
     return bestParams;
 }
 
-void DXGI::runOptimiser(float x, float y, float width, float height, cv::Mat& src) {
-    // Run the optimizer
-    //ROIParameters optimizedParams = optimizeOperatorDetectionROI(
-    //    src,
-    //    x, y, width, height,
-    //    0.01f
-    //);
+DXGI::ROIParameters DXGI::optimizeAttachmentDetectionROI(cv::Mat& src, float initialX, float initialY, float initialWidth, float initialHeight, float stepSize) {
+    // Initial parameters
+    ROIParameters bestParams;
+    bestParams.ratioX = initialX;
+    bestParams.ratioY = initialY;
+    bestParams.ratioWidth = initialWidth;
+    bestParams.ratioHeight = initialHeight;
+    bestParams.confidence = 0.0f;
 
-    //// Save the optimized parameters
-    //x = optimizedParams.ratioX;
-    //y = optimizedParams.ratioY;
-    //width = optimizedParams.ratioWidth;
-    //height = optimizedParams.ratioHeight;
+    // Desktop dimensions
+    int desktopWidth = src.cols;
+    int desktopHeight = src.rows;
 
+    // Number of steps to try in each direction
+    const int numSteps = 10;
+
+    // For logging progress
+    int totalIterations = (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1);
+    int currentIteration = 0;
+
+    std::cout << "Starting Attachment ROI optimization (this may take a while)..." << std::endl;
+
+    // Grid search over all parameters
+    for (int xStep = -numSteps; xStep <= numSteps; xStep++) {
+        float testX = initialX + xStep * stepSize;
+
+        for (int yStep = -numSteps; yStep <= numSteps; yStep++) {
+            float testY = initialY + yStep * stepSize;
+
+            for (int wStep = -numSteps; wStep <= numSteps; wStep++) {
+                float testWidth = initialWidth + wStep * stepSize;
+
+                for (int hStep = -numSteps; hStep <= numSteps; hStep++) {
+                    float testHeight = initialHeight + hStep * stepSize;
+
+                    // Ensure valid parameter ranges
+                    if (testX < 0.0f || testY < 0.0f || testWidth <= 0.0f || testHeight <= 0.0f ||
+                        testX + testWidth > 1.0f || testY + testHeight > 1.0f) {
+                        continue;
+                    }
+
+                    // Calculate ROI dimensions
+                    int x = static_cast<int>(testX * desktopWidth);
+                    int y = static_cast<int>(testY * desktopHeight);
+                    int width = static_cast<int>(testWidth * desktopWidth);
+                    int height = static_cast<int>(testHeight * desktopHeight);
+
+                    // Ensure the ROI is within bounds
+                    x = std::max(0, x);
+                    y = std::max(0, y);
+                    width = std::min(width, desktopWidth - x);
+                    height = std::min(height, desktopHeight - y);
+
+                    if (width <= 0 || height <= 0) continue;
+
+                    // Extract ROI and detect attachments
+                    cv::Rect roi(x, y, width, height);
+                    cv::Mat roiImage = src(roi);
+
+                    // Get confidence scores for all attachment slots
+                    std::vector<float> confidenceScores = getAttachmentDetectionConfidence(roiImage);
+
+                    // Focus on first and last slots (scope and laser)
+                    float firstSlotConfidence = confidenceScores[0];
+                    float lastSlotConfidence = confidenceScores[3];
+
+                    // Calculate overall confidence score - prioritize minimum confidence
+                    // This ensures both slots have good detection
+                    float overallConfidence = std::min(firstSlotConfidence, lastSlotConfidence);
+
+                    // Update progress
+                    currentIteration++;
+                    if (currentIteration % 100 == 0) {
+                        std::cout << "Progress: " << (currentIteration * 100.0f / totalIterations) << "%, "
+                            << "Best confidence so far: " << bestParams.confidence << std::endl;
+                    }
+
+                    // Update best parameters if this ROI is better
+                    if (overallConfidence > bestParams.confidence) {
+                        bestParams.ratioX = testX;
+                        bestParams.ratioY = testY;
+                        bestParams.ratioWidth = testWidth;
+                        bestParams.ratioHeight = testHeight;
+                        bestParams.confidence = overallConfidence;
+
+                        // Log improvements
+                        std::cout << "New best parameters found! Confidence: " << overallConfidence
+                            << " (First: " << firstSlotConfidence
+                            << ", Last: " << lastSlotConfidence << ")" << std::endl;
+                    }
+                }
+            }
+        }
+    }
+
+    // Print the optimal parameters
+    std::cout << "attachRegionRatioX = " << bestParams.ratioX << "f;" << std::endl;
+    std::cout << "attachRegionRatioY = " << bestParams.ratioY << "f;" << std::endl;
+    std::cout << "attachRegionRatioWidth = " << bestParams.ratioWidth << "f;" << std::endl;
+    std::cout << "attachRegionRatioHeight = " << bestParams.ratioHeight << "f;" << std::endl;
+    std::cout << "Final Confidence: " << bestParams.confidence << std::endl;
+
+    return bestParams;
+}
+
+void DXGI::runOperatorOptimiser(float x, float y, float width, float height, cv::Mat& src) {
     ROIParameters optimizedParams = optimizeOperatorDetectionROI(
         src,
         x, y, width, height,
@@ -2124,6 +2288,35 @@ void DXGI::runOptimiser(float x, float y, float width, float height, cv::Mat& sr
     height = optimizedParams.ratioHeight;
 
     optimizedParams = optimizeOperatorDetectionROI(
+        src,
+        x, y, width, height,
+        0.0001f
+    );
+
+    // Pause until the user presses a key to continue
+    std::cout << "Press any key to continue..." << std::endl;
+    std::cin.ignore();
+}
+
+void DXGI::runAttachmentOptimiser(float x, float y, float width, float height, cv::Mat& src) {
+    ROIParameters optimizedParams = optimizeAttachmentDetectionROI(
+        src,
+        x, y, width, height,
+        0.001f
+    );
+
+    // Save the optimized parameters
+    x = optimizedParams.ratioX;
+    y = optimizedParams.ratioY;
+    width = optimizedParams.ratioWidth;
+    height = optimizedParams.ratioHeight;
+
+    std::cout << "attachRegionRatioX = " << x << "f;" << std::endl;
+	std::cout << "attachRegionRatioY = " << y << "f;" << std::endl;
+	std::cout << "attachRegionRatioWidth = " << width << "f;" << std::endl;
+	std::cout << "attachRegionRatioHeight = " << height << "f;" << std::endl;
+
+    optimizedParams = optimizeAttachmentDetectionROI(
         src,
         x, y, width, height,
         0.0001f
@@ -2326,19 +2519,55 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     // Set aspect ratio-specific values
     switch (settings.globalSettings.aspect_ratio) {
-    case 0: // 16:9
-        attachRegionRatioX = 0.505f;
-        attachRegionRatioY = 0.31f;
-        attachRegionRatioWidth = 0.03f;
-        attachRegionRatioHeight = 0.2f;
+    case 0:
+        attachRegionRatioX = 0.3426f;
+        attachRegionRatioY = 0.3056f;
+        attachRegionRatioWidth = 0.0227f;
+        attachRegionRatioHeight = 0.1195f;
         break;
-    case 1: // 4:3
+    case 1:
+        attachRegionRatioX = 0.3426f;
+        attachRegionRatioY = 0.3549f;
+        attachRegionRatioWidth = 0.0227f;
+        attachRegionRatioHeight = 0.0889f;
+        //runAttachmentOptimiser(attachRegionRatioX, attachRegionRatioY, attachRegionRatioWidth, attachRegionRatioHeight, src);
+        break;
+    case 2:
+        attachRegionRatioX = 0.3426f;
+        attachRegionRatioY = 0.3639f;
+        attachRegionRatioWidth = 0.0227f;
+        attachRegionRatioHeight = 0.0834f;
+        break;
+    case 3:
+        attachRegionRatioX = 0.3426f;
+        attachRegionRatioY = 0.3375f;
+        attachRegionRatioWidth = 0.0227f;
+        attachRegionRatioHeight = 0.0994f;
+        break;
+    case 4:
+        attachRegionRatioX = 0.3426f;
+        attachRegionRatioY = 0.3264f;
+        attachRegionRatioWidth = 0.0227f;
+        attachRegionRatioHeight = 0.107f;
+        break;
+    case 5:
         attachRegionRatioX = 0.343f;
-        attachRegionRatioY = 0.3555f;
-        attachRegionRatioWidth = 0.022f;
-        attachRegionRatioHeight = 0.089f;
+        attachRegionRatioY = 0.3174f;
+        attachRegionRatioWidth = 0.0219f;
+        attachRegionRatioHeight = 0.1125f;
         break;
-        // Define values for other aspect ratios...
+    case 6:
+        attachRegionRatioX = 0.3528f;
+        attachRegionRatioY = 0.3056f;
+        attachRegionRatioWidth = 0.0208f;
+        attachRegionRatioHeight = 0.1195f;
+        break;
+    case 7:
+        attachRegionRatioX = 0.3817f;
+        attachRegionRatioY = 0.3056f;
+        attachRegionRatioWidth = 0.0168f;
+        attachRegionRatioHeight = 0.1195f;
+        break;
     }
 
     // Calculate attachment Region ROI
