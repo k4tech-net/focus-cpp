@@ -401,6 +401,15 @@ cv::Mat DXGI::preprocessIcon(const cv::Mat& icon) {
 }
 
 IconHash DXGI::hashIcon(const cv::Mat& icon, int size) {
+    // Performance tracking
+    static std::unordered_map<int, int> callsPerSize;
+    static std::unordered_map<int, double> totalTimePerSize;
+    static std::unordered_map<int, std::chrono::steady_clock::time_point> lastPrintTimePerSize;
+
+    // Start timing this call
+    auto startTime = std::chrono::high_resolution_clock::now();
+
+    // Execute the original hashing algorithm
     cv::Mat preprocessed = preprocessIcon(icon);
     IconHash hash;
 
@@ -418,6 +427,39 @@ IconHash DXGI::hashIcon(const cv::Mat& icon, int size) {
                 hash[idx++] = (nextAvgIntensity > avgIntensity);
             }
         }
+    }
+
+    // Calculate elapsed time
+    auto endTime = std::chrono::high_resolution_clock::now();
+    double elapsedMs = std::chrono::duration<double, std::milli>(endTime - startTime).count();
+
+    // Update statistics for this size
+    callsPerSize[size]++;
+    totalTimePerSize[size] += elapsedMs;
+
+    // Check if we should print metrics (once per second per size)
+    auto currentTime = std::chrono::steady_clock::now();
+    if (!lastPrintTimePerSize.count(size) ||
+        std::chrono::duration_cast<std::chrono::seconds>(currentTime - lastPrintTimePerSize[size]).count() >= 1) {
+
+        // Calculate metrics
+        double avgTimeMs = totalTimePerSize[size] / callsPerSize[size];
+        int callsPerSecond = callsPerSize[size] /
+            std::max(1.0, std::chrono::duration<double>(currentTime -
+                (lastPrintTimePerSize.count(size) ? lastPrintTimePerSize[size] : startTime)).count());
+
+        // Print performance metrics
+        std::cout << "Hash Size " << size << " Performance: "
+            << callsPerSize[size] << " calls, "
+            << "Avg: " << avgTimeMs << "ms, "
+            << "Rate: " << callsPerSecond << " calls/sec" << std::endl;
+
+        // Optionally reset counters for this window
+        callsPerSize[size] = 0;
+        totalTimePerSize[size] = 0;
+
+        // Update last print time
+        lastPrintTimePerSize[size] = currentTime;
     }
 
     return hash;
@@ -1061,7 +1103,7 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     IconHash hash = hashIcon(normalizedIcon, 4);
 
     //std::cout << xorstr_("Hash: ") << hash << std::endl;
-	//debugHammingDistances(hash, operatorHashes);
+	debugHammingDistances(hash, operatorHashes);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -1106,8 +1148,11 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
 }
 
 std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) {
+    // Initialize with -1 for all attachment types (no detection)
+    std::vector<int> attachmentIndices = { -1, -1, -1 }; // [scope, grip, barrel]
+
     if (attachmentRegion.empty()) {
-        return { 0, 0, 0 }; // Default attachments: [scope, grip, barrel]
+        return attachmentIndices;
     }
 
     std::vector<cv::Rect> attachmentRois;
@@ -1115,56 +1160,36 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
     float iconWidth = 1.f;
     float iconX = 0.f;
 
-    // Define ROIs for different attachment types
-    float scopeY = 0.f;
-    attachmentRois.push_back(cv::Rect(
-        static_cast<int>(iconX * attachmentRegion.cols),
-        static_cast<int>(scopeY * attachmentRegion.rows),
-        static_cast<int>(iconWidth * attachmentRegion.cols),
-        static_cast<int>(iconHeight * attachmentRegion.rows)
-    ));
+    // Define ROIs for each slot
+    std::vector<float> slotYPositions = { 0.0f, 0.25f, 0.50f, 0.75f };
 
-    float barrelY = 0.25f;
-    attachmentRois.push_back(cv::Rect(
-        static_cast<int>(iconX * attachmentRegion.cols),
-        static_cast<int>(barrelY * attachmentRegion.rows),
-        static_cast<int>(iconWidth * attachmentRegion.cols),
-        static_cast<int>(iconHeight * attachmentRegion.rows)
-    ));
+    for (float slotY : slotYPositions) {
+        attachmentRois.push_back(cv::Rect(
+            static_cast<int>(iconX * attachmentRegion.cols),
+            static_cast<int>(slotY * attachmentRegion.rows),
+            static_cast<int>(iconWidth * attachmentRegion.cols),
+            static_cast<int>(iconHeight * attachmentRegion.rows)
+        ));
+    }
 
-    float gripY = 0.50f;
-    attachmentRois.push_back(cv::Rect(
-        static_cast<int>(iconX * attachmentRegion.cols),
-        static_cast<int>(gripY * attachmentRegion.rows),
-        static_cast<int>(iconWidth * attachmentRegion.cols),
-        static_cast<int>(iconHeight * attachmentRegion.rows)
-    ));
-
-    float laserY = 0.75f;
-    attachmentRois.push_back(cv::Rect(
-        static_cast<int>(iconX * attachmentRegion.cols),
-        static_cast<int>(laserY * attachmentRegion.rows),
-        static_cast<int>(iconWidth * attachmentRegion.cols),
-        static_cast<int>(iconHeight * attachmentRegion.rows)
-    ));
-
-    std::vector<std::string> detectedAttachments = { "", "", "", "" }; // Defaults: [scope, barrel, grip, laser]
-
-    // Process each attachment region
+    // Process each slot
     for (int i = 0; i < attachmentRois.size(); i++) {
         cv::Mat attachment = attachmentRegion(attachmentRois[i]);
         cv::Mat normalizedAttachment = normalizeIconSize(attachment, 32, 32);
 
         IconHash attachmentHash = hashIcon(normalizedAttachment, 2);
 
-        //std::cout << "Attachment " << i << " hash: " << attachmentHash << std::endl;
-        //debugHammingDistances(attachmentHash, attachmentHashes);
+		std::cout << xorstr_("box ") << i << xorstr_(": ") << attachmentHash << std::endl;
+		//debugHammingDistances(attachmentHash, attachmentHashes);
+
+        std::string detectedAttachment = "";
+        float confidence = 0.0f;
 
         // Try exact hash match first
         auto it = attachmentHashes.find(attachmentHash);
         if (it != attachmentHashes.end()) {
-            //std::cout << "Attachment " << i << ": " << it->second << std::endl;
-            detectedAttachments[i] = it->second;
+            detectedAttachment = it->second;
+            confidence = 1.0f;
         }
         else {
             // Try approximate match with Hamming distance
@@ -1181,67 +1206,55 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
             }
 
             float percentDiff = static_cast<float>(minHammingDistance) / HASH_SIZE * 100.0f;
-            if (percentDiff <= 15.0f) {
-                detectedAttachments[i] = bestMatch;
+            if (percentDiff <= 15.0f) {  // 15% threshold for acceptable match
+                detectedAttachment = bestMatch;
+                confidence = 1.0f - (percentDiff / 100.0f);
             }
-
-            //std::cout << "Attachment " << i << ": " << bestMatch << " (" << percentDiff << "%)" << std::endl;
         }
 
-        // Draw debug rectangles
-        cv::rectangle(attachmentRegion, attachmentRois[i], cv::Scalar(0, 255, 0), 1);
-    }
+        // Draw debug rectangles - green for detected, red for not detected
+        cv::Scalar rectColor = confidence >= 0.85f ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+        cv::rectangle(attachmentRegion, attachmentRois[i], rectColor, 1);
 
-    // Map detected attachments to their correct indices: [scope, grip, barrel]
-    std::vector<int> attachmentIndices = { 0, 0, 0 };
+        std::cout << xorstr_("Attachment ") << i << xorstr_(": ") << detectedAttachment << xorstr_(" (Confidence: ") << confidence * 100.0f << xorstr_("%)\n");
 
-    // Process scope (index 0)
-    if (!detectedAttachments[0].empty()) {
-        std::string scope = detectedAttachments[0];
-
-        if (scope.find("Telescopic") != std::string::npos) {
-            attachmentIndices[0] = 2; // 3.5x scope
-        }
-        else if (scope.find("Magnified") != std::string::npos) {
-            attachmentIndices[0] = 1; // 2.5x scope
-        }
-        else if (scope.find("Red_Dot") != std::string::npos ||
-            scope.find("Holo") != std::string::npos ||
-            scope.find("Reflex") != std::string::npos ||
-            scope.find("Iron_Sight") != std::string::npos) {
-            attachmentIndices[0] = 0; // 1x scope
-        }
-    }
-
-    // Process barrel (index 2 in vector, but position 1 in UI)
-    if (!detectedAttachments[1].empty()) {
-        std::string barrel = detectedAttachments[1];
-
-        if (barrel.find("Suppressor") != std::string::npos ||
-            barrel.find("Extended_Barrel") != std::string::npos) {
-            attachmentIndices[2] = 0;
-        }
-        else if (barrel.find("Muzzle_Break") != std::string::npos) {
-            attachmentIndices[2] = 1;
-        }
-        else if (barrel.find("Compensator") != std::string::npos) {
-            attachmentIndices[2] = 2;
-        }
-        else if (barrel.find("Flash_Hider") != std::string::npos) {
-            attachmentIndices[2] = 3;
-        }
-    }
-
-    // Process grip (index 1 in vector, position 2 in UI)
-    if (!detectedAttachments[2].empty()) {
-        std::string grip = detectedAttachments[2];
-
-        if (grip.find("Vertical_Grip") != std::string::npos) {
-            attachmentIndices[1] = 1;
-        }
-        else if (grip.find("Horizontal_Grip") != std::string::npos ||
-            grip.find("Angled_Grip") != std::string::npos) {
-            attachmentIndices[1] = 0;
+        // Only process attachments with sufficient confidence
+        if (!detectedAttachment.empty() && confidence >= 0.85f) {
+            // Check for scope attachments (index 0)
+            if (detectedAttachment.find("Telescopic") != std::string::npos) {
+                attachmentIndices[0] = 2; // 3.5x scope
+            }
+            else if (detectedAttachment.find("Magnified") != std::string::npos) {
+                attachmentIndices[0] = 1; // 2.5x scope
+            }
+            else if (detectedAttachment.find("Red_Dot") != std::string::npos ||
+                detectedAttachment.find("Holo") != std::string::npos ||
+                detectedAttachment.find("Reflex") != std::string::npos ||
+                detectedAttachment.find("Iron_Sight") != std::string::npos) {
+                attachmentIndices[0] = 0; // 1x scope
+            }
+            // Check for grip attachments (index 1)
+            else if (detectedAttachment.find("Vertical_Grip") != std::string::npos) {
+                attachmentIndices[1] = 1; // Vertical grip
+            }
+            else if (detectedAttachment.find("Horizontal_Grip") != std::string::npos ||
+                detectedAttachment.find("Angled_Grip") != std::string::npos) {
+                attachmentIndices[1] = 0; // Horizontal/Angled grip
+            }
+            // Check for barrel attachments (index 2)
+            else if (detectedAttachment.find("Suppressor") != std::string::npos ||
+                detectedAttachment.find("Extended_Barrel") != std::string::npos) {
+                attachmentIndices[2] = 0; // Suppressor/Extended
+            }
+            else if (detectedAttachment.find("Muzzle_Break") != std::string::npos) {
+                attachmentIndices[2] = 1; // Muzzle break
+            }
+            else if (detectedAttachment.find("Compensator") != std::string::npos) {
+                attachmentIndices[2] = 2; // Compensator
+            }
+            else if (detectedAttachment.find("Flash_Hider") != std::string::npos) {
+                attachmentIndices[2] = 3; // Flash hider
+            }
         }
     }
 
@@ -2511,6 +2524,8 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     ///////// ATTACHMENT REGION
     //////////////////////////////////////////////////////
 
+    static int textLineMultiplier = 0;
+
     // Define ratios for crop region
     float attachRegionRatioX = 0.f;
     float attachRegionRatioY = 0.f;
@@ -2521,50 +2536,50 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     switch (settings.globalSettings.aspect_ratio) {
     case 0:
         attachRegionRatioX = 0.3426f;
-        attachRegionRatioY = 0.3056f;
+        attachRegionRatioY = 0.3056f * (1.f + textLineMultiplier * 0.085f);
         attachRegionRatioWidth = 0.0227f;
         attachRegionRatioHeight = 0.1195f;
         break;
     case 1:
         attachRegionRatioX = 0.3426f;
-        attachRegionRatioY = 0.3549f;
+        attachRegionRatioY = 0.3549f * (1.f + textLineMultiplier * 0.054f);
         attachRegionRatioWidth = 0.0227f;
         attachRegionRatioHeight = 0.0889f;
         //runAttachmentOptimiser(attachRegionRatioX, attachRegionRatioY, attachRegionRatioWidth, attachRegionRatioHeight, src);
         break;
     case 2:
         attachRegionRatioX = 0.3426f;
-        attachRegionRatioY = 0.3639f;
+        attachRegionRatioY = 0.3639f * (1.f + textLineMultiplier * 0.05f);
         attachRegionRatioWidth = 0.0227f;
         attachRegionRatioHeight = 0.0834f;
         break;
     case 3:
         attachRegionRatioX = 0.3426f;
-        attachRegionRatioY = 0.3375f;
+        attachRegionRatioY = 0.3375f * (1.f + textLineMultiplier * 0.064f);
         attachRegionRatioWidth = 0.0227f;
         attachRegionRatioHeight = 0.0994f;
         break;
     case 4:
         attachRegionRatioX = 0.3426f;
-        attachRegionRatioY = 0.3264f;
+        attachRegionRatioY = 0.3264f * (1.f + textLineMultiplier * 0.071f);
         attachRegionRatioWidth = 0.0227f;
         attachRegionRatioHeight = 0.107f;
         break;
     case 5:
         attachRegionRatioX = 0.343f;
-        attachRegionRatioY = 0.3174f;
+        attachRegionRatioY = 0.3174f * (1.f + textLineMultiplier * 0.076f);
         attachRegionRatioWidth = 0.0219f;
         attachRegionRatioHeight = 0.1125f;
         break;
     case 6:
         attachRegionRatioX = 0.3528f;
-        attachRegionRatioY = 0.3056f;
+        attachRegionRatioY = 0.3056f * (1.f + textLineMultiplier * 0.085f);
         attachRegionRatioWidth = 0.0208f;
         attachRegionRatioHeight = 0.1195f;
         break;
     case 7:
         attachRegionRatioX = 0.3817f;
-        attachRegionRatioY = 0.3056f;
+        attachRegionRatioY = 0.3056f * (1.f + textLineMultiplier * 0.085f);
         attachRegionRatioWidth = 0.0168f;
         attachRegionRatioHeight = 0.1195f;
         break;
@@ -2588,6 +2603,15 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     // Call the new function to detect attachments
     std::vector<int> attachmentIndices = detectAttachmentsR6FromRegion(attachmentRegion);
 
+    // Check if the first attachment slot has no detection
+    bool firstSlotEmpty = attachmentIndices.empty() || attachmentIndices[0] == -1;
+
+    // If first slot is empty, try different text line height
+    if (firstSlotEmpty) {
+        textLineMultiplier = (textLineMultiplier + 1) % 3;
+        std::cout << "Trying with text line multiplier: " << textLineMultiplier << std::endl;
+    }
+
     // Update the weapon attachments if we found any
     if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
         int weaponIndex = selectedWeapon == 1 ?
@@ -2602,17 +2626,24 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
                 weapon.attachments.resize(3, 0);
             }
 
-            // Copy detected attachments to weapon
+            // Only update attachments that were successfully detected (not -1)
+            bool anyAttachmentUpdated = false;
             for (int i = 0; i < 3 && i < attachmentIndices.size(); i++) {
-                weapon.attachments[i] = attachmentIndices[i];
+                if (attachmentIndices[i] != -1) {
+                    weapon.attachments[i] = attachmentIndices[i];
+                    anyAttachmentUpdated = true;
+                }
             }
 
-            settings.activeState.weaponDataChanged = true;
-            globals.filesystem.unsavedChanges.store(true);
+            // Only mark as changed if we actually updated something
+            if (anyAttachmentUpdated) {
+                settings.activeState.weaponDataChanged = true;
+                globals.filesystem.unsavedChanges.store(true);
+            }
         }
     }
 
     // Debug visualization
-	/*cv::imshow("Attachment Region", attachmentRegion);
-    cv::waitKey(1);*/
+	cv::imshow("Attachment Region", attachmentRegion);
+    cv::waitKey(1);
 }
