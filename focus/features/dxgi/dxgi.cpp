@@ -449,10 +449,10 @@ IconHash DXGI::hashIcon(const cv::Mat& icon, int size) {
                 (lastPrintTimePerSize.count(size) ? lastPrintTimePerSize[size] : startTime)).count());
 
         // Print performance metrics
-        std::cout << "Hash Size " << size << " Performance: "
+        /*std::cout << "Hash Size " << size << " Performance: "
             << callsPerSize[size] << " calls, "
             << "Avg: " << avgTimeMs << "ms, "
-            << "Rate: " << callsPerSecond << " calls/sec" << std::endl;
+            << "Rate: " << callsPerSecond << " calls/sec" << std::endl;*/
 
         // Optionally reset counters for this window
         callsPerSize[size] = 0;
@@ -1103,7 +1103,7 @@ bool DXGI::detectOperatorR6(cv::Mat& src) {
     IconHash hash = hashIcon(normalizedIcon, 4);
 
     //std::cout << xorstr_("Hash: ") << hash << std::endl;
-	debugHammingDistances(hash, operatorHashes);
+	//debugHammingDistances(hash, operatorHashes);
 
     std::string detectedOperator;
     bool operatorFound = false;
@@ -1179,7 +1179,7 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
 
         IconHash attachmentHash = hashIcon(normalizedAttachment, 2);
 
-		std::cout << xorstr_("box ") << i << xorstr_(": ") << attachmentHash << std::endl;
+		//std::cout << xorstr_("box ") << i << xorstr_(": ") << attachmentHash << std::endl;
 		//debugHammingDistances(attachmentHash, attachmentHashes);
 
         std::string detectedAttachment = "";
@@ -2603,42 +2603,46 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     // Call the new function to detect attachments
     std::vector<int> attachmentIndices = detectAttachmentsR6FromRegion(attachmentRegion);
 
-    // Check if the first attachment slot has no detection
-    bool firstSlotEmpty = attachmentIndices.empty() || attachmentIndices[0] == -1;
-
-    // If first slot is empty, try different text line height
-    if (firstSlotEmpty) {
-        textLineMultiplier = (textLineMultiplier + 1) % 3;
-        std::cout << "Trying with text line multiplier: " << textLineMultiplier << std::endl;
+    // Check if ANY attachment was detected successfully (scope, grip, or barrel)
+    bool anyValidAttachment = false;
+    for (int i = 0; i < attachmentIndices.size(); i++) {
+        if (attachmentIndices[i] != -1) {
+            anyValidAttachment = true;
+            break;
+        }
     }
 
-    // Update the weapon attachments if we found any
-    if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
-        int weaponIndex = selectedWeapon == 1 ?
-            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] :
-            settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1];
+    if (!anyValidAttachment) {
+        textLineMultiplier = (textLineMultiplier + 1) % 3;
+        std::cout << "No valid attachments found. Trying with text line multiplier: " << textLineMultiplier << std::endl;
+    }
+    else {
+        // Update the weapon attachments since we found at least one valid attachment
+        if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+            int weaponIndex = selectedWeapon == 1 ?
+                settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[0] :
+                settings.characters[settings.activeState.selectedCharacterIndex].selectedweapon[1];
 
-        if (weaponIndex < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size()) {
-            auto& weapon = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex];
+            if (weaponIndex < settings.characters[settings.activeState.selectedCharacterIndex].weapondata.size()) {
+                auto& weapon = settings.characters[settings.activeState.selectedCharacterIndex].weapondata[weaponIndex];
 
-            // Ensure we have enough space for attachments
-            if (weapon.attachments.size() < 3) {
-                weapon.attachments.resize(3, 0);
-            }
-
-            // Only update attachments that were successfully detected (not -1)
-            bool anyAttachmentUpdated = false;
-            for (int i = 0; i < 3 && i < attachmentIndices.size(); i++) {
-                if (attachmentIndices[i] != -1) {
-                    weapon.attachments[i] = attachmentIndices[i];
-                    anyAttachmentUpdated = true;
+                // Ensure we have enough space for attachments
+                if (weapon.attachments.size() < 3) {
+                    weapon.attachments.resize(3, 0);
                 }
-            }
 
-            // Only mark as changed if we actually updated something
-            if (anyAttachmentUpdated) {
+                // Update attachments that were successfully detected
+                for (int i = 0; i < 3 && i < attachmentIndices.size(); i++) {
+                    if (attachmentIndices[i] != -1) {
+                        weapon.attachments[i] = attachmentIndices[i];
+                    }
+                }
+
+                // Mark as changed
                 settings.activeState.weaponDataChanged = true;
                 globals.filesystem.unsavedChanges.store(true);
+
+                std::cout << "Applied attachments to weapon index " << weaponIndex << std::endl;
             }
         }
     }
