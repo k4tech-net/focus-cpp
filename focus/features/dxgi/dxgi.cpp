@@ -1061,7 +1061,11 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     else {
         //std::cout << "Active ROI: " << activeROI << std::endl;
         settings.activeState.weaponOffOverride = false;
-        if (activeROI == 2) {
+        if (settings.characters[settings.activeState.selectedCharacterIndex].options[1]) {
+            settings.activeState.isPrimaryActive = false;
+			settings.activeState.weaponDataChanged = true;
+        }
+        else if (activeROI == 2) {
             settings.activeState.isPrimaryActive = true;
             settings.activeState.weaponDataChanged = true;
         }
@@ -1182,7 +1186,7 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
 		//std::cout << xorstr_("box ") << i << xorstr_(": ") << attachmentHash << std::endl;
 		//debugHammingDistances(attachmentHash, attachmentHashes);
 
-        std::string detectedAttachment = "";
+        std::string detectedAttachment = xorstr_("");
         float confidence = 0.0f;
 
         // Try exact hash match first
@@ -1206,53 +1210,53 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
             }
 
             float percentDiff = static_cast<float>(minHammingDistance) / HASH_SIZE * 100.0f;
-            if (percentDiff <= 15.0f) {  // 15% threshold for acceptable match
+            if (percentDiff <= 17.5f) {  // 15% threshold for acceptable match
                 detectedAttachment = bestMatch;
                 confidence = 1.0f - (percentDiff / 100.0f);
             }
         }
 
         // Draw debug rectangles - green for detected, red for not detected
-        cv::Scalar rectColor = confidence >= 0.85f ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
-        cv::rectangle(attachmentRegion, attachmentRois[i], rectColor, 1);
+        //cv::Scalar rectColor = confidence >= 0.85f ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
+        //cv::rectangle(attachmentRegion, attachmentRois[i], rectColor, 1);
 
         //std::cout << xorstr_("Attachment ") << i << xorstr_(": ") << detectedAttachment << xorstr_(" (Confidence: ") << confidence * 100.0f << xorstr_("%)\n");
 
         // Only process attachments with sufficient confidence
         if (!detectedAttachment.empty() && confidence >= 0.85f) {
             // Check for scope attachments (index 0)
-            if (detectedAttachment.find("Telescopic") != std::string::npos) {
+            if (detectedAttachment.find(xorstr_("Telescopic")) != std::string::npos) {
                 attachmentIndices[0] = 2; // 3.5x scope
             }
-            else if (detectedAttachment.find("Magnified") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Magnified")) != std::string::npos) {
                 attachmentIndices[0] = 1; // 2.5x scope
             }
-            else if (detectedAttachment.find("Red_Dot") != std::string::npos ||
-                detectedAttachment.find("Holo") != std::string::npos ||
-                detectedAttachment.find("Reflex") != std::string::npos ||
-                detectedAttachment.find("Iron_Sight") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Red_Dot")) != std::string::npos ||
+                detectedAttachment.find(xorstr_("Holo")) != std::string::npos ||
+                detectedAttachment.find(xorstr_("Reflex")) != std::string::npos ||
+                detectedAttachment.find(xorstr_("Iron_Sight")) != std::string::npos) {
                 attachmentIndices[0] = 0; // 1x scope
             }
             // Check for grip attachments (index 1)
-            else if (detectedAttachment.find("Vertical_Grip") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Vertical_Grip")) != std::string::npos) {
                 attachmentIndices[1] = 1; // Vertical grip
             }
-            else if (detectedAttachment.find("Horizontal_Grip") != std::string::npos ||
-                detectedAttachment.find("Angled_Grip") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Horizontal_Grip")) != std::string::npos ||
+                detectedAttachment.find(xorstr_("Angled_Grip")) != std::string::npos) {
                 attachmentIndices[1] = 0; // Horizontal/Angled grip
             }
             // Check for barrel attachments (index 2)
-            else if (detectedAttachment.find("Suppressor") != std::string::npos ||
-                detectedAttachment.find("Extended_Barrel") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Suppressor")) != std::string::npos ||
+                detectedAttachment.find(xorstr_("Extended_Barrel")) != std::string::npos) {
                 attachmentIndices[2] = 0; // Suppressor/Extended
             }
-            else if (detectedAttachment.find("Muzzle_Break") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Muzzle_Break")) != std::string::npos) {
                 attachmentIndices[2] = 1; // Muzzle break
             }
-            else if (detectedAttachment.find("Compensator") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Compensator")) != std::string::npos) {
                 attachmentIndices[2] = 2; // Compensator
             }
-            else if (detectedAttachment.find("Flash_Hider") != std::string::npos) {
+            else if (detectedAttachment.find(xorstr_("Flash_Hider")) != std::string::npos) {
                 attachmentIndices[2] = 3; // Flash hider
             }
         }
@@ -2104,7 +2108,7 @@ DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initi
     int totalIterations = (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1);
     int currentIteration = 0;
 
-    std::cout << "Starting ROI optimization (this may take a while)..." << std::endl;
+    std::cout << xorstr_("Starting ROI optimization (this may take a while)...") << std::endl;
 
     // Temp variables to avoid unnecessary conversions in the loops
     cv::Mat roiImage;
@@ -2156,7 +2160,7 @@ DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initi
                     // Update progress
                     currentIteration++;
                     if (currentIteration % 100 == 0) {
-                        std::cout << "Progress: " << (currentIteration * 100.0f / totalIterations) << "%" << std::endl;
+                        std::cout << xorstr_("Progress: ") << (currentIteration * 100.0f / totalIterations) << xorstr_("%") << std::endl;
                     }
 
                     // Update best parameters if this ROI is better
@@ -2173,11 +2177,11 @@ DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initi
     }
 
     // Print the optimal parameters
-    std::cout << "operatorDetectionRatioX = " << bestParams.ratioX << "f;" << std::endl;
-    std::cout << "operatorDetectionRatioY = " << bestParams.ratioY << "f;" << std::endl;
-    std::cout << "operatorDetectionRatioWidth = " << bestParams.ratioWidth << "f;" << std::endl;
-    std::cout << "operatorDetectionRatioHeight = " << bestParams.ratioHeight << "f;" << std::endl;
-    std::cout << "Confidence: " << bestParams.confidence << std::endl;
+    std::cout << xorstr_("operatorDetectionRatioX = ") << bestParams.ratioX << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("operatorDetectionRatioY = ") << bestParams.ratioY << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("operatorDetectionRatioWidth = ") << bestParams.ratioWidth << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("operatorDetectionRatioHeight = ") << bestParams.ratioHeight << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("Confidence: ") << bestParams.confidence << std::endl;
 
     return bestParams;
 }
@@ -2202,7 +2206,7 @@ DXGI::ROIParameters DXGI::optimizeAttachmentDetectionROI(cv::Mat& src, float ini
     int totalIterations = (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1) * (2 * numSteps + 1);
     int currentIteration = 0;
 
-    std::cout << "Starting Attachment ROI optimization (this may take a while)..." << std::endl;
+    std::cout << xorstr_("Starting Attachment ROI optimization (this may take a while)...") << std::endl;
 
     // Grid search over all parameters
     for (int xStep = -numSteps; xStep <= numSteps; xStep++) {
@@ -2255,8 +2259,8 @@ DXGI::ROIParameters DXGI::optimizeAttachmentDetectionROI(cv::Mat& src, float ini
                     // Update progress
                     currentIteration++;
                     if (currentIteration % 100 == 0) {
-                        std::cout << "Progress: " << (currentIteration * 100.0f / totalIterations) << "%, "
-                            << "Best confidence so far: " << bestParams.confidence << std::endl;
+                        std::cout << xorstr_("Progress: ") << (currentIteration * 100.0f / totalIterations) << xorstr_("%, ")
+                            << xorstr_("Best confidence so far: ") << bestParams.confidence << std::endl;
                     }
 
                     // Update best parameters if this ROI is better
@@ -2268,9 +2272,9 @@ DXGI::ROIParameters DXGI::optimizeAttachmentDetectionROI(cv::Mat& src, float ini
                         bestParams.confidence = overallConfidence;
 
                         // Log improvements
-                        std::cout << "New best parameters found! Confidence: " << overallConfidence
-                            << " (First: " << firstSlotConfidence
-                            << ", Last: " << lastSlotConfidence << ")" << std::endl;
+                        std::cout << xorstr_("New best parameters found! Confidence: ") << overallConfidence
+                            << xorstr_(" (First: ") << firstSlotConfidence
+                            << xorstr_(", Last: ") << lastSlotConfidence << xorstr_(")") << std::endl;
                     }
                 }
             }
@@ -2278,11 +2282,11 @@ DXGI::ROIParameters DXGI::optimizeAttachmentDetectionROI(cv::Mat& src, float ini
     }
 
     // Print the optimal parameters
-    std::cout << "attachRegionRatioX = " << bestParams.ratioX << "f;" << std::endl;
-    std::cout << "attachRegionRatioY = " << bestParams.ratioY << "f;" << std::endl;
-    std::cout << "attachRegionRatioWidth = " << bestParams.ratioWidth << "f;" << std::endl;
-    std::cout << "attachRegionRatioHeight = " << bestParams.ratioHeight << "f;" << std::endl;
-    std::cout << "Final Confidence: " << bestParams.confidence << std::endl;
+    std::cout << xorstr_("attachRegionRatioX = ") << bestParams.ratioX << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("attachRegionRatioY = ") << bestParams.ratioY << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("attachRegionRatioWidth = ") << bestParams.ratioWidth << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("attachRegionRatioHeight = ") << bestParams.ratioHeight << xorstr_("f;") << std::endl;
+    std::cout << xorstr_("Final Confidence: ") << bestParams.confidence << std::endl;
 
     return bestParams;
 }
@@ -2307,7 +2311,7 @@ void DXGI::runOperatorOptimiser(float x, float y, float width, float height, cv:
     );
 
     // Pause until the user presses a key to continue
-    std::cout << "Press any key to continue..." << std::endl;
+    std::cout << xorstr_("Press any key to continue...") << std::endl;
     std::cin.ignore();
 }
 
@@ -2324,11 +2328,6 @@ void DXGI::runAttachmentOptimiser(float x, float y, float width, float height, c
     width = optimizedParams.ratioWidth;
     height = optimizedParams.ratioHeight;
 
-    std::cout << "attachRegionRatioX = " << x << "f;" << std::endl;
-	std::cout << "attachRegionRatioY = " << y << "f;" << std::endl;
-	std::cout << "attachRegionRatioWidth = " << width << "f;" << std::endl;
-	std::cout << "attachRegionRatioHeight = " << height << "f;" << std::endl;
-
     optimizedParams = optimizeAttachmentDetectionROI(
         src,
         x, y, width, height,
@@ -2336,7 +2335,7 @@ void DXGI::runAttachmentOptimiser(float x, float y, float width, float height, c
     );
 
     // Pause until the user presses a key to continue
-    std::cout << "Press any key to continue..." << std::endl;
+    std::cout << xorstr_("Press any key to continue...") << std::endl;
     std::cin.ignore();
 }
 
@@ -2427,7 +2426,7 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     int selectedWeapon = detectSelectedWeaponSlot(screenCheckRegion);
 	if (selectedWeapon == 0) {
-		std::cout << "Not operator screen or no weapon selected" << std::endl;
+		//std::cout << xorstr_("Not operator screen or no weapon selected") << std::endl;
 		return;
 	}
 
@@ -2516,7 +2515,7 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     if (!detectedOperator) {
         useShootingRangeOffset = !useShootingRangeOffset;
-        std::cout << "Couldn't detect operator" << std::endl;
+        //std::cout << xorstr_("Couldn't detect operator") << std::endl;
 		return;
     }
 
@@ -2891,11 +2890,8 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     // Check if ANY attachment was detected successfully (scope, grip, or barrel)
     bool anyValidAttachment = false;
-    for (int i = 0; i < attachmentIndices.size(); i++) {
-        if (attachmentIndices[i] != -1) {
-            anyValidAttachment = true;
-            break;
-        }
+    if (attachmentIndices[0] != -1 || attachmentIndices[2] != -1) {
+        anyValidAttachment = true;
     }
 
     if (!anyValidAttachment) {
@@ -2929,8 +2925,4 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
             }
         }
     }
-
-    // Debug visualization
-	cv::imshow("Attachment Region", attachmentRegion);
-    cv::waitKey(1);
 }

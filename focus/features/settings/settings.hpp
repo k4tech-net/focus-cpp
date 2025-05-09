@@ -40,7 +40,7 @@ struct weaponData {
 struct characterData {
     std::string charactername = "";
     std::vector<weaponData> weapondata;
-    std::vector<bool> options;
+    std::vector<bool> options = { false, false };
     std::vector<int> selectedweapon;
 };
 

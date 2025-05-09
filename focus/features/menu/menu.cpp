@@ -751,9 +751,6 @@ void keybindManager() {
 			}
 
 			frameSkip = 0;
-
-			cv::imshow("Operator Detection", smallRegion);
-			cv::waitKey(1);
 		}
 	}
 
@@ -1314,14 +1311,13 @@ void Menu::gui()
 				ImGui::Spacing();
 				ImGui::SeparatorText(xorstr_("Character Settings"));
 
-				if (settings.globalSettings.weaponDetectors[0]) {
-					std::vector<const char*> CharacterOptions = { xorstr_("Siege Gadget Detection Override") };
-					if (multiCombo(xorstr_("Options"), CharacterOptions, settings.characters[settings.activeState.selectedCharacterIndex].options)) {
-						settings.activeState.weaponDataChanged = true;
-						globals.filesystem.unsavedChanges.store(true);
-					}
-					tooltip(xorstr_("Siege Gadget Detection Override - Prevents gadgets from disabling weapon detection in Siege"));
+				std::vector<const char*> CharacterOptions = { xorstr_("Siege Gadget Detection Override"), xorstr_("Force Secondary Weapon")};
+				if (multiCombo(xorstr_("Options"), CharacterOptions, settings.characters[settings.activeState.selectedCharacterIndex].options)) {
+					settings.activeState.weaponDataChanged = true;
+					globals.filesystem.unsavedChanges.store(true);
 				}
+				tooltip(xorstr_("Siege Gadget Detection Override - Prevents gadgets from disabling weapon detection in Siege"));
+				tooltip(xorstr_("Force Secondary Weapon - Overrides weapon detection to always use the secondary weapon"));
 
 				ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.activeState.sensMultiplier[0]);
 				ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.activeState.sensMultiplier[1]);
@@ -1796,18 +1792,11 @@ void Menu::gui()
 
 				// Character-specific options based on game type
 				if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
-					std::vector<const char*> CharacterOptions;
 
-					// Build list of available options based on gameType
-					if (settings.globalSettings.sensitivityCalculator == 1) { // Siege
-						CharacterOptions = { xorstr_("Siege Gadget Detection Override") };
-					}
-
-					if (!CharacterOptions.empty()) {
-						if (multiCombo(xorstr_("Character Options"), CharacterOptions, settings.characters[settings.activeState.selectedCharacterIndex].options)) {
-							settings.activeState.weaponDataChanged = true;
-							globals.filesystem.unsavedChanges.store(true);
-						}
+					std::vector<const char*> CharacterOptions = { xorstr_("Siege Gadget Detection Override"), xorstr_("Force Secondary Weapon") };
+					if (multiCombo(xorstr_("Options"), CharacterOptions, settings.characters[settings.activeState.selectedCharacterIndex].options)) {
+						settings.activeState.weaponDataChanged = true;
+						globals.filesystem.unsavedChanges.store(true);
 					}
 				}
 
