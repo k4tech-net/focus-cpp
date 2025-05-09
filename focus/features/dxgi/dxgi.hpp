@@ -40,7 +40,7 @@ public:
 	void overwatchDetector(cv::Mat& src);
 	void triggerbot();
 
-	int isOperatorScreenR6(cv::Mat& src);
+	int detectSelectedWeaponSlot(cv::Mat& src);
 	void detectAttachmentsR6(cv::Mat& src);
 
 private:

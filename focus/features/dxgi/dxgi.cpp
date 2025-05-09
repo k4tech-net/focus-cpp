@@ -1216,7 +1216,7 @@ std::vector<int> DXGI::detectAttachmentsR6FromRegion(cv::Mat& attachmentRegion) 
         cv::Scalar rectColor = confidence >= 0.85f ? cv::Scalar(0, 255, 0) : cv::Scalar(0, 0, 255);
         cv::rectangle(attachmentRegion, attachmentRois[i], rectColor, 1);
 
-        std::cout << xorstr_("Attachment ") << i << xorstr_(": ") << detectedAttachment << xorstr_(" (Confidence: ") << confidence * 100.0f << xorstr_("%)\n");
+        //std::cout << xorstr_("Attachment ") << i << xorstr_(": ") << detectedAttachment << xorstr_(" (Confidence: ") << confidence * 100.0f << xorstr_("%)\n");
 
         // Only process attachments with sufficient confidence
         if (!detectedAttachment.empty() && confidence >= 0.85f) {
@@ -1889,7 +1889,7 @@ void DXGI::overwatchDetector(cv::Mat& src) {
 	}
 }
 
-int DXGI::isOperatorScreenR6(cv::Mat& src) {
+int DXGI::detectSelectedWeaponSlot(cv::Mat& src) {
     if (src.empty()) {
 		return 0;
 	}
@@ -2425,7 +2425,7 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     cv::Mat screenCheckRegion = src(screenCheckRoi);
 
-    int selectedWeapon = isOperatorScreenR6(screenCheckRegion);
+    int selectedWeapon = detectSelectedWeaponSlot(screenCheckRegion);
 	if (selectedWeapon == 0) {
 		std::cout << "Not operator screen or no weapon selected" << std::endl;
 		return;
@@ -2518,6 +2518,292 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
         useShootingRangeOffset = !useShootingRangeOffset;
         std::cout << "Couldn't detect operator" << std::endl;
 		return;
+    }
+
+    //////////////////////////////////////////////////////
+    ///////// Weapon Index Detection
+    //////////////////////////////////////////////////////
+
+    // Define ratios for weapon selection region
+    float weaponSelectionRatioX = 0.f;
+    float weaponSelectionRatioY = 0.f;
+    float weaponSelectionRatioWidth = 0.f;
+    float weaponSelectionRatioHeight = 0.f;
+
+    static bool useWeaponSelectionOffset = false;
+
+    // Define ratios based on aspect ratio
+    switch (settings.globalSettings.aspect_ratio) {
+    case 0:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.465f : 0.488f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.61f : 0.675f;
+        }
+        break;
+    case 1:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f; // 0.003f for testing
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.473f : 0.49f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.582f : 0.632f;
+        }
+        break;
+    case 2:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.476f : 0.492f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.577f : 0.623f;
+        }
+        break;
+    case 3:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.47f : 0.49f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.592f : 0.65f;
+        }
+        break;
+    case 4:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.47f : 0.49f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.6f : 0.66f;
+        }
+        break;
+    case 5:
+        weaponSelectionRatioX = 0.1215f;
+        weaponSelectionRatioWidth = 0.0445f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.466f : 0.488f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.602f : 0.665f;
+        }
+        break;
+    case 6:
+        weaponSelectionRatioX = 0.1455f;
+        weaponSelectionRatioWidth = 0.042f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.465f : 0.488f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.61f : 0.675f;
+        }
+        break;
+    case 7:
+        weaponSelectionRatioX = 0.216f;
+        weaponSelectionRatioWidth = 0.0335f;
+        weaponSelectionRatioHeight = 0.003f;
+
+        if (selectedWeapon == 1) { //Primary
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.465f : 0.488f;
+        }
+        else {
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.61f : 0.675f;
+        }
+        break;
+    }
+
+    int weaponSelectionX = static_cast<int>(weaponSelectionRatioX * desktopWidth);
+    int weaponSelectionY = static_cast<int>(weaponSelectionRatioY * desktopHeight);
+    int weaponSelectionWidth = static_cast<int>(weaponSelectionRatioWidth * desktopWidth);
+    int weaponSelectionHeight = static_cast<int>(weaponSelectionRatioHeight * desktopHeight);
+
+    weaponSelectionX = std::max(0, weaponSelectionX);
+    weaponSelectionY = std::max(0, weaponSelectionY);
+    weaponSelectionWidth = std::min(weaponSelectionWidth, desktopWidth - weaponSelectionX);
+    weaponSelectionHeight = std::min(weaponSelectionHeight, desktopHeight - weaponSelectionY);
+
+    cv::Rect weaponSelectionRoi(weaponSelectionX, weaponSelectionY, weaponSelectionWidth, weaponSelectionHeight);
+    cv::Mat weaponSelectionRegion = src(weaponSelectionRoi);
+
+    cv::Mat hsvRegion;
+    cv::cvtColor(weaponSelectionRegion, hsvRegion, cv::COLOR_BGR2HSV);
+
+    // Define the 4 key points to check for white indicators
+    std::vector<cv::Point> checkPoints = {
+        cv::Point(static_cast<int>(weaponSelectionWidth * 0.1f), static_cast<int>(weaponSelectionHeight * 0.5f)),  // Left edge of first box
+        cv::Point(static_cast<int>(weaponSelectionWidth * 0.4f), static_cast<int>(weaponSelectionHeight * 0.5f)), // Right edge of first box
+        cv::Point(static_cast<int>(weaponSelectionWidth * 0.6f), static_cast<int>(weaponSelectionHeight * 0.5f)), // Left edge of last box
+        cv::Point(static_cast<int>(weaponSelectionWidth * 0.9f), static_cast<int>(weaponSelectionHeight * 0.5f))   // Right edge of last box
+    };
+
+    std::vector<bool> isWhite = { false, false, false, false };
+    std::vector<bool> isInactive = { false, false, false, false };
+
+    // HSV ranges for colors
+    int whiteSatThreshold = 30;
+    int whiteValThreshold = 220;
+
+    // Inactive cyan/blue color in HSV 
+    int inactiveHueMin = 75;
+    int inactiveHueMax = 110;
+    int inactiveSatMin = 100;
+    int inactiveSatMax = 120;
+    int inactiveValMin = 230;
+
+    // Check each point for white or inactive color
+    for (int i = 0; i < 4; i++) {
+        if (checkPoints[i].x < hsvRegion.cols && checkPoints[i].y < hsvRegion.rows) {
+            cv::Vec3b pixel = hsvRegion.at<cv::Vec3b>(checkPoints[i]);
+
+            int hue = pixel[0];
+            int sat = pixel[1];
+            int val = pixel[2];
+
+            // Check for white (low saturation, high value)
+            isWhite[i] = (sat < whiteSatThreshold && val > whiteValThreshold);
+
+            // Check for inactive cyan/blue color
+            isInactive[i] = (hue >= inactiveHueMin && hue <= inactiveHueMax &&
+                sat >= inactiveSatMin && sat <= inactiveSatMax && val > inactiveValMin);
+
+            //cv::Scalar circleColor;
+            //if (isWhite[i]) {
+            //    circleColor = cv::Scalar(255, 0, 0); // White circle
+            //}
+            //else if (isInactive[i]) {
+            //    circleColor = cv::Scalar(0, 255, 0);   // Cyan circle
+            //}
+            //else {
+            //    circleColor = cv::Scalar(0, 0, 255);     // Red circle (no detection)
+            //}
+            //cv::circle(weaponSelectionRegion, checkPoints[i], 1, circleColor, -1);
+        }
+    }
+
+    int totalWeapons = 0;
+    int selectedWeaponIndex = -1;
+    bool validDetection = false;
+
+    // Pattern analysis for 3-weapon case
+    if ((isInactive[0] || isInactive[1]) && (isInactive[2] || isInactive[3])) {
+        // Inactive indicators on both left and right sides - likely 3 weapons
+        totalWeapons = 3;
+
+        // Determine which of the 3 is selected
+        if (isWhite[0] && !isWhite[3]) {
+            selectedWeaponIndex = 0; // Left weapon is selected
+            validDetection = true;
+        }
+        else if (isWhite[1] && isWhite[2]) {
+            selectedWeaponIndex = 1; // Middle weapon is selected
+            validDetection = true;
+        }
+        else if (!isWhite[0] && isWhite[3]) {
+            selectedWeaponIndex = 2; // Right weapon is selected
+            validDetection = true;
+        }
+    }
+    // Pattern analysis for 2-weapon case
+    else if ((isInactive[0] || isInactive[1]) && !(isInactive[2] || isInactive[3])) {
+        // Inactive on left side only - 2 weapons (right and another)
+        totalWeapons = 2;
+
+        if (isWhite[0] || isWhite[1]) {
+            selectedWeaponIndex = 0; // Left weapon is selected
+            validDetection = true;
+        }
+        else if (isWhite[2] || isWhite[3]) {
+            selectedWeaponIndex = 1; // Right weapon is selected
+            validDetection = true;
+        }
+    }
+    else if (!(isInactive[0] || isInactive[1]) && (isInactive[2] || isInactive[3])) {
+        // Inactive on right side only - 2 weapons (left and another)
+        totalWeapons = 2;
+
+        if (isWhite[2] || isWhite[3]) {
+            selectedWeaponIndex = 1; // Right weapon is selected
+            validDetection = true;
+        }
+        else if (isWhite[0] || isWhite[1]) {
+            selectedWeaponIndex = 0; // Left weapon is selected
+            validDetection = true;
+        }
+    }
+    // Fallback for 1-weapon case - must have middle white, no inactive
+    else if (isWhite[1] && isWhite[2] && !(isWhite[0] || isWhite[3]) &&
+        !(isInactive[0] || isInactive[1] || isInactive[2] || isInactive[3])) {
+        totalWeapons = 1;
+        selectedWeaponIndex = 0;
+        validDetection = true;
+    }
+    // Handle impossible detections - dont mark as valid
+    else {
+        // No valid pattern detected
+        selectedWeaponIndex = -1;
+        validDetection = false;
+    }
+
+    // Only apply changes if we have a valid detection
+    if (validDetection && selectedWeaponIndex >= 0) {
+        if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
+            auto& character = settings.characters[settings.activeState.selectedCharacterIndex];
+
+            // Fix secondary weapon indexing
+            int actualIndex = selectedWeaponIndex;
+
+            if (selectedWeapon == 2) { // Secondary weapons
+                // Calculate actual index for secondary weapons
+                int totalCharacterWeapons = character.weapondata.size();
+                int estimatedPrimaryCount = totalCharacterWeapons - totalWeapons;
+
+                if (estimatedPrimaryCount >= 0) {
+                    // Adjust the index to point to the correct secondary weapon
+                    actualIndex = estimatedPrimaryCount + selectedWeaponIndex;
+
+                    // Safety check
+                    if (actualIndex >= totalCharacterWeapons) {
+                        actualIndex = totalCharacterWeapons - 1;
+                    }
+                }
+
+                // Update the selection
+                character.selectedweapon[1] = actualIndex;
+                settings.activeState.weaponDataChanged = true;
+                globals.filesystem.unsavedChanges.store(true);
+            }
+            else { // Primary weapons
+                // Update the selection
+                character.selectedweapon[0] = actualIndex;
+                settings.activeState.weaponDataChanged = true;
+                globals.filesystem.unsavedChanges.store(true);
+            }
+        }
+    }
+    else {
+        // Detection failed, flip the Y offset for next attempt
+        useWeaponSelectionOffset = !useWeaponSelectionOffset;
+        return;
     }
 
     //////////////////////////////////////////////////////
@@ -2614,7 +2900,6 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     if (!anyValidAttachment) {
         textLineMultiplier = (textLineMultiplier + 1) % 3;
-        std::cout << "No valid attachments found. Trying with text line multiplier: " << textLineMultiplier << std::endl;
     }
     else {
         // Update the weapon attachments since we found at least one valid attachment
@@ -2641,8 +2926,6 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
                 // Mark as changed
                 settings.activeState.weaponDataChanged = true;
                 globals.filesystem.unsavedChanges.store(true);
-
-                std::cout << "Applied attachments to weapon index " << weaponIndex << std::endl;
             }
         }
     }
