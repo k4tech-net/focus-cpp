@@ -188,3 +188,275 @@ void Utils::pressMouse1(bool press) {
 	SendInput(1, &input, sizeof(INPUT));
 }
 
+std::string Utils::getDocumentsPath() {
+    char path[MAX_PATH];
+    HRESULT result = SHGetFolderPathA(NULL, CSIDL_PERSONAL, NULL, SHGFP_TYPE_CURRENT, path);
+
+    if (SUCCEEDED(result)) {
+        return std::string(path);
+    }
+    else {
+        // Fallback - try to get it from the environment
+        const char* userProfile = std::getenv("USERPROFILE");
+        if (userProfile) {
+            return std::string(userProfile) + "\\Documents";
+        }
+    }
+
+    // If all else fails, return empty string
+    return "";
+}
+
+std::vector<std::string> Utils::findGameSettingsFiles() {
+    std::vector<std::string> settingsFiles;
+    std::string basePath = getDocumentsPath() + "\\My Games\\Rainbow Six - Siege\\";
+
+    try {
+        // Check if the directory exists
+        if (!std::filesystem::exists(basePath)) {
+            return settingsFiles;
+        }
+
+        // Iterate through all UID folders
+        for (const auto& entry : std::filesystem::directory_iterator(basePath)) {
+            if (entry.is_directory()) {
+                std::string potentialFile = entry.path().string() + "\\GameSettings.ini";
+                if (std::filesystem::exists(potentialFile)) {
+                    settingsFiles.push_back(potentialFile);
+                }
+            }
+        }
+    }
+    catch (const std::exception& e) {
+        std::cerr << xorstr_("Error finding game settings: ") << e.what() << std::endl;
+    }
+
+    return settingsFiles;
+}
+
+std::string Utils::getMostRecentFile(const std::vector<std::string>& files) {
+    if (files.empty()) {
+        return xorstr_("");
+    }
+
+    try {
+        std::string mostRecentFile = files[0];
+        std::filesystem::file_time_type mostRecentTime = std::filesystem::last_write_time(files[0]);
+
+        for (size_t i = 1; i < files.size(); ++i) {
+            std::filesystem::file_time_type fileTime = std::filesystem::last_write_time(files[i]);
+            if (fileTime > mostRecentTime) {
+                mostRecentTime = fileTime;
+                mostRecentFile = files[i];
+            }
+        }
+
+        return mostRecentFile;
+    }
+    catch (const std::exception& e) {
+        std::cerr << xorstr_("Error determining most recent file: ") << e.what() << std::endl;
+        return files[0]; // Return first file as fallback
+    }
+}
+
+int mapAspectRatioSiege(int aspectRatio) {
+switch (aspectRatio) {
+	case 0:
+        // Auto (Based on screensize)
+        //int screenWidth = globals.capture.desktopWidth.load(std::memory_order_relaxed);
+		//int screenHeight = globals.capture.desktopHeight.load(std::memory_order_relaxed);
+
+        // Do here
+		return 0;
+	case 1:
+        // Resolution (Same as above)
+		return 0;
+	case 2:
+		return 2;
+	case 3:
+		return 1;
+	case 4:
+		return 3;
+	case 5:
+		return 4;
+    case 6:
+        return 5;
+    case 7:
+        return 0;
+    case 8:
+        return 6;
+    case 9:
+        return 7;
+	default:
+		return 0;
+	}
+}
+
+bool Utils::parseGameSettings(const std::string& filepath, int& aspectRatio, float& fov) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    bool foundAspectRatio = false;
+    bool foundFOV = false;
+
+    std::string section;
+
+    while (std::getline(file, line)) {
+        // Trim whitespace
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == ';') {
+            continue;
+        }
+
+        // Check for section headers [Section]
+        if (line[0] == '[' && line[line.length() - 1] == ']') {
+            section = line.substr(1, line.length() - 2);
+            continue;
+        }
+
+        // Check for AspectRatio in DISPLAY_SETTINGS section
+        if (section == xorstr_("DISPLAY_SETTINGS")) {
+            if (line.find(xorstr_("AspectRatio=")) == 0) {
+                aspectRatio = mapAspectRatioSiege(std::stoi(line.substr(12)));
+                foundAspectRatio = true;
+            }
+            else if (line.find(xorstr_("DefaultFOV=")) == 0) {
+                fov = std::stof(line.substr(11));
+                foundFOV = true;
+            }
+        }
+
+        // If we found both settings, we can stop reading the file
+        if (foundAspectRatio && foundFOV) {
+            break;
+        }
+    }
+
+    file.close();
+    return (foundAspectRatio && foundFOV);
+}
+
+bool Utils::parseSensitivitySettings(const std::string& filepath, std::vector<float>& sensitivity) {
+    std::ifstream file(filepath);
+    if (!file.is_open()) {
+        return false;
+    }
+
+    std::string line;
+    std::string section;
+    bool foundYaw = false;
+	bool foundPitch = false;
+    bool foundXFactor = false;
+    bool foundSpecific = false;
+    bool found1x = false;
+    bool found25x = false;
+    bool found35x = false;
+
+    // Initialize sensitivity vector with 6 elements
+    sensitivity.resize(6, 0.0f);
+
+    while (std::getline(file, line)) {
+        // Trim whitespace
+        line.erase(0, line.find_first_not_of(" \t\r\n"));
+        line.erase(line.find_last_not_of(" \t\r\n") + 1);
+
+        // Skip empty lines and comments
+        if (line.empty() || line[0] == ';') {
+            continue;
+        }
+
+        // Check for section headers [Section]
+        if (line[0] == '[' && line[line.length() - 1] == ']') {
+            section = line.substr(1, line.length() - 2);
+            continue;
+        }
+
+        // Check for sensitivity settings in INPUT section
+        if (section == xorstr_("INPUT")) {
+            if (line.find(xorstr_("MouseYawSensitivity=")) == 0) {
+                sensitivity[0] = std::stof(line.substr(20)); // Yaw
+                foundYaw = true;
+            } 
+            else if (line.find(xorstr_("MousePitchSensitivity=")) == 0) {
+				sensitivity[1] = std::stof(line.substr(22));
+				foundPitch = true;
+			}
+            else if (line.find(xorstr_("ADSMouseUseSpecific=")) == 0) {
+			    foundSpecific = std::stof(line.substr(20));
+			}
+            else if (!foundSpecific && line.find(xorstr_("ADSMouseSensitivityGlobal=")) == 0) {
+                sensitivity[2] = std::stof(line.substr(26)); // 1x
+                sensitivity[3] = std::stof(line.substr(26)); // 2.5x
+				sensitivity[4] = std::stof(line.substr(26)); // 3.5x
+				found1x = true;
+				found25x = true;
+				found35x = true;
+            }
+            else if (foundSpecific && line.find(xorstr_("ADSMouseSensitivity1x=")) == 0) {
+                sensitivity[2] = std::stof(line.substr(22)); // 1x
+                found1x = true;
+            }
+            else if (foundSpecific && line.find(xorstr_("ADSMouseSensitivity2xHalf=")) == 0) {
+                sensitivity[3] = std::stof(line.substr(26)); // 2.5x
+                found25x = true;
+            }
+            else if (foundSpecific && line.find(xorstr_("ADSMouseSensitivity4x=")) == 0) {
+                sensitivity[4] = std::stof(line.substr(22)); // 3.5x
+                found35x = true;
+            }
+            else if (line.find(xorstr_("MouseSensitivityMultiplierUnit=")) == 0) {
+                sensitivity[5] = std::stof(line.substr(32)); // Multiplier
+                foundXFactor = true;
+            }
+        }
+    }
+
+    file.close();
+    return (foundYaw && foundPitch && foundXFactor && found1x && found25x && found35x);
+}
+
+bool Utils::applySiegeSettings() {
+    // Find all potential GameSettings.ini files
+    std::vector<std::string> settingsFiles = findGameSettingsFiles();
+    if (settingsFiles.empty()) {
+        std::cerr << xorstr_("No GameSettings.ini files found") << std::endl;
+        return false;
+    }
+
+    // Get the most recent file
+    std::string mostRecentFile = getMostRecentFile(settingsFiles);
+    std::cout << xorstr_("Using settings from: ") << mostRecentFile << std::endl;
+
+    // Parse the file to extract settings
+    int aspectRatio;
+    float fov;
+    if (!parseGameSettings(mostRecentFile, aspectRatio, fov)) {
+        std::cerr << xorstr_("Failed to parse game settings") << std::endl;
+        return false;
+    }
+
+    // Parse sensitivity settings
+    std::vector<float> sensitivity;
+    bool sensSuccess = parseSensitivitySettings(mostRecentFile, sensitivity);
+
+    // Apply the settings to our application
+    settings.globalSettings.aspect_ratio = aspectRatio;
+    settings.globalSettings.fov = fov;
+
+    // Apply sensitivity settings if they were successfully parsed
+    if (sensSuccess) {
+        settings.globalSettings.sensitivity = sensitivity;
+    }
+
+    // Mark settings as changed
+    settings.activeState.weaponDataChanged = true;
+    globals.filesystem.unsavedChanges.store(true);
+
+    return true;
+}

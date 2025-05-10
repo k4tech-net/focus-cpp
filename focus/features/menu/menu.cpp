@@ -1121,6 +1121,19 @@ void Menu::gui()
 			ImGui::Text(xorstr_("X Sensitivity Modifier: %f"), settings.activeState.sensMultiplier[0]);
 			ImGui::Text(xorstr_("Y Sensitivity Modifier: %f"), settings.activeState.sensMultiplier[1]);
 
+			if (settings.globalSettings.sensitivityCalculator == 1) {
+				ImGui::Spacing();
+				ImGui::Spacing();
+				ImGui::SeparatorText(xorstr_("Import Settings"));
+
+				if (ImGui::Button(xorstr_("Import Settings from Siege"))) {
+					if (!ut.applySiegeSettings()) {
+						std::cerr << xorstr_("Failed to import settings from Siege") << std::endl;
+					}
+				}
+				tooltip(xorstr_("Imports global settings from Rainbow Six Siege"));
+			}
+
 			ImGui::EndTabItem();
 		}
 

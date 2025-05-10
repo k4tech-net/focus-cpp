@@ -7,6 +7,9 @@
 #include <fstream>
 #include "Windows.h"
 #include <iostream>
+#include <filesystem>
+#include <ShlObj.h>
+#pragma comment(lib, "shell32.lib")
 
 #include "../driver/mouse.hpp"
 #include "../driver/keyboard.hpp"
@@ -27,6 +30,12 @@ public:
 	int findCharacterIndex(const std::string& characterName);
 	int hammingDistance(const IconHash& hash1, const IconHash& hash2);
 	void pressMouse1(bool press);
+	std::string getDocumentsPath();
+	std::vector<std::string> findGameSettingsFiles();
+	std::string getMostRecentFile(const std::vector<std::string>& files);
+	bool parseGameSettings(const std::string& filepath, int& aspectRatio, float& fov);
+	bool parseSensitivitySettings(const std::string& filepath, std::vector<float>& sensitivity);
+	bool applySiegeSettings();
 
 	void startUpChecksRunner();
 };
