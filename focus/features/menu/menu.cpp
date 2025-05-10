@@ -1041,12 +1041,14 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("Siege Operator Detection - Searches for your Siege Operator"));
 
-			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection"), xorstr_("Siege Attachment Detection") };
+			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection"), xorstr_("Siege Loadout Detection") };
 			if (multiCombo(xorstr_("Weapon Detectors"), WeaponDetectors, settings.globalSettings.weaponDetectors)) {
 				settings.activeState.weaponDataChanged = true;
 				globals.filesystem.unsavedChanges.store(true);
 			}
-			tooltip(xorstr_("Siege Weapon Detection - Swaps between the primary and secondary in Siege\nRust Weapon Detection - Sets your weapon based on the selection in your Rust hotbar"));
+			tooltip(xorstr_("Siege Weapon Detection - Swaps between the primary and secondary in Siege"));
+			tooltip(xorstr_("Rust Weapon Detection - Sets your weapon based on the selection in your Rust hotbar"));
+			tooltip(xorstr_("Siege Loadout Detection - Automatically sets your loadout during the Siege selection phase"));
 
 			std::vector<const char*> SensitivityCalculator = { xorstr_("Generic"), xorstr_("Siege"), xorstr_("Rust"), xorstr_("Overwatch") };
 			if (comboBoxGen(xorstr_("Sensitivity Calculator"), &settings.globalSettings.sensitivityCalculator, SensitivityCalculator.data(), SensitivityCalculator.size())) {
