@@ -895,7 +895,7 @@ void keybindManager() {
 		dx.detectWeaponRust(smallRegion);
 	}
 
-	if (settings.globalSettings.weaponDetectors[2]) {
+	if (settings.globalSettings.weaponDetectors[2]) { // Here
 		static int frameSkip = 0;
 
 		if (frameSkip++ > 10) {

@@ -40,6 +40,11 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             while (std::getline(ss, item, ',')) {
                 globalSettings.characterDetectors.push_back(item == xorstr_("1"));
             }
+             
+			// Ensure the vector has at least 1 element
+            if (globalSettings.characterDetectors.empty()) {
+                globalSettings.characterDetectors.resize(1, false);
+            }
         }
         else if (key == xorstr_("WeaponDetectors")) {
             globalSettings.weaponDetectors.clear();
@@ -47,6 +52,11 @@ void Settings::readSettings(const std::string& filename, bool clearExisting, boo
             std::string item;
             while (std::getline(ss, item, ',')) {
                 globalSettings.weaponDetectors.push_back(item == xorstr_("1"));
+            }
+
+			// Ensure the vector has at least 3 elements
+            if (globalSettings.weaponDetectors.size() < 3) {
+                globalSettings.weaponDetectors.resize(3, false);
             }
         }
         else if (key == xorstr_("Sensitivity")) {
