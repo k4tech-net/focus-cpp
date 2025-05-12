@@ -271,21 +271,21 @@ switch (aspectRatio) {
 	case 1:
         // Resolution (Same as above)
 		return 0;
-	case 2:
+	case 2: // 5:4
 		return 2;
-	case 3:
+	case 3: // 4:3
 		return 1;
-	case 4:
+	case 4: // 3:2
 		return 3;
-	case 5:
+	case 5: // 16:10
 		return 4;
-    case 6:
+    case 6: // 5:3
         return 5;
-    case 7:
+    case 7: // 16:9 
         return 0;
-    case 8:
+    case 8: // 19:10
         return 6;
-    case 9:
+    case 9: // 21:9
         return 7;
 	default:
 		return 0;
