@@ -643,27 +643,28 @@ RECT Overlay::DrawMagnifier(HDC hdc, bool shouldClear) {
     // Get current desktop image safely with minimal lock time
     bool captureSucceeded = false;
     {
-        // Minimize lock time by just checking if we can proceed
-        if (globals.capture.desktopMutex_.try_lock()) {
-            if (!globals.capture.desktopMat.empty()) {
-                // Make sure source rectangle is within bounds
-                sourceX = std::max(0, std::min(sourceX, globals.capture.desktopMat.cols - sourceSize));
-                sourceY = std::max(0, std::min(sourceY, globals.capture.desktopMat.rows - sourceSize));
-                sourceSize = std::min(sourceSize, std::min(globals.capture.desktopMat.cols - sourceX, globals.capture.desktopMat.rows - sourceY));
+        // Lock desktop mat
+        globals.capture.desktopMutex_.lock();
+        cv::Mat desktopMat = globals.capture.desktopMat;
+		globals.capture.desktopMutex_.unlock();
 
-                if (sourceSize > 0) {
-                    // Direct resizing without intermediate copying
-                    cv::Rect roi(sourceX, sourceY, sourceSize, sourceSize);
+        if (!desktopMat.empty()) {
+			// Make sure source rectangle is within bounds
+			sourceX = std::max(0, std::min(sourceX, desktopMat.cols - sourceSize));
+			sourceY = std::max(0, std::min(sourceY, desktopMat.rows - sourceSize));
+			sourceSize = std::min(sourceSize, std::min(desktopMat.cols - sourceX, desktopMat.rows - sourceY));
 
-                    // Use faster resize method with optimized parameters
-                    cv::resize(globals.capture.desktopMat(roi), resizedMat, cv::Size(size, size),
-                        0, 0, cv::INTER_NEAREST); // Use NEAREST for speed over quality
+			if (sourceSize > 0) {
+				// Direct resizing without intermediate copying
+				cv::Rect roi(sourceX, sourceY, sourceSize, sourceSize);
 
-                    captureSucceeded = true;
-                }
-            }
-            globals.capture.desktopMutex_.unlock();
-        }
+				// Use faster resize method with optimized parameters
+				cv::resize(desktopMat(roi), resizedMat, cv::Size(size, size),
+					0, 0, cv::INTER_NEAREST); // Use NEAREST for speed over quality
+
+				captureSucceeded = true;
+			}
+		}
     }
 
     // Draw the magnifier - using more efficient GDI operations

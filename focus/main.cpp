@@ -187,16 +187,6 @@ int main()
 
 		mn.gui();
 
-		//if (GetAsyncKeyState(VK_RSHIFT)) {
-			//if (!globals.capture.desktopMat.empty()) {
-			//	globals.capture.desktopMutex_.lock();
-			//	cv::Mat desktop;
-			//	cv::resize(globals.capture.desktopMat, desktop, cv::Size(1920, 1080));
-			//	cv::imshow("output", desktop); // Debug window
-			//	globals.capture.desktopMutex_.unlock();
-			//}
-		//}
-
 		if (ImGui::GetPlatformIO().Viewports.Size > 1) {
 			ImGuiViewport* viewport = ImGui::GetPlatformIO().Viewports[1];
 			viewport->Flags |= ImGuiViewportFlags_NoTaskBarIcon;

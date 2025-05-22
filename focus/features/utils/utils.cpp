@@ -260,17 +260,57 @@ std::string Utils::getMostRecentFile(const std::vector<std::string>& files) {
 }
 
 int mapAspectRatioSiege(int aspectRatio) {
-switch (aspectRatio) {
-	case 0:
-        // Auto (Based on screensize)
-        //int screenWidth = globals.capture.desktopWidth.load(std::memory_order_relaxed);
-		//int screenHeight = globals.capture.desktopHeight.load(std::memory_order_relaxed);
+    // Get screen dimensions from the global capture variables
+    int screenWidth = globals.capture.desktopWidth.load(std::memory_order_relaxed);
+    int screenHeight = globals.capture.desktopHeight.load(std::memory_order_relaxed);
 
-        // Do here
-		return 0;
-	case 1:
-        // Resolution (Same as above)
-		return 0;
+    // For auto (0) or resolution-based (1) settings, calculate the aspect ratio from screen dimensions
+    if (aspectRatio == 0 || aspectRatio == 1) {
+        // Calculate the greatest common divisor to find the simplest ratio form
+        int gcd = std::gcd(screenWidth, screenHeight);
+        int widthRatio = screenWidth / gcd;
+        int heightRatio = screenHeight / gcd;
+
+        // Map common aspect ratios to the application's internal indexes
+        // 16:9 (most common widescreen format)
+        if (widthRatio == 16 && heightRatio == 9) {
+            return 0;
+        }
+        // 4:3 (standard/legacy format)
+        else if (widthRatio == 4 && heightRatio == 3) {
+            return 1;
+        }
+        // 5:4 format
+        else if (widthRatio == 5 && heightRatio == 4) {
+            return 2;
+        }
+        // 3:2 format
+        else if (widthRatio == 3 && heightRatio == 2) {
+            return 3;
+        }
+        // 16:10 format
+        else if (widthRatio == 16 && heightRatio == 10 || widthRatio == 8 && heightRatio == 5) {
+            return 4;
+        }
+        // 5:3 format
+        else if (widthRatio == 5 && heightRatio == 3) {
+            return 5;
+        }
+        // 19:10 format (somewhat close to 16:9)
+        else if (widthRatio == 19 && heightRatio == 10) {
+            return 6;
+        }
+        // 21:9 ultrawide format
+        else if ((float)widthRatio / heightRatio >= 2.3f && (float)widthRatio / heightRatio <= 2.4f) {
+            return 7;
+        }
+        // If no exact match, default to 16:9 (most common)
+        else {
+            return 0;
+        }
+    }
+
+    switch (aspectRatio) {
 	case 2: // 5:4
 		return 2;
 	case 3: // 4:3

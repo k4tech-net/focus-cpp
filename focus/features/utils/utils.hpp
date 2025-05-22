@@ -9,6 +9,7 @@
 #include <iostream>
 #include <filesystem>
 #include <ShlObj.h>
+#include <numeric>
 #pragma comment(lib, "shell32.lib")
 
 #include "../driver/mouse.hpp"

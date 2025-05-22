@@ -603,9 +603,9 @@ void DXGI::aimbot() {
             }
 
             // draw detections on the image
-			for (const auto& detection : detections) {
+			/*for (const auto& detection : detections) {
 				cv::rectangle(croppedImage, detection.box, cv::Scalar(0, 255, 0), 2);
-			}
+			}*/
 
             std::vector<float> corrections = calculateCorrections(croppedImage, detections, settings.aimbotData.aiAimbotSettings.hitbox, settings.globalSettings.fov, settings.aimbotData.aiAimbotSettings.forceHitbox);
 
@@ -2113,8 +2113,8 @@ DXGI::ROIParameters DXGI::optimizeOperatorDetectionROI(cv::Mat& src, float initi
     // Temp variables to avoid unnecessary conversions in the loops
     cv::Mat roiImage;
     int x, y, width, height;
-    bool result;
-    float confidence;
+    bool result = false;
+    float confidence = 0.f;
 
     // Grid search over all parameters
     for (int xStep = -numSteps; xStep <= numSteps; xStep++) {
