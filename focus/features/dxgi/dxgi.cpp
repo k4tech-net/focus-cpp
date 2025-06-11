@@ -957,7 +957,7 @@ void DXGI::detectWeaponR6(cv::Mat& src, double hysteresisThreshold, double minAc
     cvtColor(roiImg2, rgb2, cv::COLOR_BGR2RGB);
     cvtColor(roiImg3, rgb3, cv::COLOR_BGR2RGB);
 
-    cv::Vec3b primaryTargetColour = cv::Vec3b(15, 255, 243);
+    cv::Vec3b primaryTargetColour = cv::Vec3b(255, 255, 255);
     int primaryBuffer = 15;
 
     double primaryArea1 = 0, primaryArea2 = 0, primaryArea3 = 0;
@@ -1944,17 +1944,17 @@ int DXGI::detectSelectedWeaponSlot(cv::Mat& src) {
     cv::cvtColor(primaryRegion, primaryHsv, cv::COLOR_BGR2HSV);
     cv::cvtColor(secondaryRegion, secondaryHsv, cv::COLOR_BGR2HSV);
 
-    // Count blue pixels in each ROI
-    int primaryBlueCount = 0;
-    int secondaryBlueCount = 0;
+    // Count red pixels in each ROI
+    int primaryRedCount = 0;
+    int secondaryRedCount = 0;
 
     // Check primary ROI
     for (int y = 0; y < primaryHsv.rows; y++) {
         for (int x = 0; x < primaryHsv.cols; x++) {
             cv::Vec3b pixel = primaryHsv.at<cv::Vec3b>(y, x);
-            // Blue detection - adjust these thresholds as needed
-            if (pixel[0] > 95 && pixel[0] < 115 && pixel[1] > 150 && pixel[2] > 150) {
-                primaryBlueCount++;
+            // Red detection - adjust these thresholds as needed
+            if (pixel[0] > 1 && pixel[0] < 5 && pixel[1] > 170 && pixel[2] > 170) {
+                primaryRedCount++;
             }
         }
     }
@@ -1963,24 +1963,27 @@ int DXGI::detectSelectedWeaponSlot(cv::Mat& src) {
     for (int y = 0; y < secondaryHsv.rows; y++) {
         for (int x = 0; x < secondaryHsv.cols; x++) {
             cv::Vec3b pixel = secondaryHsv.at<cv::Vec3b>(y, x);
-            // Blue detection - same criteria as primary
-            if (pixel[0] > 95 && pixel[0] < 115 && pixel[1] > 150 && pixel[2] > 150) {
-                secondaryBlueCount++;
+            // Red detection - same criteria as primary
+            if (pixel[0] > 1 && pixel[0] < 5 && pixel[1] > 170 && pixel[2] > 170) {
+                secondaryRedCount++;
             }
         }
     }
 
-    // Calculate the percentage of blue pixels in each ROI
-    float primaryBluePercent = static_cast<float>(primaryBlueCount) / primaryHsv.total();
-    float secondaryBluePercent = static_cast<float>(secondaryBlueCount) / secondaryHsv.total();
+    cv::rectangle(src, primaryRoi, cv::Scalar(0, 255, 0), 1);
+	cv::rectangle(src, secondaryRoi, cv::Scalar(0, 255, 0), 1);
+
+    // Calculate the percentage of red pixels in each ROI
+    float primaryRedPercent = static_cast<float>(primaryRedCount) / primaryHsv.total();
+    float secondaryRedPercent = static_cast<float>(secondaryRedCount) / secondaryHsv.total();
 
     // Determine which ROI has the most blue (if any)
     const float blueThreshold = 0.1f; // 10% of pixels need to be blue
 
-    if (primaryBluePercent > blueThreshold && primaryBluePercent > secondaryBluePercent) {
+    if (primaryRedPercent > blueThreshold && primaryRedPercent > secondaryRedPercent) {
         return 1; // Primary weapon selected
     }
-    else if (secondaryBluePercent > blueThreshold && secondaryBluePercent > primaryBluePercent) {
+    else if (secondaryRedPercent > blueThreshold && secondaryRedPercent > primaryRedPercent) {
         return 2; // Secondary weapon selected
     }
     else {
@@ -2356,10 +2359,10 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     switch (settings.globalSettings.aspect_ratio) {
     case 0:
-        screenCheckRatioX = 0.021f;
-        screenCheckRatioY = 0.41f;
-        screenCheckRatioWidth = 0.0075f;
-        screenCheckRatioHeight = 0.199f;
+        screenCheckRatioX = 0.0235f;
+        screenCheckRatioY = 0.448f;
+        screenCheckRatioWidth = 0.005f;
+        screenCheckRatioHeight = 0.172f;
         break;
     case 1:
         screenCheckRatioX = 0.021f;
@@ -2425,8 +2428,12 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     cv::Mat screenCheckRegion = src(screenCheckRoi);
 
     int selectedWeapon = detectSelectedWeaponSlot(screenCheckRegion);
+
+    cv::imshow(xorstr_("screenCheckRegion"), screenCheckRegion);
+    cv::waitKey(1);
+
 	if (selectedWeapon == 0) {
-		//std::cout << xorstr_("Not operator screen or no weapon selected") << std::endl;
+		std::cout << xorstr_("Not operator screen or no weapon selected") << std::endl;
 		return;
 	}
 
@@ -2515,7 +2522,7 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
 
     if (!detectedOperator) {
         useShootingRangeOffset = !useShootingRangeOffset;
-        //std::cout << xorstr_("Couldn't detect operator") << std::endl;
+        std::cout << xorstr_("Couldn't detect operator") << std::endl;
 		return;
     }
 
@@ -2551,10 +2558,10 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
         weaponSelectionRatioHeight = 0.003f; // 0.003f for testing
 
         if (selectedWeapon == 1) { //Primary
-            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.473f : 0.49f;
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.469f : 0.486f;
         }
         else {
-            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.582f : 0.632f;
+            weaponSelectionRatioY = useWeaponSelectionOffset ? 0.578f : 0.628f;
         }
         break;
     case 2:
@@ -2663,11 +2670,11 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     int whiteValThreshold = 220;
 
     // Inactive cyan/blue color in HSV 
-    int inactiveHueMin = 75;
-    int inactiveHueMax = 110;
-    int inactiveSatMin = 100;
-    int inactiveSatMax = 120;
-    int inactiveValMin = 230;
+    int inactiveHueMin = 1;
+    int inactiveHueMax = 10;
+    int inactiveSatMin = 70;
+    int inactiveSatMax = 100;
+    int inactiveValMin = 210;
 
     // Check each point for white or inactive color
     for (int i = 0; i < 4; i++) {
@@ -2685,17 +2692,17 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
             isInactive[i] = (hue >= inactiveHueMin && hue <= inactiveHueMax &&
                 sat >= inactiveSatMin && sat <= inactiveSatMax && val > inactiveValMin);
 
-            //cv::Scalar circleColor;
-            //if (isWhite[i]) {
-            //    circleColor = cv::Scalar(255, 0, 0); // White circle
-            //}
-            //else if (isInactive[i]) {
-            //    circleColor = cv::Scalar(0, 255, 0);   // Cyan circle
-            //}
-            //else {
-            //    circleColor = cv::Scalar(0, 0, 255);     // Red circle (no detection)
-            //}
-            //cv::circle(weaponSelectionRegion, checkPoints[i], 1, circleColor, -1);
+            cv::Scalar circleColor;
+            if (isWhite[i]) {
+                circleColor = cv::Scalar(255, 0, 0); // White circle
+            }
+            else if (isInactive[i]) {
+                circleColor = cv::Scalar(0, 255, 0);   // Cyan circle
+            }
+            else {
+                circleColor = cv::Scalar(0, 0, 255);     // Red circle (no detection)
+            }
+            cv::circle(weaponSelectionRegion, checkPoints[i], 1, circleColor, -1);
         }
     }
 
@@ -2763,6 +2770,10 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
         validDetection = false;
     }
 
+	// Draw weapon selection region
+	cv::imshow("Weapon Selection Region", weaponSelectionRegion);
+    cv::waitKey(1);
+
     // Only apply changes if we have a valid detection
     if (validDetection && selectedWeaponIndex >= 0) {
         if (settings.activeState.selectedCharacterIndex < settings.characters.size()) {
@@ -2801,7 +2812,8 @@ void DXGI::detectAttachmentsR6(cv::Mat& src) {
     }
     else {
         // Detection failed, flip the Y offset for next attempt
-        useWeaponSelectionOffset = !useWeaponSelectionOffset;
+        //useWeaponSelectionOffset = !useWeaponSelectionOffset;
+        std::cout << xorstr_("Failed to detect weapon selection region") << std::endl;
         return;
     }
 

@@ -750,6 +750,9 @@ void keybindManager() {
 				useShootingRangeOffset = !useShootingRangeOffset;
 			}
 
+			//cv::imshow("Character Detector", smallRegion);
+			//cv::waitKey(1);
+
 			frameSkip = 0;
 		}
 	}
@@ -895,20 +898,20 @@ void keybindManager() {
 		dx.detectWeaponRust(smallRegion);
 	}
 
-	if (settings.globalSettings.weaponDetectors[2]) { // Here
-		static int frameSkip = 0;
+	if (settings.globalSettings.weaponDetectors[2]) {
+		//static int frameSkip = 0;
 
-		if (frameSkip++ > 10) {
+		//if (frameSkip++ > 10) {
 
-			// Extract the region of interest from the desktopMat
-			globals.capture.desktopMutex_.lock();
-			cv::Mat desktopMat = globals.capture.desktopMat;
-			globals.capture.desktopMutex_.unlock();
+		//	// Extract the region of interest from the desktopMat
+		//	globals.capture.desktopMutex_.lock();
+		//	cv::Mat desktopMat = globals.capture.desktopMat;
+		//	globals.capture.desktopMutex_.unlock();
 
-			dx.detectAttachmentsR6(desktopMat);
+		//	dx.detectAttachmentsR6(desktopMat);
 
-			frameSkip = 0;
-		}
+		//	frameSkip = 0;
+		//} Broken from siege X
 	}
 
 	//////////////////////////////////////// - Sensitivity Calculators
@@ -1041,7 +1044,7 @@ void Menu::gui()
 			}
 			tooltip(xorstr_("Siege Operator Detection - Searches for your Siege Operator"));
 
-			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection"), xorstr_("Siege Loadout Detection") };
+			std::vector<const char*> WeaponDetectors = { xorstr_("Siege Weapon Detection"), xorstr_("Rust Weapon Detection"), xorstr_("Siege Loadout Detection (Broken)") };
 			if (multiCombo(xorstr_("Weapon Detectors"), WeaponDetectors, settings.globalSettings.weaponDetectors)) {
 				settings.activeState.weaponDataChanged = true;
 				globals.filesystem.unsavedChanges.store(true);
