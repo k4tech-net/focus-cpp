@@ -27,9 +27,6 @@ void CreateRenderTarget();
 void CleanupRenderTarget();
 LRESULT WINAPI WndProc(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);
 
-std::string key = xorstr_("ASNFZ4mrze8BI0VniavN7wEjRWeJq83vASNFZ4mrze8=");
-std::string clientVerificationKey = xorstr_("4783086bd5eacdea0f09c8fc6fea1642df93bbd8a314541b67a46bc4401fb55e");
-
 int main()
 {	
 	//SetPriorityClass(GetCurrentProcess(), HIGH_PRIORITY_CLASS);
@@ -89,10 +86,6 @@ int main()
 	cr.lastAuthTime.store(std::chrono::steady_clock::now());
 
 	std::thread startUpCheckThread(&Utils::startUpChecksRunner, &ut);
-
-	#if !_DEBUG
-	std::thread watchdogThread(&Crypto::watchdog, &cr);
-	#endif
 
 	bool startupchecks = true;
 	auto startuptimer = std::chrono::high_resolution_clock::now();
@@ -220,10 +213,6 @@ int main()
 
 	globals.shutdown.store(true);
 
-	#if !_DEBUG
-	watchdogThread.join();
-	#endif
-
 	triggerbotThread.join();
 	aimbotThread.join();
 	captureDesktopThread.join();
@@ -238,19 +227,6 @@ int main()
 	ms.mouse_close();
 
 	return 0;
-}
-
-extern "C" __declspec(dllexport) bool verification(const char* iv, const char* verificationKey) {
-
-	std::string decryptedVerificationKey = cr.decryptDecode(verificationKey, key, iv);
-
-	if (decryptedVerificationKey == clientVerificationKey && !globals.shutdown.load()) {
-		cr.lastAuthTime.store(std::chrono::steady_clock::now());
-		return true;
-	}
-	else {
-		return false;
-	}
 }
 
 // Helper functions
